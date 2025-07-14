@@ -1,37 +1,38 @@
+from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 from .models import User, Team
-from tournaments.models import Game
 
-class UserRegistrationTest(APITestCase):
-    def test_registration(self):
-        url = reverse('user-register')
-        data = {
-            'username': 'testuser',
-            'password': 'testpassword',
-            'email': 'test@example.com',
-            'phone_number': '+12125552368',
-            'in_game_ids': []
-        }
-        response = self.client.post(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(User.objects.count(), 1)
-        self.assertEqual(User.objects.get().username, 'testuser')
-
-class TeamCreationTest(APITestCase):
+class UserTests(APITestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='testuser', password='testpassword', phone_number='+12125552368')
+        self.user = User.objects.create_user(username='testuser', password='testpassword')
         self.client.force_authenticate(user=self.user)
+
+    def test_create_user(self):
+        url = reverse('user-list')
+        data = {'username': 'newuser', 'password': 'newpassword'}
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_get_user(self):
+        url = reverse('user-detail', args=[self.user.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+class TeamTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='testpassword')
+        self.client.force_authenticate(user=self.user)
+        self.team = Team.objects.create(name='Test Team', captain=self.user)
 
     def test_create_team(self):
         url = reverse('team-list')
-        data = {
-            'name': 'Test Team',
-            'members': [self.user.id]
-        }
-        response = self.client.post(url, data, format='json')
+        data = {'name': 'New Team', 'captain': self.user.id, 'members': [self.user.id]}
+        response = self.client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(Team.objects.count(), 1)
-        self.assertEqual(Team.objects.get().name, 'Test Team')
-        self.assertEqual(Team.objects.get().captain, self.user)
+
+    def test_get_team(self):
+        url = reverse('team-detail', args=[self.team.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)

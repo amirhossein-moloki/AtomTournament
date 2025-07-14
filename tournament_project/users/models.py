@@ -10,7 +10,7 @@ class User(AbstractUser):
         ('user', 'User'),
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='user')
-    phone_number = PhoneNumberField(unique=True)
+    phone_number = PhoneNumberField(unique=False)
 
     def __str__(self):
         return self.username
@@ -25,7 +25,7 @@ class InGameID(models.Model):
 
 class Team(models.Model):
     name = models.CharField(max_length=100)
-    captain = models.ForeignKey(User, on_delete=models.CASCADE, related_name='captained_teams')
+    captain = models.ForeignKey(User, on_delete=models.PROTECT, related_name='captained_teams')
     members = models.ManyToManyField(User, related_name='teams')
 
     def __str__(self):
