@@ -108,6 +108,28 @@ def advance_to_next_round(tournament: Tournament, current_round: int):
             )
 
 
+def record_match_result(match: Match, winner_id, proof_image=None):
+    """
+    Finds the winner object and confirms the match result.
+    """
+    try:
+        if match.match_type == "individual":
+            winner = Tournament.objects.get(
+                id=match.tournament.id
+            ).participants.get(id=winner_id)
+        else:
+            winner = Tournament.objects.get(id=match.tournament.id).teams.get(
+                id=winner_id
+            )
+    except (
+        Tournament.participants.model.DoesNotExist,
+        Tournament.teams.model.DoesNotExist,
+    ):
+        raise ValueError("Invalid winner ID.")
+
+    confirm_match_result(match, winner, proof_image)
+
+
 def join_tournament(tournament: Tournament, user):
     """
     Adds a user or a team to a tournament.

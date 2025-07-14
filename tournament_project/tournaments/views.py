@@ -9,7 +9,7 @@ from wallet.services import distribute_prize, pay_entry_fee
 from .models import Game, Match, Tournament
 from .permissions import IsTournamentParticipant
 from .serializers import GameSerializer, MatchSerializer, TournamentSerializer
-from .services import confirm_match_result, generate_matches
+from .services import generate_matches, record_match_result
 
 
 class GameViewSet(viewsets.ModelViewSet):
@@ -27,7 +27,7 @@ class TournamentViewSet(viewsets.ModelViewSet):
 
     from django.db import transaction
 
-    from .services import (confirm_match_result, generate_matches,
+    from .services import (generate_matches,
                            join_tournament)
 
     @action(
@@ -92,19 +92,7 @@ class MatchViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            if match.match_type == "individual":
-                winner = match.tournament.participants.get(id=winner_id)
-            else:
-                winner = match.tournament.teams.get(id=winner_id)
-
-            confirm_match_result(match, winner, proof_image)
+            record_match_result(match, winner_id, proof_image)
             return Response(MatchSerializer(match).data)
-        except (
-            Tournament.participants.model.DoesNotExist,
-            Tournament.teams.model.DoesNotExist,
-        ):
-            return Response(
-                {"detail": "Invalid winner ID."}, status=status.HTTP_400_BAD_REQUEST
-            )
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)

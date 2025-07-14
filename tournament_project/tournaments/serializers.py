@@ -31,17 +31,6 @@ class TournamentSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id", "participants", "teams")
 
-    def validate(self, data):
-        """
-        Check that start is before end.
-        """
-        if (
-            "start_date" in data
-            and "end_date" in data
-            and data["start_date"] > data["end_date"]
-        ):
-            raise serializers.ValidationError("finish must occur after start")
-        return data
 
 
 from .validators import FileValidator

@@ -44,7 +44,9 @@ class WalletServiceTest(TestCase):
         self.assertEqual(self.wallet.total_balance, Decimal("70.00"))
 
     def test_insufficient_withdrawable_balance(self):
-        with self.assertRaises(ValueError):
+        from api.exceptions import ApplicationError
+
+        with self.assertRaises(ApplicationError):
             update_wallet_balance(self.user, Decimal("60.00"), "withdrawal")
 
     def test_pay_entry_fee(self):

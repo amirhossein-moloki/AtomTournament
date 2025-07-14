@@ -54,19 +54,16 @@ class TournamentAPITest(APITestCase):
 
     def test_join_individual_tournament(self):
         self.client.force_authenticate(user=self.user1)
-        url = (
-            reverse("tournament-join", kwargs={"pk": self.individual_tournament.pk})
-            + "/"
-        )
-        response = self.client.post(url)
+        url = reverse("tournament-join", kwargs={"pk": self.individual_tournament.pk})
+        response = self.client.post(f"{url}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.individual_tournament.refresh_from_db()
         self.assertIn(self.user1, self.individual_tournament.participants.all())
 
     def test_join_team_tournament(self):
         self.client.force_authenticate(user=self.user1)
-        url = reverse("tournament-join", kwargs={"pk": self.team_tournament.pk}) + "/"
-        response = self.client.post(url)
+        url = reverse("tournament-join", kwargs={"pk": self.team_tournament.pk})
+        response = self.client.post(f"{url}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.team_tournament.refresh_from_db()
         self.assertIn(self.team1, self.team_tournament.teams.all())
@@ -74,11 +71,8 @@ class TournamentAPITest(APITestCase):
     def test_join_tournament_already_joined(self):
         self.individual_tournament.participants.add(self.user1)
         self.client.force_authenticate(user=self.user1)
-        url = (
-            reverse("tournament-join", kwargs={"pk": self.individual_tournament.pk})
-            + "/"
-        )
-        response = self.client.post(url)
+        url = reverse("tournament-join", kwargs={"pk": self.individual_tournament.pk})
+        response = self.client.post(f"{url}")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_generate_matches(self):
@@ -86,14 +80,11 @@ class TournamentAPITest(APITestCase):
         self.client.force_authenticate(user=self.user1)  # needs to be admin
         self.user1.is_staff = True
         self.user1.save()
-        url = (
-            reverse(
-                "tournament-generate-matches",
-                kwargs={"pk": self.individual_tournament.pk},
-            )
-            + "/"
+        url = reverse(
+            "tournament-generate-matches",
+            kwargs={"pk": self.individual_tournament.pk},
         )
-        response = self.client.post(url)
+        response = self.client.post(f"{url}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(self.individual_tournament.matches.count(), 1)
 
@@ -107,9 +98,9 @@ class TournamentAPITest(APITestCase):
             participant2_user=self.user2,
         )
         self.client.force_authenticate(user=self.user1)
-        url = reverse("match-confirm-result", kwargs={"pk": match.pk}) + "/"
+        url = reverse("match-confirm-result", kwargs={"pk": match.pk})
         data = {"winner_id": self.user1.id}
-        response = self.client.post(url, data, format="json")
+        response = self.client.post(f"{url}", data, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         match.refresh_from_db()
         self.assertTrue(match.is_confirmed)
@@ -129,14 +120,11 @@ class TournamentAPITest(APITestCase):
         self.client.force_authenticate(user=self.user1)  # needs to be admin
         self.user1.is_staff = True
         self.user1.save()
-        url = (
-            reverse(
-                "tournament-distribute-prizes",
-                kwargs={"pk": self.individual_tournament.pk},
-            )
-            + "/"
+        url = reverse(
+            "tournament-distribute-prizes",
+            kwargs={"pk": self.individual_tournament.pk},
         )
-        response = self.client.post(url)
+        response = self.client.post(f"{url}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Add assertions for wallet balance
         # Not testing wallet directly here to keep tests focused
