@@ -1,12 +1,13 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Game, Tournament, Match
 from .serializers import GameSerializer, TournamentSerializer, MatchSerializer
 from .services import generate_matches, confirm_match_result
 from users.permissions import IsAdminUser
+from .permissions import IsTournamentParticipant
 from wallet.services import pay_entry_fee, distribute_prize
 
 class GameViewSet(viewsets.ModelViewSet):
@@ -17,11 +18,11 @@ class GameViewSet(viewsets.ModelViewSet):
 class TournamentViewSet(viewsets.ModelViewSet):
     queryset = Tournament.objects.all()
     serializer_class = TournamentSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticated, IsTournamentParticipant]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['name', 'game', 'type', 'is_free']
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsTournamentParticipant])
     def join(self, request, pk=None):
         tournament = self.get_object()
         user = request.user
@@ -63,14 +64,16 @@ class TournamentViewSet(viewsets.ModelViewSet):
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+from .permissions import IsTournamentParticipant, IsMatchParticipant
+
 class MatchViewSet(viewsets.ModelViewSet):
     queryset = Match.objects.all()
     serializer_class = MatchSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticated, IsMatchParticipant]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['tournament', 'round', 'is_confirmed', 'is_disputed']
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsMatchParticipant])
     def confirm_result(self, request, pk=None):
         match = self.get_object()
         winner_id = request.data.get('winner_id')
