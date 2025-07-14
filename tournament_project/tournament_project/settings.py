@@ -47,7 +47,6 @@ INSTALLED_APPS = [
     "django_filters",
     "phonenumber_field",
     "drf_spectacular",
-    "api",
     "users",
     "tournaments",
     "wallet",
@@ -169,8 +168,6 @@ CHANNEL_LAYERS = {
 
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "EXCEPTION_HANDLER": "api.exceptions.custom_exception_handler",
-    "DEFAULT_PAGINATION_CLASS": "api.pagination.CustomPagination",
 }
 
 
