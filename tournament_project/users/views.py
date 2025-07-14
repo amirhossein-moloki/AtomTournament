@@ -5,7 +5,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Team, User
-from .permissions import IsAdminUser, IsOwnerOrReadOnly
+from .permissions import (IsAdminUser, IsCaptain, IsCaptainOrReadOnly,
+                          IsOwnerOrReadOnly)
 from .serializers import TeamSerializer, UserSerializer
 
 
@@ -22,8 +23,6 @@ class UserViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
 
-from .permissions import (IsAdminUser, IsCaptain, IsCaptainOrReadOnly,
-                          IsOwnerOrReadOnly, IsTeamMember)
 
 
 class TeamViewSet(viewsets.ModelViewSet):
@@ -36,10 +35,9 @@ class TeamViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(captain=self.request.user)
 
-    @action(detail=True, methods=["post"])
+    @action(detail=True, methods=["post"], permission_classes=[IsCaptain])
     def add_member(self, request, pk=None):
         team = self.get_object()
-        self.check_object_permissions(request, team)
         user_id = request.data.get("user_id")
         if not user_id:
             return Response(
@@ -59,10 +57,9 @@ class TeamViewSet(viewsets.ModelViewSet):
         team.members.add(user)
         return Response(TeamSerializer(team).data, status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=["post"])
+    @action(detail=True, methods=["post"], permission_classes=[IsCaptain])
     def remove_member(self, request, pk=None):
         team = self.get_object()
-        self.check_object_permissions(request, team)
         user_id = request.data.get("user_id")
         if not user_id:
             return Response(

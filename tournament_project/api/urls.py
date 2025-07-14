@@ -4,7 +4,7 @@ from tournaments.views import GameViewSet, MatchViewSet, TournamentViewSet
 from users.views import TeamViewSet, UserViewSet
 from wallet.views import TransactionViewSet, WalletViewSet
 
-router = DefaultRouter(trailing_slash=False)
+router = DefaultRouter(trailing_slash=True)
 router.register(r"users", UserViewSet)
 router.register(r"teams", TeamViewSet)
 router.register(r"games", GameViewSet)
