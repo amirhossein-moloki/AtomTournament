@@ -22,10 +22,12 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+from .permissions import IsOwnerOrReadOnly, IsAdminUser, IsTeamMember
+
 class TeamViewSet(viewsets.ModelViewSet):
     queryset = Team.objects.all()
     serializer_class = TeamSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsTeamMember]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['name', 'captain']
 

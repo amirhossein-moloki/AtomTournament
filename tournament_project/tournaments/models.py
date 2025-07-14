@@ -52,7 +52,7 @@ class Match(models.Model):
     participant2_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='matches_as_participant2', null=True, blank=True)
     winner_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='won_matches', null=True, blank=True)
     winner_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='won_matches', null=True, blank=True)
-    result_proof = models.ImageField(upload_to='result_proofs/', null=True, blank=True)
+    result_proof = models.ImageField(upload_to='private_result_proofs/', null=True, blank=True)
     is_confirmed = models.BooleanField(default=False)
     is_disputed = models.BooleanField(default=False)
 

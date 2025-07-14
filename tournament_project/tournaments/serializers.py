@@ -14,7 +14,7 @@ class TournamentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tournament
         fields = ('id', 'name', 'game', 'start_date', 'end_date', 'is_free', 'entry_fee', 'rules', 'type', 'participants', 'teams')
-        read_only_fields = ('id',)
+        read_only_fields = ('id', 'participants', 'teams')
 
     def validate(self, data):
         """
@@ -41,4 +41,4 @@ class MatchSerializer(serializers.ModelSerializer):
             'winner_user', 'winner_team',
             'result_proof', 'is_confirmed', 'is_disputed'
         )
-        read_only_fields = ('id',)
+        read_only_fields = ('id', 'participant1_user', 'participant2_user', 'participant1_team', 'participant2_team', 'winner_user', 'winner_team', 'is_confirmed', 'is_disputed')
