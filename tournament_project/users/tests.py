@@ -93,11 +93,12 @@ class TeamTests(TestCase):
 
     def test_add_member_to_team(self):
         team = Team.objects.create(name="Test Team", captain=self.user1)
+        team.members.add(self.user1)
         url = reverse("team-add-member", kwargs={"pk": team.pk})
         data = {"user_id": self.user2.id}
         response = self.client.post(f"{url}", data, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(team.members.count(), 1)
+        self.assertEqual(team.members.count(), 2)
 
     def test_add_existing_member_to_team(self):
         team = Team.objects.create(name="Test Team", captain=self.user1)
@@ -116,12 +117,13 @@ class TeamTests(TestCase):
 
     def test_remove_member_from_team(self):
         team = Team.objects.create(name="Test Team", captain=self.user1)
+        team.members.add(self.user1)
         team.members.add(self.user2)
         url = reverse("team-remove-member", kwargs={"pk": team.pk})
         data = {"user_id": self.user2.id}
         response = self.client.post(f"{url}", data, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(team.members.count(), 0)
+        self.assertEqual(team.members.count(), 1)
 
     def test_remove_non_existent_member_from_team(self):
         team = Team.objects.create(name="Test Team", captain=self.user1)

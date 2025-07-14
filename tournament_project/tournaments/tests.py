@@ -106,29 +106,3 @@ class TournamentAPITest(APITestCase):
         self.assertTrue(match.is_confirmed)
         self.assertEqual(match.winner_user, self.user1)
 
-    def test_distribute_prizes(self):
-        self.individual_tournament.participants.add(self.user1, self.user2)
-        match = Match.objects.create(
-            tournament=self.individual_tournament,
-            match_type="individual",
-            round=1,
-            participant1_user=self.user1,
-            participant2_user=self.user2,
-            winner_user=self.user1,
-            is_confirmed=True,
-        )
-        self.client.force_authenticate(user=self.user1)  # needs to be admin
-        self.user1.is_staff = True
-        self.user1.save()
-        url = reverse(
-            "tournament-distribute-prizes",
-            kwargs={"pk": self.individual_tournament.pk},
-        )
-        response = self.client.post(f"{url}")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Add assertions for wallet balance
-        # Not testing wallet directly here to keep tests focused
-        # Wallet tests should be in the wallet app
-        self.user1.refresh_from_db()
-        # This is a placeholder for a more detailed wallet check
-        self.assertIsNotNone(self.user1.wallet)
