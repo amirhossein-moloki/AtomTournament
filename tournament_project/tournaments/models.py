@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from users.models import User, Team
+from django.core.exceptions import ValidationError
 
 class Game(models.Model):
     name = models.CharField(max_length=100)
@@ -26,6 +27,11 @@ class Tournament(models.Model):
     participants = models.ManyToManyField(User, related_name='tournaments', blank=True)
     teams = models.ManyToManyField(Team, related_name='tournaments', blank=True)
 
+    def clean(self):
+        if self.start_date and self.end_date and self.start_date >= self.end_date:
+            raise ValidationError("End date must be after start date.")
+        if not self.is_free and self.entry_fee is None:
+            raise ValidationError("Entry fee must be set for paid tournaments.")
 
     def __str__(self):
         return self.name
