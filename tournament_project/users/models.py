@@ -12,19 +12,16 @@ class User(AbstractUser):
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='user')
     phone_number = PhoneNumberField(unique=True)
 
-class Profile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-
     def __str__(self):
-        return self.user.username
+        return self.username
 
 class InGameID(models.Model):
-    profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='in_game_ids')
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='in_game_ids', null=True)
     game = models.ForeignKey('tournaments.Game', on_delete=models.CASCADE)
     player_id = models.CharField(max_length=100)
 
     class Meta:
-        unique_together = ('profile', 'game')
+        unique_together = ('user', 'game')
 
 class Team(models.Model):
     name = models.CharField(max_length=100)
