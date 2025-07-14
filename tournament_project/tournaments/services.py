@@ -1,17 +1,18 @@
 from .models import Tournament, Match
 import random
+from api.exceptions import ApplicationError
 
 def generate_matches(tournament: Tournament):
     """
     Generates matches for the first round of a tournament.
     """
     if tournament.matches.exists():
-        raise ValueError("Matches have already been generated for this tournament.")
+        raise ApplicationError("Matches have already been generated for this tournament.")
 
     if tournament.type == 'individual':
         participants = list(tournament.participants.all())
         if len(participants) < 2:
-            raise ValueError("Not enough participants to generate matches.")
+            raise ApplicationError("Not enough participants to generate matches.")
 
         random.shuffle(participants)
         for i in range(0, len(participants) - 1, 2):
@@ -25,7 +26,7 @@ def generate_matches(tournament: Tournament):
     elif tournament.type == 'team':
         teams = list(tournament.teams.all())
         if len(teams) < 2:
-            raise ValueError("Not enough teams to generate matches.")
+            raise ApplicationError("Not enough teams to generate matches.")
 
         random.shuffle(teams)
         for i in range(0, len(teams) - 1, 2):
@@ -42,7 +43,7 @@ def confirm_match_result(match: Match, winner, proof_image=None):
     Confirms the result of a match and advances the winner.
     """
     if match.is_confirmed:
-        raise ValueError("Match result has already been confirmed.")
+        raise ApplicationError("Match result has already been confirmed.")
 
     match.is_confirmed = True
     match.result_proof = proof_image
