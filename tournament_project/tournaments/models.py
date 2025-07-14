@@ -1,6 +1,4 @@
 from django.db import models
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
 from users.models import User, Team
 from django.core.exceptions import ValidationError
 
@@ -32,30 +30,46 @@ class Tournament(models.Model):
             raise ValidationError("End date must be after start date.")
         if not self.is_free and self.entry_fee is None:
             raise ValidationError("Entry fee must be set for paid tournaments.")
+        if self.type == 'individual' and self.teams.exists():
+            raise ValidationError("Individual tournaments cannot have team participants.")
+        if self.type == 'team' and self.participants.exists():
+            raise ValidationError("Team tournaments cannot have individual participants.")
 
     def __str__(self):
         return self.name
 
 class Match(models.Model):
-    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
+    MATCH_TYPE_CHOICES = (
+        ('individual', 'Individual'),
+        ('team', 'Team'),
+    )
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name='matches')
+    match_type = models.CharField(max_length=20, choices=MATCH_TYPE_CHOICES, default='individual')
     round = models.IntegerField()
-
-    # Using GenericForeignKey to allow participants to be either a User or a Team
-    participant1_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name='participant1', null=True)
-    participant1_object_id = models.PositiveIntegerField(null=True)
-    participant1 = GenericForeignKey('participant1_content_type', 'participant1_object_id')
-
-    participant2_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name='participant2', null=True)
-    participant2_object_id = models.PositiveIntegerField(null=True)
-    participant2 = GenericForeignKey('participant2_content_type', 'participant2_object_id')
-
-    winner_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True, related_name='winner')
-    winner_object_id = models.PositiveIntegerField(null=True, blank=True)
-    winner = GenericForeignKey('winner_content_type', 'winner_object_id')
-
+    participant1_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='matches_as_participant1', null=True, blank=True)
+    participant2_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='matches_as_participant2', null=True, blank=True)
+    participant1_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='matches_as_participant1', null=True, blank=True)
+    participant2_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='matches_as_participant2', null=True, blank=True)
+    winner_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='won_matches', null=True, blank=True)
+    winner_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='won_matches', null=True, blank=True)
     result_proof = models.ImageField(upload_to='result_proofs/', null=True, blank=True)
     is_confirmed = models.BooleanField(default=False)
     is_disputed = models.BooleanField(default=False)
 
+    def clean(self):
+        if self.match_type == 'individual':
+            if self.participant1_team or self.participant2_team:
+                raise ValidationError("Individual matches cannot have team participants.")
+            if not self.participant1_user or not self.participant2_user:
+                raise ValidationError("Individual matches must have user participants.")
+        elif self.match_type == 'team':
+            if self.participant1_user or self.participant2_user:
+                raise ValidationError("Team matches cannot have user participants.")
+            if not self.participant1_team or not self.participant2_team:
+                raise ValidationError("Team matches must have team participants.")
+
     def __str__(self):
-        return f'{self.participant1} vs {self.participant2} - Tournament: {self.tournament}'
+        if self.match_type == 'individual':
+            return f'{self.participant1_user} vs {self.participant2_user} - Tournament: {self.tournament}'
+        else:
+            return f'{self.participant1_team} vs {self.participant2_team} - Tournament: {self.tournament}'
