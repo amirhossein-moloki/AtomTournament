@@ -51,9 +51,11 @@ INSTALLED_APPS = [
     'tournaments',
     'wallet',
     'corsheaders',
+    'axes',
 ]
 
 AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
 
@@ -66,6 +68,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'axes.middleware.AxesMiddleware',
 ]
 
 ROOT_URLCONF = 'tournament_project.urls'
@@ -165,6 +168,7 @@ CHANNEL_LAYERS = {
 
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'EXCEPTION_HANDLER': 'api.exceptions.custom_exception_handler',
 }
 
 
@@ -186,3 +190,5 @@ CSRF_COOKIE_SECURE = True
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
 ]
+
+AXES_FAILURE_LIMIT = 5

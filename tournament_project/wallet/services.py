@@ -5,6 +5,7 @@ from django.db import transaction
 from users.models import User
 from .models import Wallet, Transaction
 from tournaments.models import Tournament
+from api.exceptions import ApplicationError
 
 def update_wallet_balance(user: User, amount: Decimal, transaction_type: str):
     """
@@ -17,12 +18,12 @@ def update_wallet_balance(user: User, amount: Decimal, transaction_type: str):
             wallet.total_balance += amount
         elif transaction_type == 'withdrawal':
             if wallet.withdrawable_balance < amount:
-                raise ValueError("Insufficient withdrawable balance.")
+                raise ApplicationError("Insufficient withdrawable balance.")
             wallet.withdrawable_balance -= amount
             wallet.total_balance -= amount
         elif transaction_type == 'entry_fee':
             if wallet.total_balance < amount:
-                raise ValueError("Insufficient total balance.")
+                raise ApplicationError("Insufficient total balance.")
             wallet.total_balance -= amount
         elif transaction_type == 'prize':
             wallet.total_balance += amount
@@ -46,7 +47,7 @@ def pay_entry_fee(user: User, tournament: Tournament):
         return
 
     if tournament.entry_fee is None:
-        raise ValueError("This tournament does not have an entry fee.")
+        raise ApplicationError("This tournament does not have an entry fee.")
 
     update_wallet_balance(user, tournament.entry_fee, 'entry_fee')
 
