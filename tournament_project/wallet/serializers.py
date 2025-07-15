@@ -4,6 +4,8 @@ from .models import Transaction, Wallet
 
 
 class WalletSerializer(serializers.ModelSerializer):
+    """Serializer for the Wallet model."""
+
     class Meta:
         model = Wallet
         fields = ("id", "user", "total_balance", "withdrawable_balance")
@@ -11,6 +13,8 @@ class WalletSerializer(serializers.ModelSerializer):
 
 
 class TransactionSerializer(serializers.ModelSerializer):
+    """Serializer for the Transaction model."""
+
     class Meta:
         model = Transaction
         fields = ("id", "wallet", "amount", "transaction_type", "timestamp")

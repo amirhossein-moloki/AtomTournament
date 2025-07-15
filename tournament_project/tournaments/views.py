@@ -19,6 +19,10 @@ from .services import join_tournament, generate_matches
 
 
 class TournamentParticipantListView(generics.ListAPIView):
+    """
+    API view to list participants of a tournament.
+    """
+
     serializer_class = ParticipantSerializer
     permission_classes = [IsAuthenticated]
 
@@ -28,6 +32,10 @@ class TournamentParticipantListView(generics.ListAPIView):
 
 
 class TournamentViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing tournaments.
+    """
+
     queryset = Tournament.objects.all()
     serializer_class = TournamentSerializer
     permission_classes = [IsAuthenticated]
@@ -39,6 +47,9 @@ class TournamentViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
     def join(self, request, pk=None):
+        """
+        Join a tournament.
+        """
         tournament = self.get_object()
         user = request.user
 
@@ -57,6 +68,9 @@ class TournamentViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
     def generate_matches(self, request, pk=None):
+        """
+        Generate matches for a tournament.
+        """
         tournament = self.get_object()
         try:
             generate_matches(tournament)
@@ -66,6 +80,10 @@ class TournamentViewSet(viewsets.ModelViewSet):
 
 
 class MatchViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing matches.
+    """
+
     queryset = Match.objects.all()
     serializer_class = MatchSerializer
     permission_classes = [IsAuthenticated]
@@ -77,6 +95,9 @@ class MatchViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def confirm_result(self, request, pk=None):
+        """
+        Confirm the result of a match.
+        """
         match = self.get_object()
         user = request.user
         winner_id = request.data.get("winner_id")
@@ -95,6 +116,9 @@ class MatchViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def dispute_result(self, request, pk=None):
+        """
+        Dispute the result of a match.
+        """
         match = self.get_object()
         user = request.user
         reason = request.data.get("reason")
@@ -113,6 +137,10 @@ class MatchViewSet(viewsets.ModelViewSet):
 
 
 class GameViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing games.
+    """
+
     queryset = Game.objects.all()
     serializer_class = GameSerializer
 

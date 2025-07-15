@@ -16,6 +16,9 @@ urlpatterns = [
     path("api/users/", include("users.urls")),
     path("api/tournaments/", include("tournaments.urls")),
     path("api/chat/", include("chat.urls")),
+    path("api/wallet/", include("wallet.urls")),
+    path("api/notifications/", include("notifications.urls")),
+    path("api/notifications/", include("notifications.urls")),
     re_path(r"^private-media/(?P<path>.*)$", private_media_view, name="private_media"),
 ]
 
