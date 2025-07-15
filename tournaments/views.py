@@ -15,6 +15,10 @@ from .serializers import (
     TournamentSerializer,
     ParticipantSerializer,
 )
+from notifications.tasks import (
+    send_email_notification,
+    send_sms_notification,
+)
 from .services import join_tournament, generate_matches
 
 
@@ -61,6 +65,16 @@ class TournamentViewSet(viewsets.ModelViewSet):
 
         try:
             participant = join_tournament(tournament, user)
+
+            # Send notifications
+            context = {
+                "tournament_name": tournament.name,
+                "entry_code": "placeholder-entry-code",  # Replace with actual entry code
+                "room_id": "placeholder-room-id",  # Replace with actual room ID
+            }
+            send_email_notification.delay(user.email, "Tournament Joined", context)
+            send_sms_notification.delay(str(user.phone_number), context)
+
             serializer = ParticipantSerializer(participant)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:

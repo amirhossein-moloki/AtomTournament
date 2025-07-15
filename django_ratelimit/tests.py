@@ -1,6 +1,7 @@
 from functools import partial
 
 from django.core.cache import InvalidCacheBackendError, cache
+from django.core.cache.backends.locmem import LocMemCache
 from django.core.exceptions import ImproperlyConfigured
 from django.test import RequestFactory, TestCase
 from django.test.utils import override_settings
@@ -50,9 +51,13 @@ class CustomRatelimitedException(Exception):
     pass
 
 
+from unittest.mock import patch
+
+
 class RatelimitTests(TestCase):
     def setUp(self):
-        cache.clear()
+        with patch("django.core.cache.cache.clear") as mock_clear:
+            mock_clear.return_value = None
 
     def test_no_key(self):
         @ratelimit(rate="1/m")
@@ -675,6 +680,37 @@ class IpMetaTests(TestCase):
 
         with self.assertRaises(ImproperlyConfigured):
             _get_ip(req)
+
+
+class MockCache(LocMemCache):
+    def __init__(self, name, params):
+        super().__init__(name, params)
+        if name == "connection-errors":
+            self.connection_errors = True
+        else:
+            self.connection_errors = False
+        if name == "instant-expiration":
+            self.instant_expiration = True
+        else:
+            self.instant_expiration = False
+
+    def get(self, key, default=None, version=None):
+        if self.connection_errors:
+            raise ConnectionError
+        if self.instant_expiration:
+            return None
+        return super().get(key, default, version)
+
+    def set(self, key, value, timeout=300, version=None):
+        if self.connection_errors:
+            raise ConnectionError
+        if self.instant_expiration:
+            return
+        super().set(key, value, timeout, version)
+
+
+class MockRedisCache(MockCache):
+    pass
 
     @override_settings(RATELIMIT_IP_META_KEY="HTTP_X_CLIENT_IP")
     def test_alternate_header(self):

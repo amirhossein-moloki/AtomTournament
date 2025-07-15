@@ -1,0 +1,4 @@
+You have joined the {{ tournament_name }} tournament!
+Entry Code: {{ entry_code }}
+Room ID: {{ room_id }}
+Good luck!
