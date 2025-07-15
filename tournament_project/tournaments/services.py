@@ -1,8 +1,7 @@
 import random
 
-from api.exceptions import ApplicationError
-
-from .models import Match, Tournament
+from .exceptions import ApplicationError
+from .models import Match, Participant, Tournament
 
 
 def generate_matches(tournament: Tournament):
@@ -135,16 +134,32 @@ def join_tournament(tournament: Tournament, user):
     Adds a user or a team to a tournament.
     """
     if tournament.type == "individual":
-        if user in tournament.participants.all():
+        if tournament.participants.filter(id=user.id).exists():
             raise ApplicationError("You have already joined this tournament.")
-        tournament.participants.add(user)
+        participant = Participant.objects.create(user=user, tournament=tournament)
+        return participant
     elif tournament.type == "team":
-        try:
-            team = user.teams.first()
-            if not team:
-                raise ApplicationError("You are not a member of any team.")
-            if team in tournament.teams.all():
-                raise ApplicationError("Your team has already joined this tournament.")
-            tournament.teams.add(team)
-        except AttributeError:
-            raise ApplicationError("You are not a member of any team.")
+        team = user.team
+        if not team:
+            raise ApplicationError("You are not part of a team.")
+        if tournament.teams.filter(id=team.id).exists():
+            raise ApplicationError("Your team has already joined this tournament.")
+        tournament.teams.add(team)
+        # Create participant entries for all team members
+        for member in team.members.all():
+            Participant.objects.get_or_create(user=member, tournament=tournament)
+        return team
+
+
+def dispute_match_result(match: Match, user, reason: str):
+    """
+    Marks a match as disputed.
+    """
+    if not match.is_participant(user):
+        raise PermissionDenied("You are not a participant in this match.")
+    if not reason:
+        raise ApplicationError("A reason for the dispute must be provided.")
+
+    match.is_disputed = True
+    match.dispute_reason = reason
+    match.save()

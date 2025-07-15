@@ -1,20 +1,41 @@
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, Group
 from django.db import models
+from django.db.models.signals import post_save
 from phonenumber_field.modelfields import PhoneNumberField
 
 
 class User(AbstractUser):
-    ROLE_CHOICES = (
-        ("admin", "Admin"),
-        ("tournament_manager", "Tournament Manager"),
-        ("support", "Support"),
-        ("user", "User"),
-    )
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="user")
     phone_number = PhoneNumberField(unique=True)
 
     def __str__(self):
         return self.username
+
+
+class Role(models.Model):
+    """
+    Extends Django's Group model to add a description and a default role.
+    """
+
+    group = models.OneToOneField(Group, on_delete=models.CASCADE, related_name="role")
+    description = models.TextField(blank=True)
+    is_default = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.group.name
+
+    @staticmethod
+    def get_default_role():
+        return Role.objects.filter(is_default=True).first()
+
+
+def assign_default_role(sender, instance, created, **kwargs):
+    if created:
+        default_role = Role.get_default_role()
+        if default_role:
+            instance.groups.add(default_role.group)
+
+
+post_save.connect(assign_default_role, sender=User)
 
 
 class InGameID(models.Model):

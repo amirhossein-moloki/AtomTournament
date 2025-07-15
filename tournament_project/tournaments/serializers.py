@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from users.serializers import TeamSerializer, UserSerializer
 
-from .models import Game, Match, Tournament
+from .models import Game, Match, Tournament, Participant
+from .validators import FileValidator
 
 
 class GameSerializer(serializers.ModelSerializer):
@@ -30,10 +31,6 @@ class TournamentSerializer(serializers.ModelSerializer):
             "teams",
         )
         read_only_fields = ("id", "participants", "teams")
-
-
-
-from .validators import FileValidator
 
 
 class MatchSerializer(serializers.ModelSerializer):
@@ -79,3 +76,11 @@ class MatchSerializer(serializers.ModelSerializer):
             "is_confirmed",
             "is_disputed",
         )
+
+
+class ParticipantSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source="user.username", read_only=True)
+
+    class Meta:
+        model = Participant
+        fields = ["username", "status"]

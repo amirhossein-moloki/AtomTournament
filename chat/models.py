@@ -1,0 +1,35 @@
+from django.db import models
+from users.models import User
+
+
+class Conversation(models.Model):
+    participants = models.ManyToManyField(User, related_name="conversations")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class Message(models.Model):
+    conversation = models.ForeignKey(
+        Conversation, on_delete=models.CASCADE, related_name="messages"
+    )
+    sender = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="sent_messages"
+    )
+    content = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+    is_edited = models.BooleanField(default=False)
+    is_deleted = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Message from {self.sender} in conversation {self.conversation.id}"
+
+
+class Attachment(models.Model):
+    message = models.ForeignKey(
+        Message, on_delete=models.CASCADE, related_name="attachments"
+    )
+    file = models.FileField(upload_to="attachments/")
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Attachment for message {self.message.id}"

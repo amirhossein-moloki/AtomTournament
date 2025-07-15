@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "wallet",
     "corsheaders",
     "axes",
+    "chat",
 ]
 
 AUTHENTICATION_BACKENDS = [

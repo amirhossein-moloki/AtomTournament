@@ -4,10 +4,16 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Team, User
+from .models import Role, Team, User
 from .permissions import (IsAdminUser, IsCaptain, IsCaptainOrReadOnly,
                           IsOwnerOrReadOnly)
-from .serializers import TeamSerializer, UserSerializer
+from .serializers import RoleSerializer, TeamSerializer, UserSerializer
+
+
+class RoleViewSet(viewsets.ModelViewSet):
+    queryset = Role.objects.all()
+    serializer_class = RoleSerializer
+    permission_classes = [IsAdminUser]
 
 
 class UserViewSet(viewsets.ModelViewSet):
