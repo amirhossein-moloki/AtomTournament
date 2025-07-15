@@ -1,0 +1,15 @@
+Django==5.1.1
+djangorestframework==3.15.2
+channels==4.0.0
+channels-redis==4.2.0
+django-filter==24.2
+django-phonenumber-field==7.3.0
+phonenumbers==8.13.37
+Pillow==10.3.0
+drf-spectacular==0.27.2
+psycopg2-binary==2.9.9
+python-dotenv==1.0.1
+django-ratelimit==4.0.0
+django-axes
+django-cors-headers
+drf-nested-routers

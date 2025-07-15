@@ -1,0 +1,165 @@
+import random
+
+from .exceptions import ApplicationError
+from .models import Match, Participant, Tournament
+
+
+def generate_matches(tournament: Tournament):
+    """
+    Generates matches for the first round of a tournament.
+    """
+    if tournament.matches.exists():
+        raise ApplicationError(
+            "Matches have already been generated for this tournament."
+        )
+
+    if tournament.type == "individual":
+        participants = list(tournament.participants.all())
+        if len(participants) < 2:
+            raise ApplicationError("Not enough participants to generate matches.")
+
+        random.shuffle(participants)
+        for i in range(0, len(participants) - 1, 2):
+            Match.objects.create(
+                tournament=tournament,
+                match_type="individual",
+                round=1,
+                participant1_user=participants[i],
+                participant2_user=participants[i + 1],
+            )
+    elif tournament.type == "team":
+        teams = list(tournament.teams.all())
+        if len(teams) < 2:
+            raise ApplicationError("Not enough teams to generate matches.")
+
+        random.shuffle(teams)
+        for i in range(0, len(teams) - 1, 2):
+            Match.objects.create(
+                tournament=tournament,
+                match_type="team",
+                round=1,
+                participant1_team=teams[i],
+                participant2_team=teams[i + 1],
+            )
+
+
+def confirm_match_result(match: Match, winner, proof_image=None):
+    """
+    Confirms the result of a match and advances the winner.
+    """
+    if match.is_confirmed:
+        raise ApplicationError("Match result has already been confirmed.")
+
+    match.is_confirmed = True
+    match.result_proof = proof_image
+
+    if match.match_type == "individual":
+        match.winner_user = winner
+    else:
+        match.winner_team = winner
+
+    match.save()
+
+    # Check if all matches in the round are confirmed
+    tournament = match.tournament
+    round_matches = tournament.matches.filter(round=match.round)
+    if all(m.is_confirmed for m in round_matches):
+        advance_to_next_round(tournament, match.round)
+
+
+def advance_to_next_round(tournament: Tournament, current_round: int):
+    """
+    Advances the winners of the current round to the next round.
+    """
+    if tournament.type == "individual":
+        winners = [
+            m.winner_user for m in tournament.matches.filter(round=current_round)
+        ]
+        if len(winners) < 2:
+            # Tournament is over
+            return
+
+        random.shuffle(winners)
+        for i in range(0, len(winners) - 1, 2):
+            Match.objects.create(
+                tournament=tournament,
+                match_type="individual",
+                round=current_round + 1,
+                participant1_user=winners[i],
+                participant2_user=winners[i + 1],
+            )
+    elif tournament.type == "team":
+        winners = [
+            m.winner_team for m in tournament.matches.filter(round=current_round)
+        ]
+        if len(winners) < 2:
+            # Tournament is over
+            return
+
+        random.shuffle(winners)
+        for i in range(0, len(winners) - 1, 2):
+            Match.objects.create(
+                tournament=tournament,
+                match_type="team",
+                round=current_round + 1,
+                participant1_team=winners[i],
+                participant2_team=winners[i + 1],
+            )
+
+
+def record_match_result(match: Match, winner_id, proof_image=None):
+    """
+    Finds the winner object and confirms the match result.
+    """
+    try:
+        if match.match_type == "individual":
+            winner = Tournament.objects.get(
+                id=match.tournament.id
+            ).participants.get(id=winner_id)
+        else:
+            winner = Tournament.objects.get(id=match.tournament.id).teams.get(
+                id=winner_id
+            )
+    except (
+        Tournament.participants.model.DoesNotExist,
+        Tournament.teams.model.DoesNotExist,
+    ):
+        raise ValueError("Invalid winner ID.")
+
+    confirm_match_result(match, winner, proof_image)
+
+
+def join_tournament(tournament: Tournament, user):
+    """
+    Adds a user or a team to a tournament.
+    """
+    if tournament.type == "individual":
+        if tournament.participants.filter(id=user.id).exists():
+            raise ApplicationError("You have already joined this tournament.")
+        participant = Participant.objects.create(user=user, tournament=tournament)
+        return participant
+    elif tournament.type == "team":
+        team = user.team
+        if not team:
+            raise ApplicationError("You are not part of a team.")
+        if tournament.teams.filter(id=team.id).exists():
+            raise ApplicationError("Your team has already joined this tournament.")
+        tournament.teams.add(team)
+        # Create participant entries for all team members
+        for member in team.members.all():
+            Participant.objects.get_or_create(user=member, tournament=tournament)
+        return team
+
+
+def dispute_match_result(match: Match, user, reason: str):
+    """
+    Marks a match as disputed.
+    """
+    if not match.is_participant(user):
+        raise PermissionDenied("You are not a participant in this match.")
+    if not reason:
+        raise ApplicationError("A reason for the dispute must be provided.")
+
+    match.is_disputed = True
+    match.dispute_reason = reason
+    match.save()
