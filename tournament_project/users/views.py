@@ -11,12 +11,18 @@ from .serializers import RoleSerializer, TeamSerializer, UserSerializer
 
 
 class RoleViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing roles.
+    """
     queryset = Role.objects.all()
     serializer_class = RoleSerializer
     permission_classes = [IsAdminUser]
 
 
 class UserViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing users.
+    """
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
@@ -32,6 +38,9 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 class TeamViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing teams.
+    """
     queryset = Team.objects.all()
     serializer_class = TeamSerializer
     permission_classes = [IsAuthenticated, IsCaptainOrReadOnly]
@@ -43,6 +52,9 @@ class TeamViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], permission_classes=[IsCaptain])
     def add_member(self, request, pk=None):
+        """
+        Add a member to a team.
+        """
         team = self.get_object()
         user_id = request.data.get("user_id")
         if not user_id:
@@ -65,6 +77,9 @@ class TeamViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], permission_classes=[IsCaptain])
     def remove_member(self, request, pk=None):
+        """
+        Remove a member from a team.
+        """
         team = self.get_object()
         user_id = request.data.get("user_id")
         if not user_id:

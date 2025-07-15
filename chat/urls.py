@@ -6,7 +6,7 @@ from .views import AttachmentViewSet, ConversationViewSet, MessageViewSet
 router = routers.DefaultRouter()
 router.register(r"conversations", ConversationViewSet, basename="conversation")
 
-conversations_router = routers.NestedSimpleRouter(
+conversations_router = routers.NestedDefaultRouter(
     router, r"conversations", lookup="conversation"
 )
 conversations_router.register(r"messages", MessageViewSet, basename="message")

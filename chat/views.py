@@ -1,5 +1,6 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
+from django.shortcuts import get_object_or_404
 
 from .models import Attachment, Conversation, Message
 from .permissions import IsSenderOrReadOnly
@@ -11,6 +12,9 @@ from .serializers import (
 
 
 class ConversationViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing conversations.
+    """
     serializer_class = ConversationSerializer
     permission_classes = [IsAuthenticated]
 
@@ -21,6 +25,9 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
 
 class MessageViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing messages.
+    """
     serializer_class = MessageSerializer
     permission_classes = [IsAuthenticated, IsSenderOrReadOnly]
 
@@ -37,6 +44,9 @@ class MessageViewSet(viewsets.ModelViewSet):
 
 
 class AttachmentViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing attachments.
+    """
     queryset = Attachment.objects.all()
     serializer_class = AttachmentSerializer
     permission_classes = [IsAuthenticated]

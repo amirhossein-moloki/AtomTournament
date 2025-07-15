@@ -6,12 +6,16 @@ from .validators import FileValidator
 
 
 class GameSerializer(serializers.ModelSerializer):
+    """Serializer for the Game model."""
+
     class Meta:
         model = Game
         fields = ("id", "name", "description")
 
 
 class TournamentSerializer(serializers.ModelSerializer):
+    """Serializer for the Tournament model."""
+
     participants = UserSerializer(many=True, read_only=True)
     teams = TeamSerializer(many=True, read_only=True)
 
@@ -34,6 +38,8 @@ class TournamentSerializer(serializers.ModelSerializer):
 
 
 class MatchSerializer(serializers.ModelSerializer):
+    """Serializer for the Match model."""
+
     participant1_user = UserSerializer(read_only=True)
     participant2_user = UserSerializer(read_only=True)
     participant1_team = TeamSerializer(read_only=True)
@@ -79,6 +85,8 @@ class MatchSerializer(serializers.ModelSerializer):
 
 
 class ParticipantSerializer(serializers.ModelSerializer):
+    """Serializer for the Participant model."""
+
     username = serializers.CharField(source="user.username", read_only=True)
 
     class Meta:

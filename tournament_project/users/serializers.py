@@ -5,12 +5,16 @@ from .models import InGameID, Role, Team, User
 
 
 class InGameIDSerializer(serializers.ModelSerializer):
+    """Serializer for the InGameID model."""
+
     class Meta:
         model = InGameID
         fields = ("game", "player_id")
 
 
 class UserSerializer(serializers.ModelSerializer):
+    """Serializer for the User model."""
+
     in_game_ids = InGameIDSerializer(many=True, required=False)
 
     class Meta:
@@ -67,12 +71,16 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class TeamSerializer(serializers.ModelSerializer):
+    """Serializer for the Team model."""
+
     class Meta:
         model = Team
         fields = ("id", "name", "captain", "members")
 
 
 class RoleSerializer(serializers.ModelSerializer):
+    """Serializer for the Role model."""
+
     class Meta:
         model = Role
         fields = ("id", "name", "description")
