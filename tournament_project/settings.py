@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "axes",
     "chat",
     "notifications",
+    "django_celery_results",
 ]
 
 AUTHENTICATION_BACKENDS = [
@@ -199,3 +200,42 @@ AXES_RESET_ON_SUCCESS = True
 
 ZARINPAL_MERCHANT_ID = os.environ.get("ZARINPAL_MERCHANT_ID", "")
 ZARINPAL_SANDBOX = os.environ.get("ZARINPAL_SANDBOX", "False").lower() in ("true", "1", "t")
+
+# Celery Configuration
+CELERY_BROKER_URL = "redis://127.0.0.1:6379"
+CELERY_RESULT_BACKEND = "django-db"
+CELERY_ACCEPT_CONTENT = ["application/json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "UTC"
+
+# Email Configuration
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = "amir.moloki8558@gmail.com"
+EMAIL_HOST_PASSWORD = "uyla lwwe dcjf hfyh"
+
+# SMS.ir Configuration
+SMSIR_API_KEY = os.environ.get("SMSIR_API_KEY")
+SMSIR_LINE_NUMBER = os.environ.get("SMSIR_LINE_NUMBER")
+
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+    },
+    "connection-errors": {
+        "BACKEND": "django_ratelimit.tests.MockCache",
+        "LOCATION": "connection-errors",
+    },
+    "connection-errors-redis": {
+        "BACKEND": "django_ratelimit.tests.MockRedisCache",
+        "LOCATION": "connection-errors-redis",
+    },
+    "instant-expiration": {
+        "BACKEND": "django_ratelimit.tests.MockCache",
+        "LOCATION": "instant-expiration",
+    },
+}
