@@ -28,7 +28,9 @@ class Tournament(models.Model):
         max_digits=10, decimal_places=2, null=True, blank=True
     )
     rules = models.TextField(blank=True)
-    participants = models.ManyToManyField(User, related_name="tournaments", blank=True)
+    participants = models.ManyToManyField(
+        User, through="Participant", related_name="tournaments", blank=True
+    )
     teams = models.ManyToManyField(Team, related_name="tournaments", blank=True)
 
     def clean(self):
@@ -47,6 +49,23 @@ class Tournament(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Participant(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
+    status = models.CharField(
+        max_length=20,
+        choices=(
+            ("registered", "Registered"),
+            ("checked_in", "Checked-in"),
+            ("eliminated", "Eliminated"),
+        ),
+        default="registered",
+    )
+
+    class Meta:
+        unique_together = ("user", "tournament")
 
 
 class Match(models.Model):

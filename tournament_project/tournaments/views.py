@@ -2,51 +2,124 @@ from django.conf import settings
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from django.core.exceptions import PermissionDenied, ValidationError
+from rest_framework import generics, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Match, Tournament
+from .models import Game, Match, Tournament
+from .serializers import (
+    GameSerializer,
+    MatchSerializer,
+    TournamentSerializer,
+    ParticipantSerializer,
+)
 from .services import join_tournament, generate_matches
 
 
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def join_tournament_view(request, pk):
-    tournament = get_object_or_404(Tournament, pk=pk)
-    try:
-        join_tournament(request.user, tournament)
-        return Response({"message": "Successfully joined tournament."})
-    except Exception as e:
-        return Response({"error": str(e)}, status=400)
+class TournamentParticipantListView(generics.ListAPIView):
+    serializer_class = ParticipantSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        tournament_id = self.kwargs["pk"]
+        return Participant.objects.filter(tournament_id=tournament_id)
 
 
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def generate_matches_view(request, pk):
-    tournament = get_object_or_404(Tournament, pk=pk)
-    if not request.user.is_staff:
-        return Response(
-            {"error": "You do not have permission to perform this action."}, status=403
-        )
-    try:
-        generate_matches(tournament)
-        return Response({"message": "Matches generated successfully."})
-    except Exception as e:
-        return Response({"error": str(e)}, status=400)
+class TournamentViewSet(viewsets.ModelViewSet):
+    queryset = Tournament.objects.all()
+    serializer_class = TournamentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ["create", "destroy"]:
+            return [IsAdminUser()]
+        return super().get_permissions()
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
+    def join(self, request, pk=None):
+        tournament = self.get_object()
+        user = request.user
+
+        if tournament.type == "team" and not user.team:
+            return Response(
+                {"error": "You must be in a team to join this tournament."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            participant = join_tournament(tournament, user)
+            serializer = ParticipantSerializer(participant)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
+    def generate_matches(self, request, pk=None):
+        tournament = self.get_object()
+        try:
+            generate_matches(tournament)
+            return Response({"message": "Matches generated successfully."})
+        except ValidationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def confirm_match_result_view(request, pk):
-    match = get_object_or_404(Match, pk=pk)
-    winner_id = request.data.get("winner_id")
-    if not winner_id:
-        return Response({"error": "Winner ID not provided."}, status=400)
-    try:
-        match.confirm_result(winner_id)
-        return Response({"message": "Match result confirmed."})
-    except Exception as e:
-        return Response({"error": str(e)}, status=400)
+class MatchViewSet(viewsets.ModelViewSet):
+    queryset = Match.objects.all()
+    serializer_class = MatchSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ["create", "destroy"]:
+            return [IsAdminUser()]
+        return super().get_permissions()
+
+    @action(detail=True, methods=["post"])
+    def confirm_result(self, request, pk=None):
+        match = self.get_object()
+        user = request.user
+        winner_id = request.data.get("winner_id")
+
+        if not winner_id:
+            return Response(
+                {"error": "Winner ID not provided."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            confirm_match_result(match, user, winner_id)
+            return Response({"message": "Match result confirmed successfully."})
+        except (PermissionDenied, ValidationError) as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=["post"])
+    def dispute_result(self, request, pk=None):
+        match = self.get_object()
+        user = request.user
+        reason = request.data.get("reason")
+
+        if not reason:
+            return Response(
+                {"error": "Reason for dispute not provided."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            dispute_match_result(match, user, reason)
+            return Response({"message": "Match result disputed successfully."})
+        except (PermissionDenied, ValidationError) as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GameViewSet(viewsets.ModelViewSet):
+    queryset = Game.objects.all()
+    serializer_class = GameSerializer
+
+    def get_permissions(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return [IsAdminUser()]
+        return super().get_permissions()
 
 
 @api_view(["GET"])

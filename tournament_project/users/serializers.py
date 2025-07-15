@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from wallet.models import Wallet
 
-from .models import InGameID, Team, User
+from .models import InGameID, Role, Team, User
 
 
 class InGameIDSerializer(serializers.ModelSerializer):
@@ -70,6 +70,12 @@ class TeamSerializer(serializers.ModelSerializer):
     class Meta:
         model = Team
         fields = ("id", "name", "captain", "members")
+
+
+class RoleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Role
+        fields = ("id", "name", "description")
         read_only_fields = ("id", "captain")
 
     def update(self, instance, validated_data):
