@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "notifications",
     "django_celery_results",
     "djoser",
+    "support",
 ]
 
 AUTHENTICATION_BACKENDS = [

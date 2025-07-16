@@ -22,7 +22,15 @@ from notifications.tasks import (
     send_email_notification,
     send_sms_notification,
 )
-from .services import join_tournament, generate_matches
+from django.core.exceptions import PermissionDenied
+from .services import (
+    join_tournament,
+    generate_matches,
+    pay_prize,
+    refund_entry_fees,
+    get_tournament_winners,
+)
+from notifications.services import send_notification
 from .models import Report, WinnerSubmission
 from .serializers import ReportSerializer, WinnerSubmissionSerializer
 
@@ -257,7 +265,12 @@ class ReportViewSet(viewsets.ModelViewSet):
         return Report.objects.filter(reporter=self.request.user)
 
     def perform_create(self, serializer):
-        serializer.save(reporter=self.request.user)
+        report = serializer.save(reporter=self.request.user)
+        send_notification(
+            user=report.reported_user,
+            message=f"You have been reported in match {report.match}.",
+            notification_type="report_new",
+        )
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
     def resolve(self, request, pk=None):
@@ -272,10 +285,20 @@ class ReportViewSet(viewsets.ModelViewSet):
             reported_user.save()
             report.status = "resolved"
             report.save()
+            send_notification(
+                user=report.reporter,
+                message=f"Your report against {reported_user.username} has been resolved and the user has been banned.",
+                notification_type="report_status_change",
+            )
             return Response({"message": "Report resolved and user banned."})
         else:
             report.status = "resolved"
             report.save()
+            send_notification(
+                user=report.reporter,
+                message=f"Your report against {report.reported_user.username} has been resolved.",
+                notification_type="report_status_change",
+            )
             return Response({"message": "Report resolved."})
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
@@ -286,6 +309,11 @@ class ReportViewSet(viewsets.ModelViewSet):
         report = self.get_object()
         report.status = "rejected"
         report.save()
+        send_notification(
+            user=report.reporter,
+            message=f"Your report against {report.reported_user.username} has been rejected.",
+            notification_type="report_status_change",
+        )
         return Response({"message": "Report rejected."})
 
 
@@ -305,8 +333,15 @@ class WinnerSubmissionViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         # Check if the user is one of the top 5 winners
-        # This logic needs to be implemented based on tournament results
-        serializer.save(winner=self.request.user)
+        winners = get_tournament_winners(serializer.validated_data["tournament"])
+        if self.request.user not in winners:
+            raise PermissionDenied("You are not one of the top 5 winners.")
+        submission = serializer.save(winner=self.request.user)
+        send_notification(
+            user=self.request.user,
+            message="Your winner submission has been received.",
+            notification_type="winner_submission_status_change",
+        )
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
     def approve(self, request, pk=None):
@@ -316,8 +351,12 @@ class WinnerSubmissionViewSet(viewsets.ModelViewSet):
         submission = self.get_object()
         submission.status = "approved"
         submission.save()
-        # Pay the prize to the winner
-        # This logic needs to be implemented
+        pay_prize(submission.tournament, submission.winner)
+        send_notification(
+            user=submission.winner,
+            message=f"Your submission for {submission.tournament.name} has been approved.",
+            notification_type="winner_submission_status_change",
+        )
         return Response({"message": "Submission approved and prize paid."})
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
@@ -328,6 +367,30 @@ class WinnerSubmissionViewSet(viewsets.ModelViewSet):
         submission = self.get_object()
         submission.status = "rejected"
         submission.save()
-        # Refund entry fees to all participants except the rejected winner
-        # This logic needs to be implemented
+        refund_entry_fees(submission.tournament, submission.winner)
+        send_notification(
+            user=submission.winner,
+            message=f"Your submission for {submission.tournament.name} has been rejected.",
+            notification_type="winner_submission_status_change",
+        )
         return Response({"message": "Submission rejected and entry fees refunded."})
+
+
+class AdminReportListView(generics.ListAPIView):
+    """
+    API view for admin to see all reports.
+    """
+
+    queryset = Report.objects.all()
+    serializer_class = ReportSerializer
+    permission_classes = [IsAdminUser]
+
+
+class AdminWinnerSubmissionListView(generics.ListAPIView):
+    """
+    API view for admin to see all winner submissions.
+    """
+
+    queryset = WinnerSubmission.objects.all()
+    serializer_class = WinnerSubmissionSerializer
+    permission_classes = [IsAdminUser]

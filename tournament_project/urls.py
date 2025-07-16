@@ -22,6 +22,7 @@ urlpatterns = [
     re_path(r"^private-media/(?P<path>.*)$", private_media_view, name="private_media"),
     path("auth/", include("djoser.urls")),
     path("auth/", include("djoser.urls.jwt")),
+    path("api/support/", include("support.urls")),
 ]
 
 if settings.DEBUG:
