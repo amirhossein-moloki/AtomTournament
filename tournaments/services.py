@@ -1,5 +1,7 @@
 import random
 
+from django.db import models
+from users.models import Team, User
 from .exceptions import ApplicationError
 from .models import Match, Participant, Tournament
 
@@ -190,3 +192,45 @@ def dispute_match_result(match: Match, user, reason: str):
     match.is_disputed = True
     match.dispute_reason = reason
     match.save()
+
+
+def get_tournament_winners(tournament: Tournament):
+    """
+    Returns the top 5 winners of a tournament.
+    """
+    if tournament.type == "individual":
+        winners = (
+            User.objects.filter(won_matches__tournament=tournament)
+            .annotate(num_wins=models.Count("won_matches"))
+            .order_by("-num_wins")[:5]
+        )
+    else:
+        winners = (
+            Team.objects.filter(won_matches__tournament=tournament)
+            .annotate(num_wins=models.Count("won_matches"))
+            .order_by("-num_wins")[:5]
+        )
+    return winners
+
+
+def pay_prize(tournament: Tournament, winner):
+    """
+    Pays the prize to the winner.
+    """
+    # This is a simplified logic. In a real application, you would
+    # probably have a more complex prize distribution system.
+    prize_amount = tournament.entry_fee * tournament.participants.count() * 0.8  # 80% of the pot
+    wallet = Wallet.objects.get(user=winner)
+    wallet.withdrawable_balance += prize_amount
+    wallet.save()
+
+
+def refund_entry_fees(tournament: Tournament, cheater):
+    """
+    Refunds entry fees to all participants except the cheater.
+    """
+    for participant in tournament.participants.all():
+        if participant.user != cheater:
+            wallet = Wallet.objects.get(user=participant.user)
+            wallet.withdrawable_balance += tournament.entry_fee
+            wallet.save()
