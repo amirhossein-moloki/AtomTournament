@@ -7,8 +7,11 @@ from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
+from users.models import Team, User
+from users.serializers import TeamSerializer
+from .exceptions import ApplicationError
 
-from .models import Game, Match, Tournament
+from .models import Game, Match, Tournament, Participant
 from .serializers import (
     GameSerializer,
     MatchSerializer,
@@ -20,6 +23,8 @@ from notifications.tasks import (
     send_sms_notification,
 )
 from .services import join_tournament, generate_matches
+from .models import Report, WinnerSubmission
+from .serializers import ReportSerializer, WinnerSubmissionSerializer
 
 
 class TournamentParticipantListView(generics.ListAPIView):
@@ -57,28 +62,68 @@ class TournamentViewSet(viewsets.ModelViewSet):
         tournament = self.get_object()
         user = request.user
 
-        if tournament.type == "team" and not user.team:
-            return Response(
-                {"error": "You must be in a team to join this tournament."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        if tournament.type == "individual":
+            try:
+                participant = join_tournament(
+                    tournament=tournament, user=user, team=None, members=None
+                )
+                serializer = ParticipantSerializer(participant)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            except ApplicationError as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            participant = join_tournament(tournament, user)
+        elif tournament.type == "team":
+            team_id = request.data.get("team_id")
+            member_ids = request.data.get("member_ids")
 
-            # Send notifications
-            context = {
-                "tournament_name": tournament.name,
-                "entry_code": "placeholder-entry-code",  # Replace with actual entry code
-                "room_id": "placeholder-room-id",  # Replace with actual room ID
-            }
-            send_email_notification.delay(user.email, "Tournament Joined", context)
-            send_sms_notification.delay(str(user.phone_number), context)
+            if not team_id or not member_ids:
+                return Response(
+                    {"error": "Team ID and member IDs are required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-            serializer = ParticipantSerializer(participant)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                team = Team.objects.get(id=team_id)
+                members = User.objects.filter(id__in=member_ids)
+            except (Team.DoesNotExist, User.DoesNotExist):
+                return Response(
+                    {"error": "Invalid team or member ID."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if user != team.captain:
+                return Response(
+                    {"error": "Only the team captain can join a tournament."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            if len(members) > 4:
+                return Response(
+                    {"error": "You can select a maximum of 4 members."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            try:
+                team = join_tournament(
+                    tournament=tournament, user=user, team=team, members=members
+                )
+
+                # Send notifications
+                context = {
+                    "tournament_name": tournament.name,
+                    "entry_code": "placeholder-entry-code",  # Replace with actual entry code
+                    "room_id": "placeholder-room-id",  # Replace with actual room ID
+                }
+                for member in members:
+                    send_email_notification.delay(
+                        member.email, "Tournament Joined", context
+                    )
+                    send_sms_notification.delay(str(member.phone_number), context)
+
+                serializer = TeamSerializer(team)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            except ApplicationError as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
     def generate_matches(self, request, pk=None):
@@ -195,3 +240,94 @@ def private_media_view(request, path):
         return Response(
             {"error": "You do not have permission to access this file."}, status=403
         )
+
+
+class ReportViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing reports.
+    """
+
+    queryset = Report.objects.all()
+    serializer_class = ReportSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return Report.objects.all()
+        return Report.objects.filter(reporter=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(reporter=self.request.user)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
+    def resolve(self, request, pk=None):
+        """
+        Resolve a report and ban the reported user if necessary.
+        """
+        report = self.get_object()
+        ban_user = request.data.get("ban_user", False)
+        if ban_user:
+            reported_user = report.reported_user
+            reported_user.is_active = False
+            reported_user.save()
+            report.status = "resolved"
+            report.save()
+            return Response({"message": "Report resolved and user banned."})
+        else:
+            report.status = "resolved"
+            report.save()
+            return Response({"message": "Report resolved."})
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
+    def reject(self, request, pk=None):
+        """
+        Reject a report.
+        """
+        report = self.get_object()
+        report.status = "rejected"
+        report.save()
+        return Response({"message": "Report rejected."})
+
+
+class WinnerSubmissionViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing winner submissions.
+    """
+
+    queryset = WinnerSubmission.objects.all()
+    serializer_class = WinnerSubmissionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return WinnerSubmission.objects.all()
+        return WinnerSubmission.objects.filter(winner=self.request.user)
+
+    def perform_create(self, serializer):
+        # Check if the user is one of the top 5 winners
+        # This logic needs to be implemented based on tournament results
+        serializer.save(winner=self.request.user)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
+    def approve(self, request, pk=None):
+        """
+        Approve a winner submission and pay the prize.
+        """
+        submission = self.get_object()
+        submission.status = "approved"
+        submission.save()
+        # Pay the prize to the winner
+        # This logic needs to be implemented
+        return Response({"message": "Submission approved and prize paid."})
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
+    def reject(self, request, pk=None):
+        """
+        Reject a winner submission.
+        """
+        submission = self.get_object()
+        submission.status = "rejected"
+        submission.save()
+        # Refund entry fees to all participants except the rejected winner
+        # This logic needs to be implemented
+        return Response({"message": "Submission rejected and entry fees refunded."})

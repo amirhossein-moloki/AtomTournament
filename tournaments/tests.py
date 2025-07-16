@@ -60,13 +60,77 @@ class TournamentAPITest(APITestCase):
         self.individual_tournament.refresh_from_db()
         self.assertIn(self.user1, self.individual_tournament.participants.all())
 
-    def test_join_team_tournament(self):
+    def test_join_team_tournament_with_selected_members(self):
         self.client.force_authenticate(user=self.user1)
         url = reverse("tournament-join", kwargs={"pk": self.team_tournament.pk})
-        response = self.client.post(f"{url}")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = {"team_id": self.team1.id, "member_ids": [self.user1.id]}
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.team_tournament.refresh_from_db()
         self.assertIn(self.team1, self.team_tournament.teams.all())
+        self.assertIn(self.user1, self.team_tournament.participants.all())
+
+    def test_join_team_tournament_insufficient_funds(self):
+        self.user3 = User.objects.create_user(
+            username="user3", password="password", phone_number="+12125552363"
+        )
+        from wallet.models import Wallet
+
+        Wallet.objects.create(
+            user=self.user3, total_balance=10, withdrawable_balance=5
+        )
+        self.team1.members.add(self.user3)
+        self.client.force_authenticate(user=self.user1)
+        url = reverse("tournament-join", kwargs={"pk": self.team_tournament.pk})
+        data = {"team_id": self.team1.id, "member_ids": [self.user1.id, self.user3.id]}
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_join_team_tournament_member_already_joined(self):
+        self.team_tournament.participants.add(self.user2)
+        self.client.force_authenticate(user=self.user1)
+        url = reverse("tournament-join", kwargs={"pk": self.team_tournament.pk})
+        data = {"team_id": self.team1.id, "member_ids": [self.user1.id, self.user2.id]}
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_join_team_tournament_not_captain(self):
+        self.client.force_authenticate(user=self.user2)
+        url = reverse("tournament-join", kwargs={"pk": self.team_tournament.pk})
+        data = {"team_id": self.team1.id, "member_ids": [self.user1.id]}
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_join_team_tournament_too_many_members(self):
+        self.user3 = User.objects.create_user(
+            username="user3", password="password", phone_number="+12125552363"
+        )
+        self.user4 = User.objects.create_user(
+            username="user4", password="password", phone_number="+12125552364"
+        )
+        self.user5 = User.objects.create_user(
+            username="user5", password="password", phone_number="+12125552365"
+        )
+        self.user6 = User.objects.create_user(
+            username="user6", password="password", phone_number="+12125552366"
+        )
+        self.team1.members.add(
+            self.user3, self.user4, self.user5, self.user6
+        )
+        self.client.force_authenticate(user=self.user1)
+        url = reverse("tournament-join", kwargs={"pk": self.team_tournament.pk})
+        data = {
+            "team_id": self.team1.id,
+            "member_ids": [
+                self.user1.id,
+                self.user3.id,
+                self.user4.id,
+                self.user5.id,
+                self.user6.id,
+            ],
+        }
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_join_tournament_already_joined(self):
         self.individual_tournament.participants.add(self.user1)

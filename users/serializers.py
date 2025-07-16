@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from wallet.models import Wallet
 
-from .models import InGameID, Role, Team, User
+from .models import InGameID, Role, Team, User, TeamInvitation
 
 
 class InGameIDSerializer(serializers.ModelSerializer):
@@ -91,3 +91,11 @@ class RoleSerializer(serializers.ModelSerializer):
         instance = super().update(instance, validated_data)
         instance.members.set(members_data)
         return instance
+
+
+class TeamInvitationSerializer(serializers.ModelSerializer):
+    """Serializer for the TeamInvitation model."""
+
+    class Meta:
+        model = TeamInvitation
+        fields = ("id", "from_user", "to_user", "team", "status", "timestamp")

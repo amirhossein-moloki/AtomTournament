@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from users.serializers import TeamSerializer, UserSerializer
 
-from .models import Game, Match, Tournament, Participant
+from .models import Game, Match, Tournament, Participant, Report, WinnerSubmission
 from .validators import FileValidator
 
 
@@ -88,7 +88,49 @@ class ParticipantSerializer(serializers.ModelSerializer):
     """Serializer for the Participant model."""
 
     username = serializers.CharField(source="user.username", read_only=True)
+    display_picture = serializers.SerializerMethodField()
 
     class Meta:
         model = Participant
-        fields = ["username", "status"]
+        fields = ["username", "status", "display_picture"]
+
+    def get_display_picture(self, obj):
+        if obj.tournament.type == "team":
+            team = obj.user.teams.filter(tournaments=obj.tournament).first()
+            if team and team.team_picture:
+                return team.team_picture.url
+        return obj.user.profile_picture.url if obj.user.profile_picture else None
+
+
+class ReportSerializer(serializers.ModelSerializer):
+    """Serializer for the Report model."""
+
+    class Meta:
+        model = Report
+        fields = (
+            "id",
+            "reporter",
+            "reported_user",
+            "match",
+            "description",
+            "evidence",
+            "status",
+            "created_at",
+        )
+        read_only_fields = ("id", "reporter", "status", "created_at")
+
+
+class WinnerSubmissionSerializer(serializers.ModelSerializer):
+    """Serializer for the WinnerSubmission model."""
+
+    class Meta:
+        model = WinnerSubmission
+        fields = (
+            "id",
+            "winner",
+            "tournament",
+            "video",
+            "status",
+            "created_at",
+        )
+        read_only_fields = ("id", "winner", "status", "created_at")
