@@ -129,24 +129,51 @@ def record_match_result(match: Match, winner_id, proof_image=None):
     confirm_match_result(match, winner, proof_image)
 
 
-def join_tournament(tournament: Tournament, user):
+from wallet.models import Wallet
+
+
+def join_tournament(tournament: Tournament, user, team, members):
     """
     Adds a user or a team to a tournament.
     """
     if tournament.type == "individual":
         if tournament.participants.filter(id=user.id).exists():
             raise ApplicationError("You have already joined this tournament.")
+        # Check wallet balance
+        if not tournament.is_free:
+            wallet = Wallet.objects.get(user=user)
+            if wallet.withdrawable_balance < tournament.entry_fee:
+                raise ApplicationError("Insufficient funds to join the tournament.")
+            wallet.withdrawable_balance -= tournament.entry_fee
+            wallet.save()
         participant = Participant.objects.create(user=user, tournament=tournament)
         return participant
     elif tournament.type == "team":
-        team = user.team
-        if not team:
-            raise ApplicationError("You are not part of a team.")
         if tournament.teams.filter(id=team.id).exists():
             raise ApplicationError("Your team has already joined this tournament.")
+        if any(
+            tournament.participants.filter(id=member.id).exists() for member in members
+        ):
+            raise ApplicationError(
+                "One or more members of your team are already in this tournament."
+            )
+        # Check wallet balance for all members
+        if not tournament.is_free:
+            for member in members:
+                wallet = Wallet.objects.get(user=member)
+                if wallet.withdrawable_balance < tournament.entry_fee:
+                    raise ApplicationError(
+                        f"Insufficient funds for member {member.username}."
+                    )
+        # Deduct entry fee from all members
+        if not tournament.is_free:
+            for member in members:
+                wallet = Wallet.objects.get(user=member)
+                wallet.withdrawable_balance -= tournament.entry_fee
+                wallet.save()
         tournament.teams.add(team)
         # Create participant entries for all team members
-        for member in team.members.all():
+        for member in members:
             Participant.objects.get_or_create(user=member, tournament=tournament)
         return team
 
