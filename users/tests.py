@@ -4,7 +4,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 from tournaments.models import Game
 
-from .models import InGameID, Team, User
+from .models import InGameID, Team, User, TeamInvitation, OTP
 
 
 class UserTests(TestCase):
@@ -139,6 +139,90 @@ class TeamTests(TestCase):
         data = {"user_id": self.user2.id}
         response = self.client.post(f"{url}", data, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class InvitationTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user1 = User.objects.create_user(
+            username="user1", password="testpassword", phone_number="+12125552368"
+        )
+        self.user2 = User.objects.create_user(
+            username="user2", password="testpassword", phone_number="+12125552369"
+        )
+        self.team = Team.objects.create(name="Test Team", captain=self.user1)
+        self.client.force_authenticate(user=self.user1)
+
+    def test_invite_member(self):
+        url = reverse("team-invite-member", kwargs={"pk": self.team.pk})
+        data = {"user_id": self.user2.id}
+        response = self.client.post(f"{url}", data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(TeamInvitation.objects.count(), 1)
+
+    def test_respond_invitation_accepted(self):
+        invitation = TeamInvitation.objects.create(
+            from_user=self.user1, to_user=self.user2, team=self.team
+        )
+        self.client.force_authenticate(user=self.user2)
+        url = reverse("team-respond-invitation")
+        data = {"invitation_id": invitation.id, "status": "accepted"}
+        response = self.client.post(f"{url}", data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.team.refresh_from_db()
+        self.assertIn(self.user2, self.team.members.all())
+
+    def test_respond_invitation_rejected(self):
+        invitation = TeamInvitation.objects.create(
+            from_user=self.user1, to_user=self.user2, team=self.team
+        )
+        self.client.force_authenticate(user=self.user2)
+        url = reverse("team-respond-invitation")
+        data = {"invitation_id": invitation.id, "status": "rejected"}
+        response = self.client.post(f"{url}", data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.team.refresh_from_db()
+        self.assertNotIn(self.user2, self.team.members.all())
+
+
+class DashboardTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username="user1", password="testpassword", phone_number="+12125552368"
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_get_dashboard(self):
+        url = reverse("dashboard")
+        response = self.client.get(f"{url}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+class OTPTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username="user1",
+            password="testpassword",
+            phone_number="+12125552368",
+            email="test@example.com",
+        )
+
+    def test_send_otp(self):
+        url = reverse("user-send-otp")
+        data = {"phone_number": "+12125552368"}
+        response = self.client.post(f"{url}", data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(OTP.objects.count(), 1)
+
+    def test_verify_otp(self):
+        otp = OTP.objects.create(user=self.user, code="123456")
+        url = reverse("user-verify-otp")
+        data = {"phone_number": "+12125552368", "code": "123456"}
+        response = self.client.post(f"{url}", data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
 
     def test_non_captain_cannot_remove_member(self):
         self.client.force_authenticate(user=self.user2)
