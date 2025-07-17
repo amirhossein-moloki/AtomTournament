@@ -1,12 +1,16 @@
 from django.conf import settings
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
+from django.db import models
+from wallet.models import Transaction
 from django.core.exceptions import PermissionDenied, ValidationError
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from users.models import Team, User
 from users.serializers import TeamSerializer
 from .exceptions import ApplicationError
@@ -394,3 +398,54 @@ class AdminWinnerSubmissionListView(generics.ListAPIView):
     queryset = WinnerSubmission.objects.all()
     serializer_class = WinnerSubmissionSerializer
     permission_classes = [IsAdminUser]
+
+
+class TopTournamentsView(APIView):
+    """
+    API view for getting top tournaments by prize pool.
+    """
+
+    def get(self, request):
+        past_tournaments = (
+            Tournament.objects.filter(end_date__lt=timezone.now())
+            .order_by("-entry_fee")
+        )
+        future_tournaments = (
+            Tournament.objects.filter(start_date__gte=timezone.now())
+            .order_by("-entry_fee")
+        )
+
+        past_serializer = TournamentSerializer(past_tournaments, many=True)
+        future_serializer = TournamentSerializer(future_tournaments, many=True)
+
+        return Response(
+            {
+                "past_tournaments": past_serializer.data,
+                "future_tournaments": future_serializer.data,
+            }
+        )
+
+
+class TotalPrizeMoneyView(APIView):
+    """
+    API view for getting the total prize money paid out.
+    """
+
+    def get(self, request):
+        total_prize_money = (
+            Transaction.objects.filter(transaction_type="prize").aggregate(
+                total=models.Sum("amount")
+            )["total"]
+            or 0
+        )
+        return Response({"total_prize_money": total_prize_money})
+
+
+class TotalTournamentsView(APIView):
+    """
+    API view for getting the total number of tournaments held.
+    """
+
+    def get(self, request):
+        total_tournaments = Tournament.objects.count()
+        return Response({"total_tournaments": total_tournaments})

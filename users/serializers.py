@@ -99,3 +99,19 @@ class TeamInvitationSerializer(serializers.ModelSerializer):
     class Meta:
         model = TeamInvitation
         fields = ("id", "from_user", "to_user", "team", "status", "timestamp")
+
+
+class TopPlayerSerializer(serializers.ModelSerializer):
+    total_winnings = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        model = User
+        fields = ("id", "username", "total_winnings")
+
+
+class TopTeamSerializer(serializers.ModelSerializer):
+    total_winnings = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        model = Team
+        fields = ("id", "name", "total_winnings")

@@ -9,6 +9,9 @@ class Wallet(models.Model):
         max_digits=10, decimal_places=2, default=0
     )
 
+    class Meta:
+        app_label = "wallet"
+
     def __str__(self):
         return f"{self.user.username} Wallet"
 
@@ -27,3 +30,6 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"{self.wallet.user.username} - {self.transaction_type} - {self.amount}"
+
+    class Meta:
+        app_label = "wallet"

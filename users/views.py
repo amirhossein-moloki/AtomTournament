@@ -1,6 +1,7 @@
 import random
 import string
 
+from django.db import models
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
@@ -21,6 +22,8 @@ from .serializers import (
     TeamSerializer,
     UserSerializer,
     TeamInvitationSerializer,
+    TopPlayerSerializer,
+    TopTeamSerializer,
 )
 from wallet.serializers import TransactionSerializer
 from tournaments.serializers import TournamentSerializer
@@ -331,3 +334,39 @@ class DashboardView(APIView):
             ).data,
         }
         return Response(data)
+
+
+class TopPlayersView(APIView):
+    """
+    API view for getting top players by prize money.
+    """
+
+    def get(self, request):
+        users = User.objects.annotate(
+            total_winnings=models.Sum("wallet__transaction__amount", filter=models.Q(wallet__transaction__transaction_type="prize"))
+        ).order_by("-total_winnings")
+        serializer = TopPlayerSerializer(users, many=True)
+        return Response(serializer.data)
+
+
+class TopTeamsView(APIView):
+    """
+    API view for getting top teams by prize money.
+    """
+
+    def get(self, request):
+        teams = Team.objects.annotate(
+            total_winnings=models.Sum("members__wallet__transaction__amount", filter=models.Q(members__wallet__transaction__transaction_type="prize"))
+        ).order_by("-total_winnings")
+        serializer = TopTeamSerializer(teams, many=True)
+        return Response(serializer.data)
+
+
+class TotalPlayersView(APIView):
+    """
+    API view for getting the total number of players.
+    """
+
+    def get(self, request):
+        total_players = User.objects.count()
+        return Response({"total_players": total_players})

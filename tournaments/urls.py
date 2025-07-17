@@ -1,7 +1,13 @@
 from django.urls import include, path
 
 from .routers import router
-from .views import AdminReportListView, AdminWinnerSubmissionListView
+from .views import (
+    AdminReportListView,
+    AdminWinnerSubmissionListView,
+    TopTournamentsView,
+    TotalPrizeMoneyView,
+    TotalTournamentsView,
+)
 
 urlpatterns = [
     path("", include(router.urls)),
@@ -10,5 +16,16 @@ urlpatterns = [
         "admin/winner-submissions/",
         AdminWinnerSubmissionListView.as_view(),
         name="admin-winner-submissions",
+    ),
+    path("top-tournaments/", TopTournamentsView.as_view(), name="top-tournaments"),
+    path(
+        "total-prize-money/",
+        TotalPrizeMoneyView.as_view(),
+        name="total-prize-money",
+    ),
+    path(
+        "total-tournaments/",
+        TotalTournamentsView.as_view(),
+        name="total-tournaments",
     ),
 ]
