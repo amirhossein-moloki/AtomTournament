@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "djoser",
     "support",
     "django_ratelimit",
+    'sslserver',
 ]
 
 AUTHENTICATION_BACKENDS = [
@@ -210,10 +211,15 @@ FILE_UPLOAD_HANDLERS = [
 
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_HSTS_SECONDS = 31536000
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
-SECURE_SSL_REDIRECT = True
+if not DEBUG: # این بخش را اضافه کنید
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+else: # این بخش را اضافه کنید
+    SECURE_HSTS_SECONDS = 0 # یا کلا کامنت کنید
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
+SECURE_SSL_REDIRECT = False # این خط را قبلاً بررسی کردیم
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
@@ -272,9 +278,14 @@ if "test" in sys.argv:
         },
     }
 else:
+    # این بخش برای محیط غیر تستی، کش پیش‌فرض را به Redis تغییر می‌دهد.
     CACHES = {
         "default": {
-            "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": "redis://127.0.0.1:6379/1",  # دیتابیس 1 برای کش، 0 برای channels/celery
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            }
         },
         "connection-errors": {
             "BACKEND": "django_ratelimit.tests.MockCache",
