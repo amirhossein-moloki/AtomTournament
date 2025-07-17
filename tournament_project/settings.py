@@ -256,47 +256,32 @@ SMSIR_API_KEY = os.environ.get("SMSIR_API_KEY")
 SMSIR_LINE_NUMBER = os.environ.get("SMSIR_LINE_NUMBER")
 
 
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",  # دیتابیس 1 برای کش، 0 برای channels/celery
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    },
+    "connection-errors": {
+        "BACKEND": "django_ratelimit.tests.MockCache",
+        "LOCATION": "connection-errors",
+    },
+    "connection-errors-redis": {
+        "BACKEND": "django_ratelimit.tests.MockRedisCache",
+        "LOCATION": "connection-errors-redis",
+    },
+    "instant-expiration": {
+        "BACKEND": "django_ratelimit.tests.MockCache",
+        "LOCATION": "instant-expiration",
+    },
+}
 if "test" in sys.argv:
-    CACHES = {
-        "default": {
-            "BACKEND": "django_redis.cache.RedisCache",
-            "OPTIONS": {
-                "CLIENT_CLASS": "fakeredis.FakeRedis",
-            },
-        },
-        "connection-errors": {
-            "BACKEND": "django_ratelimit.tests.MockCache",
-            "LOCATION": "connection-errors",
-        },
-        "connection-errors-redis": {
-            "BACKEND": "django_ratelimit.tests.MockRedisCache",
-            "LOCATION": "connection-errors-redis",
-        },
-        "instant-expiration": {
-            "BACKEND": "django_ratelimit.tests.MockCache",
-            "LOCATION": "instant-expiration",
-        },
-    }
-else:
-    # این بخش برای محیط غیر تستی، کش پیش‌فرض را به Redis تغییر می‌دهد.
-    CACHES = {
-        "default": {
-            "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": "redis://127.0.0.1:6379/1",  # دیتابیس 1 برای کش، 0 برای channels/celery
-            "OPTIONS": {
-                "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            }
-        },
-        "connection-errors": {
-            "BACKEND": "django_ratelimit.tests.MockCache",
-            "LOCATION": "connection-errors",
-        },
-        "connection-errors-redis": {
-            "BACKEND": "django_ratelimit.tests.MockRedisCache",
-            "LOCATION": "connection-errors-redis",
-        },
-        "instant-expiration": {
-            "BACKEND": "django_ratelimit.tests.MockCache",
-            "LOCATION": "instant-expiration",
+    CACHES["default"] = {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "fakeredis.FakeRedis",
         },
     }

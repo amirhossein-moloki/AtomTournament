@@ -16,6 +16,10 @@ class User(AbstractUser):
     def __str__(self):
         return self.username
 
+    @property
+    def role(self):
+        return [group.name for group in self.groups.all()]
+
 
 class Role(models.Model):
     """
