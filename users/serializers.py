@@ -81,10 +81,11 @@ class TeamSerializer(serializers.ModelSerializer):
 class RoleSerializer(serializers.ModelSerializer):
     """Serializer for the Role model."""
 
+    name = serializers.CharField(source="group.name")
+
     class Meta:
         model = Role
         fields = ("id", "name", "description")
-        read_only_fields = ("id", "captain")
 
     def update(self, instance, validated_data):
         members_data = validated_data.pop("members", [])
