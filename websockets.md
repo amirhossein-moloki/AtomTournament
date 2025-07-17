@@ -1,69 +1,117 @@
-# WebSocket Usage Guide
+# مستندات وب‌ساکت
 
-This guide explains how to use WebSockets in this project for real-time features like chat and notifications.
+این مستندات به شما کمک می‌کند تا از وب‌ساکت‌های موجود در این پروژه برای ویژگی‌های real-time مانند چت و نوتیفیکیشن‌ها استفاده کنید.
 
-## Connecting to WebSockets
+## اتصال به وب‌ساکت
 
-To connect to a WebSocket, you need to use a WebSocket client library (e.g., `socket.io-client` for JavaScript). The WebSocket URL is `ws://<your-domain>/ws/<endpoint>/`.
+برای اتصال به وب‌ساکت، باید از یک کتابخانه کلاینت وب‌ساکت (مانند `socket.io-client` برای جاوااسکریپت) استفاده کنید. آدرس وب‌ساکت به‌صورت `ws://<your-domain>/ws/<endpoint>/` است.
 
-### Endpoints
+### اندپوینت‌ها
 
-*   `/ws/chat/<conversation_id>/`: For real-time chat in a conversation.
-*   `/ws/notifications/`: For real-time notifications for the authenticated user.
+- `/ws/chat/<conversation_id>/`: برای چت real-time در یک مکالمه.
+- `/ws/notifications/`: برای نوتیفیکیشن‌های real-time کاربر احراز هویت شده.
 
-### Authentication
+### احراز هویت
 
-To authenticate with a WebSocket, you need to include the user's authentication token in the connection URL as a query parameter.
+در این پروژه، احراز هویت از طریق `TokenMiddleware` انجام می‌شود. برای این کار، توکن احراز هویت کاربر باید در هدر `Authorization` به‌صورت `Bearer <your-auth-token>` ارسال شود.
 
-**Example:**
+**مثال:**
 
+```javascript
+const socket = new WebSocket('ws://<your-domain>/ws/notifications/', {
+  headers: {
+    Authorization: 'Bearer <your-auth-token>'
+  }
+});
 ```
-ws://<your-domain>/ws/notifications/?token=<your-auth-token>
-```
 
-## Chat WebSocket
+## وب‌ساکت چت
 
-### Sending Messages
+### ارسال پیام
 
-To send a message in a conversation, send a JSON object with the following structure to the chat WebSocket:
+برای ارسال پیام در یک مکالمه، یک آبجکت JSON با ساختار زیر به وب‌ساکت چت ارسال کنید:
 
 ```json
 {
-  "message": "Your message content"
+  "type": "chat_message",
+  "message": "محتوای پیام شما"
 }
 ```
 
-### Receiving Messages
+### ویرایش پیام
 
-When a new message is sent in the conversation, you will receive a JSON object with the following structure from the chat WebSocket:
+برای ویرایش یک پیام، آبجکت زیر را ارسال کنید:
+
+```json
+{
+  "type": "edit_message",
+  "message_id": 123,
+  "content": "محتوای جدید پیام"
+}
+```
+
+### حذف پیام
+
+برای حذف یک پیام، آبجکت زیر را ارسال کنید:
+
+```json
+{
+  "type": "delete_message",
+  "message_id": 123
+}
+```
+
+### دریافت پیام‌ها
+
+هنگامی که پیام جدیدی در مکالمه ارسال شود، یک آبجکت JSON با ساختار زیر از وب‌ساکت چت دریافت خواهید کرد:
 
 ```json
 {
   "id": 123,
-  "sender": {
-    "id": 1,
-    "username": "testuser"
-  },
-  "content": "The message content",
+  "sender": "username",
+  "content": "محتوای پیام",
   "timestamp": "2024-01-01T12:00:00Z"
 }
 ```
 
-## Notifications WebSocket
-
-### Receiving Notifications
-
-When a new notification is available for the authenticated user, you will receive a JSON object with the following structure from the notifications WebSocket:
+### دریافت پیام ویرایش شده
 
 ```json
 {
-  "id": 1,
-  "message": "The notification message",
-  "is_read": false,
-  "timestamp": "2024-01-01T12:00:00Z"
+  "type": "message.edited",
+  "message": {
+    "id": 123,
+    "content": "محتوای جدید پیام"
+  }
 }
 ```
 
-### Marking Notifications as Read
+### دریافت پیام حذف شده
 
-To mark a notification as read, you need to send a request to the REST API, not through the WebSocket.
+```json
+{
+  "type": "message.deleted",
+  "message_id": 123
+}
+```
+
+## وب‌ساکت نوتیفیکیشن‌ها
+
+### دریافت نوتیفیکیشن
+
+هنگامی که نوتیفیکیشن جدیدی برای کاربر احراز هویت شده در دسترس باشد، یک آبجکت JSON با ساختار زیر از وب‌ساکت نوتیفیکیشن‌ها دریافت خواهید کرد:
+
+```json
+{
+  "message": {
+    "id": 1,
+    "message": "پیام نوتیفیکیشن",
+    "is_read": false,
+    "timestamp": "2024-01-01T12:00:00Z"
+  }
+}
+```
+
+### علامت‌گذاری نوتیفیکیشن‌ها به‌عنوان خوانده شده
+
+برای علامت‌گذاری یک نوتیفیکیشن به‌عنوان خوانده شده، باید یک درخواست به REST API ارسال کنید، نه از طریق وب‌ساکت.
