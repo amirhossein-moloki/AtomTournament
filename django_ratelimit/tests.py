@@ -54,10 +54,28 @@ class CustomRatelimitedException(Exception):
 from unittest.mock import patch
 
 
+@override_settings(
+    CACHES={
+        "default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"},
+        "connection-errors": {
+            "BACKEND": "django_ratelimit.tests.MockCache",
+            "LOCATION": "connection-errors",
+        },
+        "connection-errors-redis": {
+            "BACKEND": "django_ratelimit.tests.MockRedisCache",
+            "LOCATION": "connection-errors-redis",
+        },
+        "instant-expiration": {
+            "BACKEND": "django_ratelimit.tests.MockCache",
+            "LOCATION": "instant-expiration",
+        },
+    }
+)
 class RatelimitTests(TestCase):
     def setUp(self):
-        with patch("django.core.cache.cache.clear") as mock_clear:
-            mock_clear.return_value = None
+        keys = cache.keys("*")
+        if keys:
+            cache.delete_many(keys)
 
     def test_no_key(self):
         @ratelimit(rate="1/m")
@@ -416,7 +434,9 @@ class RatelimitTests(TestCase):
 
 class FunctionsTests(TestCase):
     def setUp(self):
-        cache.clear()
+        keys = cache.keys("*")
+        if keys:
+            cache.delete_many(keys)
 
     def test_is_ratelimited(self):
         not_increment = partial(
@@ -500,7 +520,9 @@ class FunctionsTests(TestCase):
 
 class RatelimitCBVTests(TestCase):
     def setUp(self):
-        cache.clear()
+        keys = cache.keys("*")
+        if keys:
+            cache.delete_many(keys)
 
     def test_method_decorator(self):
         class TestView(View):

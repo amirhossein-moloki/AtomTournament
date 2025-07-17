@@ -1,16 +1,34 @@
 from rest_framework import serializers
 from users.serializers import TeamSerializer, UserSerializer
 
-from .models import Game, Match, Tournament, Participant, Report, WinnerSubmission
+from .models import (
+    Game,
+    GameImage,
+    Match,
+    Tournament,
+    Participant,
+    Report,
+    WinnerSubmission,
+)
 from .validators import FileValidator
+
+
+class GameImageSerializer(serializers.ModelSerializer):
+    """Serializer for the GameImage model."""
+
+    class Meta:
+        model = GameImage
+        fields = ("image_type", "image")
 
 
 class GameSerializer(serializers.ModelSerializer):
     """Serializer for the Game model."""
 
+    images = GameImageSerializer(many=True, read_only=True)
+
     class Meta:
         model = Game
-        fields = ("id", "name", "description")
+        fields = ("id", "name", "description", "images")
 
 
 class TournamentSerializer(serializers.ModelSerializer):

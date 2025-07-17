@@ -20,7 +20,6 @@ load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(BASE_DIR.parent))
 
 
 # Quick-start development settings - unsuitable for production
@@ -59,6 +58,7 @@ INSTALLED_APPS = [
     "django_celery_results",
     "djoser",
     "support",
+    "django_ratelimit",
 ]
 
 AUTHENTICATION_BACKENDS = [
@@ -164,14 +164,21 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = "users.User"
 
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
+if "test" in sys.argv:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
         },
-    },
-}
+    }
+else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [("127.0.0.1", 6379)],
+            },
+        },
+    }
 
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
@@ -227,6 +234,8 @@ CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
+if "test" in sys.argv:
+    CELERY_TASK_ALWAYS_EAGER = True
 
 # Email Configuration
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
@@ -241,20 +250,42 @@ SMSIR_API_KEY = os.environ.get("SMSIR_API_KEY")
 SMSIR_LINE_NUMBER = os.environ.get("SMSIR_LINE_NUMBER")
 
 
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.dummy.DummyCache",
-    },
-    "connection-errors": {
-        "BACKEND": "django_ratelimit.tests.MockCache",
-        "LOCATION": "connection-errors",
-    },
-    "connection-errors-redis": {
-        "BACKEND": "django_ratelimit.tests.MockRedisCache",
-        "LOCATION": "connection-errors-redis",
-    },
-    "instant-expiration": {
-        "BACKEND": "django_ratelimit.tests.MockCache",
-        "LOCATION": "instant-expiration",
-    },
-}
+if "test" in sys.argv:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "OPTIONS": {
+                "CLIENT_CLASS": "fakeredis.FakeRedis",
+            },
+        },
+        "connection-errors": {
+            "BACKEND": "django_ratelimit.tests.MockCache",
+            "LOCATION": "connection-errors",
+        },
+        "connection-errors-redis": {
+            "BACKEND": "django_ratelimit.tests.MockRedisCache",
+            "LOCATION": "connection-errors-redis",
+        },
+        "instant-expiration": {
+            "BACKEND": "django_ratelimit.tests.MockCache",
+            "LOCATION": "instant-expiration",
+        },
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+        },
+        "connection-errors": {
+            "BACKEND": "django_ratelimit.tests.MockCache",
+            "LOCATION": "connection-errors",
+        },
+        "connection-errors-redis": {
+            "BACKEND": "django_ratelimit.tests.MockRedisCache",
+            "LOCATION": "connection-errors-redis",
+        },
+        "instant-expiration": {
+            "BACKEND": "django_ratelimit.tests.MockCache",
+            "LOCATION": "instant-expiration",
+        },
+    }

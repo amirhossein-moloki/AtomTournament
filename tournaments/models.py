@@ -7,11 +7,38 @@ class Game(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField()
 
+    class Meta:
+        app_label = "tournaments"
+
     def __str__(self):
         return self.name
 
 
+class GameImage(models.Model):
+    IMAGE_TYPE_CHOICES = (
+        ("hero_banner", "Hero Banner"),
+        ("cta_banner", "CTA Banner"),
+        ("game_image", "Game Image"),
+        ("thumbnail", "Thumbnail"),
+        ("icon", "Icon"),
+        ("slider", "Slider"),
+        ("illustration", "Illustration"),
+        ("promotional_banner", "Promotional Banner"),
+    )
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="images")
+    image_type = models.CharField(max_length=20, choices=IMAGE_TYPE_CHOICES)
+    image = models.ImageField(upload_to="game_images/")
+
+    class Meta:
+        app_label = "tournaments"
+
+    def __str__(self):
+        return f"{self.game.name} - {self.get_image_type_display()}"
+
+
 class Tournament(models.Model):
+    class Meta:
+        app_label = "tournaments"
     TOURNAMENT_TYPE_CHOICES = (
         ("individual", "Individual"),
         ("team", "Team"),
@@ -66,6 +93,7 @@ class Participant(models.Model):
 
     class Meta:
         unique_together = ("user", "tournament")
+        app_label = "tournaments"
 
 
 class Match(models.Model):
@@ -148,6 +176,9 @@ class Match(models.Model):
         else:
             return f"{self.participant1_team} vs {self.participant2_team} - Tournament: {self.tournament}"
 
+    class Meta:
+        app_label = "tournaments"
+
 
 class Report(models.Model):
     REPORT_STATUS_CHOICES = (
@@ -172,6 +203,9 @@ class Report(models.Model):
     def __str__(self):
         return f"Report by {self.reporter.username} against {self.reported_user.username} in {self.match}"
 
+    class Meta:
+        app_label = "tournaments"
+
 
 class WinnerSubmission(models.Model):
     SUBMISSION_STATUS_CHOICES = (
@@ -189,3 +223,6 @@ class WinnerSubmission(models.Model):
 
     def __str__(self):
         return f"Submission by {self.winner.username} for {self.tournament.name}"
+
+    class Meta:
+        app_label = "tournaments"

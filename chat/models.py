@@ -6,6 +6,9 @@ class Conversation(models.Model):
     participants = models.ManyToManyField(User, related_name="conversations")
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        app_label = "chat"
+
 
 class Message(models.Model):
     conversation = models.ForeignKey(
@@ -17,6 +20,9 @@ class Message(models.Model):
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
+
+    class Meta:
+        app_label = "chat"
     is_edited = models.BooleanField(default=False)
     is_deleted = models.BooleanField(default=False)
 

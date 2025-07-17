@@ -1,6 +1,6 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
-from tournament_project.chat.models import Conversation, Message
+from chat.models import Conversation, Message
 
 User = get_user_model()
 
