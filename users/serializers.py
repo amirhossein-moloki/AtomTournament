@@ -28,8 +28,8 @@ class UserSerializer(serializers.ModelSerializer):
             "in_game_ids",
             "password",
         )
-        read_only_fields = ("id", "role")
-        extra_kwargs = {"password": {"write_only": True}}
+        read_only_fields = ("id",)
+        extra_kwargs = {"password": {"write_only": True}, "role": {"read_only": True}}
 
     def create(self, validated_data):
         in_game_ids_data = validated_data.pop("in_game_ids", [])
