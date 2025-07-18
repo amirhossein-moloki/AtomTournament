@@ -1,12 +1,12 @@
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APIClient
+from rest_framework.test import APIClient, APITestCase
 from users.models import User
 
 from .models import Ticket
 
 
-class SupportTests(TestCase):
+class SupportTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(

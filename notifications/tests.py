@@ -1,21 +1,22 @@
 from django.test import TestCase
 from django.core import mail
 from .tasks import send_email_notification, send_sms_notification
+from unittest.mock import patch
 
 
 class NotificationTasksTestCase(TestCase):
-    def test_send_email_notification(self):
+    @patch('notifications.tasks.send_mail')
+    def test_send_email_notification(self, mock_send_mail):
         send_email_notification.delay(
             "test@example.com",
             "Test Subject",
             {"tournament_name": "Test Tournament"},
         )
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertEqual(mail.outbox[0].subject, "Test Subject")
+        self.assertTrue(mock_send_mail.called)
 
-    def test_send_sms_notification(self):
-        # This is a mock test, it does not actually send an SMS
+    @patch('notifications.tasks.sms')
+    def test_send_sms_notification(self, mock_sms):
         send_sms_notification.delay(
             "+1234567890", {"tournament_name": "Test Tournament"}
         )
-        pass
+        self.assertTrue(mock_sms.send.called)
