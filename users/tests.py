@@ -1,13 +1,12 @@
-from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APIClient
+from rest_framework.test import APIClient, APITestCase
 from tournaments.models import Game
 
 from .models import InGameID, Team, User, TeamInvitation, OTP
 
 
-class UserTests(TestCase):
+class UserTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
         self.game = Game.objects.create(
@@ -62,7 +61,7 @@ class UserTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
-class TeamTests(TestCase):
+class TeamTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
         self.user1 = User.objects.create_user(
@@ -141,7 +140,7 @@ class TeamTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
-class InvitationTests(TestCase):
+class InvitationTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
         self.user1 = User.objects.create_user(
@@ -185,7 +184,7 @@ class InvitationTests(TestCase):
         self.assertNotIn(self.user2, self.team.members.all())
 
 
-class DashboardTests(TestCase):
+class DashboardTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(
@@ -199,7 +198,7 @@ class DashboardTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
-class OTPTests(TestCase):
+class OTPTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(

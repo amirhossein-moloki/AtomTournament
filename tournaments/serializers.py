@@ -36,6 +36,8 @@ class TournamentSerializer(serializers.ModelSerializer):
 
     participants = UserSerializer(many=True, read_only=True)
     teams = TeamSerializer(many=True, read_only=True)
+    game = GameSerializer(read_only=True)
+    creator = UserSerializer(read_only=True)
 
     class Meta:
         model = Tournament
@@ -51,8 +53,9 @@ class TournamentSerializer(serializers.ModelSerializer):
             "type",
             "participants",
             "teams",
+            "creator",
         )
-        read_only_fields = ("id", "participants", "teams")
+        read_only_fields = ("id", "participants", "teams", "creator")
 
 
 class MatchSerializer(serializers.ModelSerializer):

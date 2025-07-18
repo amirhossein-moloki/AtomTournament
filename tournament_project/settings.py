@@ -52,18 +52,18 @@ INSTALLED_APPS = [
     "tournaments",
     "wallet",
     "corsheaders",
-    "axes",
+    # "axes",
     "chat",
     "notifications",
     "django_celery_results",
     "djoser",
     "support",
-    "django_ratelimit",
+    # "django_ratelimit",
     'sslserver',
 ]
 
 AUTHENTICATION_BACKENDS = [
-    "axes.backends.AxesStandaloneBackend",
+    # "axes.backends.AxesStandaloneBackend",
     "django.contrib.auth.backends.ModelBackend",
 ]
 
@@ -76,7 +76,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "axes.middleware.AxesMiddleware",
+    # "axes.middleware.AxesMiddleware",
 ]
 
 ROOT_URLCONF = "tournament_project.urls"
@@ -236,6 +236,7 @@ ZARINPAL_SANDBOX = os.environ.get("ZARINPAL_SANDBOX", "False").lower() in ("true
 # Celery Configuration
 CELERY_BROKER_URL = "redis://127.0.0.1:6379"
 CELERY_RESULT_BACKEND = "django-db"
+
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
@@ -278,10 +279,8 @@ CACHES = {
     },
 }
 if "test" in sys.argv:
-    CACHES["default"] = {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1",
-        "OPTIONS": {
-            "CLIENT_CLASS": "fakeredis.FakeRedis",
-        },
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+        }
     }
