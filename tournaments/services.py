@@ -158,6 +158,10 @@ def join_tournament(tournament: Tournament, user, team, members):
         if tournament.tier == "diamond" and user.authentication_level < 3:
             raise ApplicationError("You need authentication level 3 to join a diamond tournament.")
 
+        # Authentication status restrictions
+        if user.authentication_status != "approved":
+            raise ApplicationError("Your authentication request has not been approved yet.")
+
         # Tournaments played restrictions
         if tournament.tournaments_played_min is not None and user.tournaments_played < tournament.tournaments_played_min:
             raise ApplicationError(f"You need to have played at least {tournament.tournaments_played_min} tournaments to join.")
