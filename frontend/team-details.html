@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Details - Tournament Platform</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div id="branding">
+                <h1><a href="index.html">Tournament Platform</a></h1>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="dashboard.html">Dashboard</a></li>
+                    <li><a href="teams.html">Teams</a></li>
+                    <li><a href="tournaments.html">Tournaments</a></li>
+                    <li><a href="support.html">Support</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <h1 id="team-name"></h1>
+        <h2>Members</h2>
+        <ul id="team-members"></ul>
+
+        <h2>Invite a Member</h2>
+        <form id="invite-member-form">
+            <label for="email">User Email:</label>
+            <input type="email" id="email" name="email" required>
+            <button type="submit">Invite</button>
+        </form>
+
+        <h2>Respond to Invitations</h2>
+        <form id="respond-invitation-form">
+            <label for="invitation_id">Invitation ID:</label>
+            <input type="number" id="invitation_id" name="invitation_id" required>
+            <label for="response">Response:</label>
+            <select id="response" name="response">
+                <option value="accept">Accept</option>
+                <option value="decline">Decline</option>
+            </select>
+            <button type="submit">Respond</button>
+        </form>
+
+        <button id="leave-team-btn">Leave Team</button>
+    </div>
+
+    <script src="js/utils.js"></script>
+    <script src="js/teams.js"></script>
+</body>
+</html>

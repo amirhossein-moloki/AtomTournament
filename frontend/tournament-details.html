@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tournament Details - Tournament Platform</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div id="branding">
+                <h1><a href="index.html">Tournament Platform</a></h1>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="dashboard.html">Dashboard</a></li>
+                    <li><a href="teams.html">Teams</a></li>
+                    <li><a href="tournaments.html">Tournaments</a></li>
+                    <li><a href="support.html">Support</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <h1 id="tournament-name"></h1>
+        <p id="tournament-description"></p>
+
+        <h2>Join Tournament</h2>
+        <form id="join-tournament-form">
+            <button type="submit">Join</button>
+        </form>
+
+        <h2>Report Violation</h2>
+        <form id="report-violation-form">
+            <label for="description">Description:</label>
+            <textarea id="description" name="description" required></textarea>
+            <button type="submit">Report</button>
+        </form>
+
+        <h2>Submit Winner Video</h2>
+        <form id="winner-submission-form">
+            <label for="video_url">Video URL:</label>
+            <input type="url" id="video_url" name="video_url" required>
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+
+    <script src="js/utils.js"></script>
+    <script src="js/tournaments.js"></script>
+</body>
+</html>
