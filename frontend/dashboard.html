@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Tournament Platform</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div id="branding">
+                <h1><a href="index.html">Tournament Platform</a></h1>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="dashboard.html">Dashboard</a></li>
+                    <li><a href="teams.html">Teams</a></li>
+                    <li><a href="tournaments.html">Tournaments</a></li>
+                    <li><a href="support.html">Support</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <h1>Dashboard</h1>
+        <div id="dashboard-content">
+            <h2>Upcoming Tournaments</h2>
+            <ul id="upcoming-tournaments"></ul>
+
+            <h2>Sent Invitations</h2>
+            <ul id="sent-invitations"></ul>
+
+            <h2>Received Invitations</h2>
+            <ul id="received-invitations"></ul>
+
+            <h2>Latest Transactions</h2>
+            <ul id="latest-transactions"></ul>
+        </div>
+    </div>
+    <script src="js/utils.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>
