@@ -66,6 +66,15 @@ class Tournament(models.Model):
         null=True,
         blank=True,
     )
+    TIER_CHOICES = (
+        ("bronze", "Bronze"),
+        ("silver", "Silver"),
+        ("gold", "Gold"),
+        ("diamond", "Diamond"),
+    )
+    tier = models.CharField(max_length=10, choices=TIER_CHOICES, default="bronze")
+    tournaments_played_min = models.IntegerField(null=True, blank=True)
+    tournaments_played_max = models.IntegerField(null=True, blank=True)
 
     def clean(self):
         if self.start_date and self.end_date and self.start_date >= self.end_date:

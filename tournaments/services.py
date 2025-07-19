@@ -141,6 +141,29 @@ def join_tournament(tournament: Tournament, user, team, members):
     if tournament.type == "individual":
         if tournament.participants.filter(id=user.id).exists():
             raise ApplicationError("You have already joined this tournament.")
+
+        # Tier-based restrictions
+        if tournament.tier == "silver" and user.points < 1000:
+            raise ApplicationError("You need at least 1000 points to join a silver tournament.")
+        if tournament.tier == "gold" and user.points < 2000:
+            raise ApplicationError("You need at least 2000 points to join a gold tournament.")
+        if tournament.tier == "diamond" and user.points < 3000:
+            raise ApplicationError("You need at least 3000 points to join a diamond tournament.")
+
+        # Authentication level restrictions
+        if tournament.tier == "silver" and user.authentication_level < 2:
+            raise ApplicationError("You need authentication level 2 to join a silver tournament.")
+        if tournament.tier == "gold" and user.authentication_level < 3:
+            raise ApplicationError("You need authentication level 3 to join a gold tournament.")
+        if tournament.tier == "diamond" and user.authentication_level < 3:
+            raise ApplicationError("You need authentication level 3 to join a diamond tournament.")
+
+        # Tournaments played restrictions
+        if tournament.tournaments_played_min is not None and user.tournaments_played < tournament.tournaments_played_min:
+            raise ApplicationError(f"You need to have played at least {tournament.tournaments_played_min} tournaments to join.")
+        if tournament.tournaments_played_max is not None and user.tournaments_played > tournament.tournaments_played_max:
+            raise ApplicationError(f"You cannot have played more than {tournament.tournaments_played_max} tournaments to join.")
+
         # Check wallet balance
         if not tournament.is_free:
             wallet = Wallet.objects.get(user=user)
@@ -148,6 +171,10 @@ def join_tournament(tournament: Tournament, user, team, members):
                 raise ApplicationError("Insufficient funds to join the tournament.")
             wallet.withdrawable_balance -= tournament.entry_fee
             wallet.save()
+
+        user.tournaments_played += 1
+        user.save()
+
         participant = Participant.objects.create(user=user, tournament=tournament)
         return participant
     elif tournament.type == "team":
@@ -223,6 +250,17 @@ def pay_prize(tournament: Tournament, winner):
     wallet = Wallet.objects.get(user=winner)
     wallet.withdrawable_balance += prize_amount
     wallet.save()
+
+    # Award points
+    winner.points += 100
+
+    # Check for authentication level upgrade
+    if winner.points >= 2000 and winner.authentication_level < 3:
+        winner.authentication_level = 3
+    elif winner.points >= 1000 and winner.authentication_level < 2:
+        winner.authentication_level = 2
+
+    winner.save()
 
 
 def refund_entry_fees(tournament: Tournament, cheater):
