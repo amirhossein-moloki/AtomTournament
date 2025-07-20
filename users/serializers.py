@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from wallet.models import Wallet
+from verification.serializers import VerificationSerializer
 
 from .models import InGameID, Role, Team, User, TeamInvitation
 
@@ -16,6 +17,7 @@ class UserSerializer(serializers.ModelSerializer):
     """Serializer for the User model."""
 
     in_game_ids = InGameIDSerializer(many=True, required=False)
+    verification = VerificationSerializer(read_only=True)
 
     class Meta:
         model = User
@@ -27,6 +29,7 @@ class UserSerializer(serializers.ModelSerializer):
             "role",
             "in_game_ids",
             "password",
+            "verification",
         )
         read_only_fields = ("id",)
         extra_kwargs = {"password": {"write_only": True}, "role": {"read_only": True}}

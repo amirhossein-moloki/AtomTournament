@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "support",
     # "django_ratelimit",
     'sslserver',
+    'verification',
 ]
 
 AUTHENTICATION_BACKENDS = [

@@ -9,6 +9,7 @@ class User(AbstractUser):
     profile_picture = models.ImageField(
         upload_to="profile_pictures/", null=True, blank=True
     )
+    score = models.IntegerField(default=0)
 
     class Meta:
         app_label = "users"
