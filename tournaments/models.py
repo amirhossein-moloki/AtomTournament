@@ -74,6 +74,7 @@ class Tournament(models.Model):
         blank=True,
     )
     countdown_start_time = models.DateTimeField(null=True, blank=True)
+    required_verification_level = models.IntegerField(default=1)
 
     def clean(self):
         if self.start_date and self.end_date and self.start_date >= self.end_date:

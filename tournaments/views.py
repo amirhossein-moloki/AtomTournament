@@ -16,6 +16,7 @@ from users.serializers import TeamSerializer
 from .exceptions import ApplicationError
 from .filters import TournamentFilter
 from django_filters.rest_framework import DjangoFilterBackend
+from verification.models import Verification
 
 from .models import Game, Match, Tournament, Participant
 from .serializers import (
@@ -78,6 +79,20 @@ class TournamentViewSet(viewsets.ModelViewSet):
         """
         tournament = self.get_object()
         user = request.user
+
+        try:
+            verification = user.verification
+        except Verification.DoesNotExist:
+            verification = None
+
+        if verification is None or verification.level < tournament.required_verification_level:
+            return Response({'error': 'You do not have the required verification level to join this tournament.'}, status=status.HTTP_403_FORBIDDEN)
+
+        if user.score >= 1000 and (verification is None or verification.level < 2):
+            return Response({'error': 'You must be verified at level 2 to join this tournament.'}, status=status.HTTP_403_FORBIDDEN)
+
+        if user.score >= 2000 and (verification is None or verification.level < 3):
+            return Response({'error': 'You must be verified at level 3 to join this tournament.'}, status=status.HTTP_403_FORBIDDEN)
 
         if tournament.type == "individual":
             try:
