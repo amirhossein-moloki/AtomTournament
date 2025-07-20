@@ -14,6 +14,8 @@ from rest_framework.views import APIView
 from users.models import Team, User
 from users.serializers import TeamSerializer
 from .exceptions import ApplicationError
+from .filters import TournamentFilter
+from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import Game, Match, Tournament, Participant
 from .serializers import (
@@ -36,7 +38,8 @@ from .services import (
 )
 from notifications.services import send_notification
 from .models import Report, WinnerSubmission
-from .serializers import ReportSerializer, WinnerSubmissionSerializer
+from .serializers import ReportSerializer, WinnerSubmissionSerializer, ScoringSerializer
+from .models import Scoring
 
 
 class TournamentParticipantListView(generics.ListAPIView):
@@ -60,6 +63,8 @@ class TournamentViewSet(viewsets.ModelViewSet):
     queryset = Tournament.objects.all()
     serializer_class = TournamentSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = TournamentFilter
 
     def get_permissions(self):
         if self.action in ["create", "destroy"]:
@@ -148,6 +153,19 @@ class TournamentViewSet(viewsets.ModelViewSet):
             return Response({"message": "Matches generated successfully."})
         except ValidationError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
+    def start_countdown(self, request, pk=None):
+        """
+        Start the countdown for a tournament.
+        """
+        tournament = self.get_object()
+        tournament.countdown_start_time = timezone.now()
+        tournament.save()
+        send_tournament_credentials.apply_async(
+            (tournament.id,), eta=tournament.countdown_start_time + timezone.timedelta(minutes=5)
+        )
+        return Response({"message": "Countdown started."})
 
 
 class MatchViewSet(viewsets.ModelViewSet):
@@ -397,6 +415,16 @@ class AdminWinnerSubmissionListView(generics.ListAPIView):
 
     queryset = WinnerSubmission.objects.all()
     serializer_class = WinnerSubmissionSerializer
+    permission_classes = [IsAdminUser]
+
+
+class ScoringViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing scores.
+    """
+
+    queryset = Scoring.objects.all()
+    serializer_class = ScoringSerializer
     permission_classes = [IsAdminUser]
 
 

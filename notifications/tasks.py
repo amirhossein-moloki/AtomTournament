@@ -31,3 +31,26 @@ def send_email_notification(email, subject, context):
         fail_silently=False,
         html_message=html_message,
     )
+
+
+@shared_task
+def send_tournament_credentials(tournament_id):
+    """
+    Sends tournament credentials to all participants.
+    """
+    from tournaments.models import Tournament
+
+    tournament = Tournament.objects.get(id=tournament_id)
+    participants = tournament.participants.all()
+    context = {
+        "tournament_name": tournament.name,
+        "room_id": "your_room_id",  # Replace with actual room ID
+        "password": "your_password",  # Replace with actual password
+    }
+    for participant in participants:
+        if participant.user.email:
+            send_email_notification.delay(
+                participant.user.email, "Tournament Credentials", context
+            )
+        if participant.user.phone_number:
+            send_sms_notification.delay(str(participant.user.phone_number), context)

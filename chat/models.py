@@ -1,10 +1,14 @@
 from django.db import models
 from users.models import User
+from support.models import Ticket
 
 
 class Conversation(models.Model):
     participants = models.ManyToManyField(User, related_name="conversations")
     created_at = models.DateTimeField(auto_now_add=True)
+    support_ticket = models.ForeignKey(
+        Ticket, on_delete=models.CASCADE, related_name="conversations", null=True, blank=True
+    )
 
     class Meta:
         app_label = "chat"

@@ -6,6 +6,7 @@ from .views import (
     ReportViewSet,
     TournamentViewSet,
     WinnerSubmissionViewSet,
+    ScoringViewSet,
 )
 
 router = DefaultRouter()

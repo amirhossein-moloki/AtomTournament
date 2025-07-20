@@ -1,5 +1,6 @@
 from django.db import models
 from users.models import User
+from tournaments.models import Game
 
 
 class Ticket(models.Model):
@@ -31,3 +32,13 @@ class TicketMessage(models.Model):
 
     def __str__(self):
         return f"Message by {self.user.username} in ticket {self.ticket.title}"
+
+
+class SupportAssignment(models.Model):
+    support_person = models.ForeignKey(User, on_delete=models.CASCADE)
+    game = models.ForeignKey(Game, on_delete=models.CASCADE)
+    head_support = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ("support_person", "game")
+        app_label = "support"
