@@ -9,6 +9,7 @@ from .models import (
     Participant,
     Report,
     WinnerSubmission,
+    Scoring,
 )
 from .validators import FileValidator
 
@@ -155,3 +156,11 @@ class WinnerSubmissionSerializer(serializers.ModelSerializer):
             "created_at",
         )
         read_only_fields = ("id", "winner", "status", "created_at")
+
+
+class ScoringSerializer(serializers.ModelSerializer):
+    """Serializer for the Scoring model."""
+
+    class Meta:
+        model = Scoring
+        fields = "__all__"

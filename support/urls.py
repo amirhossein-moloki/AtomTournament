@@ -1,9 +1,10 @@
 from django.urls import include, path
 from rest_framework_nested import routers
-from .views import TicketViewSet, TicketMessageViewSet
+from .views import TicketViewSet, TicketMessageViewSet, SupportAssignmentViewSet
 
 router = routers.DefaultRouter()
 router.register(r"tickets", TicketViewSet)
+router.register(r"support-assignments", SupportAssignmentViewSet)
 
 tickets_router = routers.NestedSimpleRouter(router, r"tickets", lookup="ticket")
 tickets_router.register(r"messages", TicketMessageViewSet, basename="ticket-messages")

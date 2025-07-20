@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Ticket, TicketMessage
+from .models import Ticket, TicketMessage, SupportAssignment
 
 
 class TicketMessageSerializer(serializers.ModelSerializer):
@@ -16,3 +16,9 @@ class TicketSerializer(serializers.ModelSerializer):
         model = Ticket
         fields = ("id", "user", "title", "status", "created_at", "messages")
         read_only_fields = ("id", "user", "status", "created_at", "messages")
+
+
+class SupportAssignmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SupportAssignment
+        fields = "__all__"

@@ -10,8 +10,15 @@ class Game(models.Model):
     class Meta:
         app_label = "tournaments"
 
-    def __str__(self):
-        return self.name
+
+class Scoring(models.Model):
+    tournament = models.ForeignKey("Tournament", on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    score = models.IntegerField()
+
+    class Meta:
+        unique_together = ("tournament", "user")
+        app_label = "tournaments"
 
 
 class GameImage(models.Model):
@@ -66,6 +73,7 @@ class Tournament(models.Model):
         null=True,
         blank=True,
     )
+    countdown_start_time = models.DateTimeField(null=True, blank=True)
 
     def clean(self):
         if self.start_date and self.end_date and self.start_date >= self.end_date:

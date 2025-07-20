@@ -1,7 +1,8 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
-from .models import Ticket, TicketMessage
-from .serializers import TicketSerializer, TicketMessageSerializer
+from .models import Ticket, TicketMessage, SupportAssignment
+from .serializers import TicketSerializer, TicketMessageSerializer, SupportAssignmentSerializer
+from users.permissions import IsAdminUser
 
 
 class TicketViewSet(viewsets.ModelViewSet):
@@ -33,3 +34,9 @@ class TicketMessageViewSet(viewsets.ModelViewSet):
             pk=self.kwargs["ticket_pk"], user=self.request.user
         )
         serializer.save(user=self.request.user, ticket=ticket)
+
+
+class SupportAssignmentViewSet(viewsets.ModelViewSet):
+    queryset = SupportAssignment.objects.all()
+    serializer_class = SupportAssignmentSerializer
+    permission_classes = [IsAdminUser]
