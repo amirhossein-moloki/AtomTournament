@@ -40,6 +40,9 @@ class TournamentSerializer(serializers.ModelSerializer):
     game = GameSerializer(read_only=True)
     creator = UserSerializer(read_only=True)
 
+    final_rank = serializers.SerializerMethodField()
+    prize_won = serializers.SerializerMethodField()
+
     class Meta:
         model = Tournament
         fields = (
@@ -55,8 +58,34 @@ class TournamentSerializer(serializers.ModelSerializer):
             "participants",
             "teams",
             "creator",
+            "final_rank",
+            "prize_won",
         )
         read_only_fields = ("id", "participants", "teams", "creator")
+
+    def get_final_rank(self, obj):
+        user = self.context["request"].user
+        if not user.is_authenticated:
+            return None
+        try:
+            participant = Participant.objects.get(user=user, tournament=obj)
+            # This assumes you have a `rank` field on the Participant model.
+            # If not, you'll need to adjust this.
+            return participant.rank
+        except Participant.DoesNotExist:
+            return None
+
+    def get_prize_won(self, obj):
+        user = self.context["request"].user
+        if not user.is_authenticated:
+            return None
+        try:
+            # This assumes you have a `prize` field on the Participant model.
+            # If not, you'll need to adjust this.
+            participant = Participant.objects.get(user=user, tournament=obj)
+            return participant.prize
+        except Participant.DoesNotExist:
+            return None
 
 
 class MatchSerializer(serializers.ModelSerializer):
