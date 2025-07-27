@@ -28,6 +28,7 @@ from .serializers import (
 from wallet.serializers import TransactionSerializer
 from tournaments.serializers import TournamentSerializer
 from rest_framework.views import APIView
+from tournaments.models import Tournament
 
 
 class RoleViewSet(viewsets.ModelViewSet):
@@ -53,6 +54,13 @@ class UserViewSet(viewsets.ModelViewSet):
         if self.action in ["create", "send_otp", "verify_otp"]:
             return [AllowAny()]
         return super().get_permissions()
+
+    @action(detail=True, methods=["get"])
+    def tournaments(self, request, pk=None):
+        user = self.get_object()
+        tournaments = Tournament.objects.filter(participants=user)
+        serializer = TournamentSerializer(tournaments, many=True)
+        return Response(serializer.data)
 
     @action(detail=False, methods=["post"])
     def send_otp(self, request):

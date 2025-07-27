@@ -10,6 +10,9 @@ class User(AbstractUser):
         upload_to="profile_pictures/", null=True, blank=True
     )
     score = models.IntegerField(default=0)
+    rank = models.ForeignKey(
+        "tournaments.Rank", on_delete=models.SET_NULL, null=True, blank=True
+    )
 
     class Meta:
         app_label = "users"
@@ -20,6 +23,18 @@ class User(AbstractUser):
     @property
     def role(self):
         return [group.name for group in self.groups.all()]
+
+    def update_rank(self):
+        from tournaments.models import Rank
+
+        new_rank = (
+            Rank.objects.filter(required_score__lte=self.score)
+            .order_by("-required_score")
+            .first()
+        )
+        if new_rank and self.rank != new_rank:
+            self.rank = new_rank
+            self.save()
 
 
 class Role(models.Model):

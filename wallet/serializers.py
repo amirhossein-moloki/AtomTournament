@@ -1,21 +1,16 @@
 from rest_framework import serializers
-
-from .models import Transaction, Wallet
-
-
-class WalletSerializer(serializers.ModelSerializer):
-    """Serializer for the Wallet model."""
-
-    class Meta:
-        model = Wallet
-        fields = ("id", "user", "total_balance", "withdrawable_balance")
-        read_only_fields = ("id", "user", "total_balance", "withdrawable_balance")
+from .models import Wallet, Transaction
 
 
 class TransactionSerializer(serializers.ModelSerializer):
-    """Serializer for the Transaction model."""
-
     class Meta:
         model = Transaction
-        fields = ("id", "wallet", "amount", "transaction_type", "timestamp")
-        read_only_fields = ("id", "wallet", "timestamp")
+        fields = "__all__"
+
+
+class WalletSerializer(serializers.ModelSerializer):
+    transactions = TransactionSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Wallet
+        fields = "__all__"
