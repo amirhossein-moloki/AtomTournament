@@ -9,6 +9,9 @@ class User(AbstractUser):
     profile_picture = models.ImageField(
         upload_to="profile_pictures/", null=True, blank=True
     )
+
+    class Meta:
+        app_label = "users"
     score = models.IntegerField(default=0)
     rank = models.ForeignKey(
         "tournaments.Rank", on_delete=models.SET_NULL, null=True, blank=True

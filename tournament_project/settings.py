@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "django_filters",
     "phonenumber_field",
     "drf_spectacular",
+    "drf_yasg",
     "users",
     "tournaments",
     "wallet",
@@ -283,6 +284,15 @@ CACHES = {
 if "test" in sys.argv:
     CACHES = {
         "default": {
-            "BACKEND": "django.core.cache.backends.dummy.DummyCache",
-        }
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        },
+        "connection-errors": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        },
+        "connection-errors-redis": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        },
+        "instant-expiration": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        },
     }

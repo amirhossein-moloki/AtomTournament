@@ -10,6 +10,18 @@ class Rank(models.Model):
     def __str__(self):
         return self.name
 
+    class Meta:
+        app_label = "tournaments"
+
+    class Meta:
+        app_label = "tournaments"
+
+    class Meta:
+        app_label = "tournaments"
+
+    class Meta:
+        app_label = "tournaments"
+
 
 class Game(models.Model):
     name = models.CharField(max_length=100)
@@ -258,6 +270,9 @@ class Report(models.Model):
     class Meta:
         app_label = "tournaments"
 
+    class Meta:
+        app_label = "tournaments"
+
 
 class WinnerSubmission(models.Model):
     SUBMISSION_STATUS_CHOICES = (
@@ -275,6 +290,12 @@ class WinnerSubmission(models.Model):
 
     def __str__(self):
         return f"Submission by {self.winner.username} for {self.tournament.name}"
+
+    class Meta:
+        app_label = "tournaments"
+
+    class Meta:
+        app_label = "tournaments"
 
     class Meta:
         app_label = "tournaments"
