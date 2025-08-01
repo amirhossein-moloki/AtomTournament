@@ -47,8 +47,7 @@ INSTALLED_APPS = [
     "channels",
     "django_filters",
     "phonenumber_field",
-    "drf_spectacular",
-    "drf_yasg",
+    "drf_spectacular", # این خط را فقط یک بار نگه دارید
     "users",
     "tournaments",
     "wallet",
@@ -184,8 +183,12 @@ else:
         },
     }
 
+# تنظیمات Django REST Framework
 REST_FRAMEWORK = {
+    # این خط برای drf-spectacular الزامیه
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+
+    # این خط برای استفاده از JWT Authentication
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
