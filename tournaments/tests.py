@@ -171,6 +171,31 @@ class TournamentAPITest(APITestCase):
         self.assertTrue(match.is_confirmed)
         self.assertEqual(match.winner_user, self.user1)
 
+    def test_get_user_tournament_history(self):
+        """
+        Ensure a user can retrieve their tournament history.
+        """
+        # user1 joins the individual tournament
+        self.individual_tournament.participants.add(self.user1)
+
+        # Authenticate as user1
+        self.client.force_authenticate(user=self.user1)
+
+        # Get the tournament history
+        url = reverse("my-tournament-history")
+        response = self.client.get(url)
+
+        # Check the response
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["name"], self.individual_tournament.name)
+
+        # user2 should have no history
+        self.client.force_authenticate(user=self.user2)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 0)
+
 
 class ReportTests(APITestCase):
     def setUp(self):
