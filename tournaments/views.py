@@ -492,3 +492,20 @@ class TotalTournamentsView(APIView):
     def get(self, request):
         total_tournaments = Tournament.objects.count()
         return Response({"total_tournaments": total_tournaments})
+
+
+class UserTournamentHistoryView(generics.ListAPIView):
+    """
+    API view to list tournaments a user has participated in.
+    """
+
+    serializer_class = TournamentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        This view should return a list of all the tournaments
+        for the currently authenticated user.
+        """
+        user = self.request.user
+        return Tournament.objects.filter(participants=user)
