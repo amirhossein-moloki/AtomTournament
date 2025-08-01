@@ -93,9 +93,29 @@ class TournamentModelTests(TestCase):
 
 
 class MatchModelTests(TestCase):
+    def setUp(self):
+        self.game = Game.objects.create(name="Test Game")
+        self.user1 = User.objects.create_user(username="user1", password="p", phone_number="+201")
+        self.user2 = User.objects.create_user(username="user2", password="p", phone_number="+202")
+        self.tournament = Tournament.objects.create(
+            name="Test Tournament",
+            game=self.game,
+            start_date=timezone.now() + timedelta(days=1),
+            end_date=timezone.now() + timedelta(days=2),
+        )
+
     def test_match_creation(self):
-        # TODO: Write test for match creation
-        pass
+        """Test that a Match object can be created successfully."""
+        match = Match.objects.create(
+            tournament=self.tournament,
+            participant1_user=self.user1,
+            participant2_user=self.user2,
+            round=1,
+            match_type="individual",
+        )
+        self.assertEqual(match.tournament, self.tournament)
+        self.assertEqual(match.round, 1)
+        self.assertEqual(Match.objects.count(), 1)
 
 
 class TournamentViewSetTests(APITestCase):
