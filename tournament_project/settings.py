@@ -194,6 +194,14 @@ REST_FRAMEWORK = {
     ),
 }
 
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Tournament Platform API',
+    'DESCRIPTION': 'API for managing tournaments, users, wallets, and more.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,  # Optional: hides the schema endpoint from the UI
+    'SCHEMA_PATH_PREFIX': r'/api',
+}
+
 DJOSER = {
     "PASSWORD_RESET_CONFIRM_URL": "#/password/reset/confirm/{uid}/{token}",
     "USERNAME_RESET_CONFIRM_URL": "#/username/reset/confirm/{uid}/{token}",
