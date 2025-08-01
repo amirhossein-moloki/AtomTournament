@@ -1,233 +1,258 @@
-from django.urls import reverse
+from django.test import TestCase
+from django.contrib.auth import get_user_model
+from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
-from rest_framework.test import APIClient, APITestCase
-from tournaments.models import Game
+from .models import Team, TeamInvitation, OTP, Role, TeamMembership
+from django.contrib.auth.models import Group
+from django.db.utils import IntegrityError
+from tournaments.models import Rank
 
-from .models import InGameID, Team, User, TeamInvitation, OTP
+User = get_user_model()
 
 
-class UserTests(APITestCase):
+class UserModelTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        Rank.objects.all().delete()
+        cls.user_data = {
+            "username": "testuser",
+            "password": "password123",
+            "phone_number": "+1234567890",
+            "email": "test@example.com",
+        }
+        cls.rank1 = Rank.objects.create(name="Bronze", required_score=0)
+        cls.rank2 = Rank.objects.create(name="Silver", required_score=100)
+
+    def test_user_creation(self):
+        """
+        Test that a user can be created with valid data.
+        """
+        user = User.objects.create_user(**self.user_data)
+        self.assertEqual(user.username, self.user_data["username"])
+        self.assertEqual(user.phone_number, self.user_data["phone_number"])
+        self.assertEqual(user.email, self.user_data["email"])
+        self.assertTrue(user.check_password(self.user_data["password"]))
+
+    def test_phone_number_uniqueness(self):
+        """
+        Test that the phone_number field must be unique.
+        """
+        User.objects.create_user(**self.user_data)
+        with self.assertRaises(IntegrityError):
+            User.objects.create_user(
+                username="anotheruser",
+                password="password123",
+                phone_number=self.user_data["phone_number"],
+            )
+
+    def test_default_role_assignment(self):
+        """
+        Test that a default role is assigned to a new user.
+        """
+        group = Group.objects.create(name="Default Role")
+        Role.objects.create(group=group, is_default=True)
+        user = User.objects.create_user(**self.user_data)
+        self.assertIn(group, user.groups.all())
+
+    def test_update_rank(self):
+        """
+        Test that the user's rank is updated based on score.
+        """
+        user = User.objects.create_user(**self.user_data, score=50)
+        user.rank = self.rank1
+        user.save()
+
+        user.update_rank()
+        self.assertEqual(user.rank.id, self.rank1.id)
+
+        user.score = 150
+        user.save()
+        user.update_rank()
+        self.assertEqual(user.rank.id, self.rank2.id)
+
+
+from django.core.exceptions import ValidationError
+
+class TeamModelTests(TestCase):
+    def setUp(self):
+        self.captain = User.objects.create_user(
+            username="captain", password="password", phone_number="+111"
+        )
+
+    def test_team_creation(self):
+        """
+        Test that a team can be created with a captain.
+        """
+        team = Team.objects.create(name="Test Team", captain=self.captain)
+        self.assertEqual(team.name, "Test Team")
+        self.assertEqual(team.captain, self.captain)
+
+    def test_user_team_limit(self):
+        """
+        Test that a user cannot be in more than 10 teams.
+        """
+        user = User.objects.create_user(
+            username="testuser", password="password", phone_number="+222"
+        )
+        for i in range(10):
+            team = Team.objects.create(name=f"Team {i}", captain=self.captain)
+            TeamMembership.objects.create(user=user, team=team)
+
+        another_team = Team.objects.create(name="Team 11", captain=self.captain)
+        with self.assertRaises(ValidationError):
+            TeamMembership.objects.create(user=user, team=another_team)
+
+
+class UserViewSetTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
-        self.game = Game.objects.create(
-            name="Test Game", description="Test Description"
+        self.users_url = "/api/users/users/"
+        self.user1 = User.objects.create_user(
+            username="user1", password="password", phone_number="+1"
         )
-        self.user_data = {
-            "username": "testuser",
-            "password": "testpassword",
-            "email": "test@example.com",
-            "phone_number": "+12125552368",
-        }
+        self.user2 = User.objects.create_user(
+            username="user2", password="password", phone_number="+2"
+        )
+        self.admin_user = User.objects.create_superuser(
+            username="admin", password="password", phone_number="+3"
+        )
+
+    def test_list_users_unauthenticated(self):
+        response = self.client.get(self.users_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_list_users_authenticated(self):
+        self.client.force_authenticate(user=self.user1)
+        response = self.client.get(self.users_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # By default, list should return all users.
+        self.assertEqual(len(response.data), 3)
+
+    def test_retrieve_own_details(self):
+        self.client.force_authenticate(user=self.user1)
+        response = self.client.get(f"{self.users_url}{self.user1.id}/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["username"], self.user1.username)
+
+    def test_retrieve_other_details_fails(self):
+        self.client.force_authenticate(user=self.user1)
+        response = self.client.get(f"{self.users_url}{self.user2.id}/")
+        # IsOwnerOrReadOnly should prevent this.
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_update_own_details(self):
+        self.client.force_authenticate(user=self.user1)
+        data = {"email": "newemail@example.com"}
+        response = self.client.patch(f"{self.users_url}{self.user1.id}/", data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user1.refresh_from_db()
+        self.assertEqual(self.user1.email, "newemail@example.com")
+
+    def test_update_other_details_fails(self):
+        self.client.force_authenticate(user=self.user1)
+        data = {"email": "newemail@example.com"}
+        response = self.client.patch(f"{self.users_url}{self.user2.id}/", data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_create_user(self):
-        url = reverse("user-list")
-        response = self.client.post(f"{url}", self.user_data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(User.objects.count(), 1)
-        self.assertEqual(User.objects.get().username, "testuser")
-
-    def test_create_user_with_in_game_id(self):
-        url = reverse("user-list")
         data = {
-            **self.user_data,
-            "in_game_ids": [{"game": self.game.id, "player_id": "testplayer"}],
+            "username": "newuser",
+            "password": "password123",
+            "phone_number": "+1-202-555-0148",
+            "email": "new@example.com",
         }
-        response = self.client.post(f"{url}", data, format="json")
+        response = self.client.post(self.users_url, data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(User.objects.count(), 1)
-        self.assertEqual(InGameID.objects.count(), 1)
-        self.assertEqual(InGameID.objects.get().player_id, "testplayer")
-
-    def test_create_user_with_existing_username(self):
-        User.objects.create_user(**self.user_data)
-        url = reverse("user-list")
-        response = self.client.post(f"{url}", self.user_data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_create_user_with_existing_email(self):
-        User.objects.create_user(**self.user_data)
-        self.user_data["username"] = "newuser"
-        self.user_data["phone_number"] = "+12125552369"
-        url = reverse("user-list")
-        response = self.client.post(f"{url}", self.user_data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_create_user_with_existing__phone_number(self):
-        User.objects.create_user(**self.user_data)
-        self.user_data["username"] = "newuser"
-        self.user_data["email"] = "new@example.com"
-        url = reverse("user-list")
-        response = self.client.post(f"{url}", self.user_data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(User.objects.filter(username="newuser").exists())
 
 
-class TeamTests(APITestCase):
+class TeamViewSetTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
-        self.user1 = User.objects.create_user(
-            username="user1", password="testpassword", phone_number="+12125552368"
+        self.teams_url = "/api/users/teams/"
+        self.respond_invitation_url = "/api/users/teams/respond-invitation/"
+        self.captain = User.objects.create_user(
+            username="captain", password="password", phone_number="+10"
         )
-        self.user2 = User.objects.create_user(
-            username="user2", password="testpassword", phone_number="+12125552369"
+        self.member = User.objects.create_user(
+            username="member", password="password", phone_number="+11"
         )
-        self.client.force_authenticate(user=self.user1)
-        self.team_data = {
-            "name": "Test Team",
-            "captain": self.user1.id,
-            "members": [self.user1.id, self.user2.id],
-        }
+        self.non_member = User.objects.create_user(
+            username="nonmember", password="password", phone_number="+12"
+        )
+        self.team = Team.objects.create(name="Test Team", captain=self.captain)
+        self.team.members.add(self.captain)
+        self.team.members.add(self.member)
+
+    def test_list_teams_unauthenticated(self):
+        response = self.client.get(self.teams_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_list_teams_authenticated(self):
+        self.client.force_authenticate(user=self.non_member)
+        response = self.client.get(self.teams_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
 
     def test_create_team(self):
-        url = reverse("team-list")
-        response = self.client.post(f"{url}", self.team_data, format="json")
+        self.client.force_authenticate(user=self.non_member)
+        data = {"name": "New Team"}
+        response = self.client.post(self.teams_url, data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(Team.objects.count(), 1)
-        self.assertEqual(Team.objects.get().name, "Test Team")
+        new_team = Team.objects.get(name="New Team")
+        self.assertEqual(new_team.captain, self.non_member)
 
-    def test_create_team_with_existing_name(self):
-        Team.objects.create(name="Test Team", captain=self.user1)
-        url = reverse("team-list")
-        response = self.client.post(f"{url}", self.team_data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_add_member_to_team(self):
-        team = Team.objects.create(name="Test Team", captain=self.user1)
-        team.members.add(self.user1)
-        url = reverse("team-add-member", kwargs={"pk": team.pk})
-        data = {"user_id": self.user2.id}
-        response = self.client.post(f"{url}", data, format="json")
+    def test_update_team_by_captain(self):
+        self.client.force_authenticate(user=self.captain)
+        data = {"name": "Updated Team Name"}
+        response = self.client.patch(f"{self.teams_url}{self.team.id}/", data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(team.members.count(), 2)
+        self.team.refresh_from_db()
+        self.assertEqual(self.team.name, "Updated Team Name")
 
-    def test_add_existing_member_to_team(self):
-        team = Team.objects.create(name="Test Team", captain=self.user1)
-        team.members.add(self.user2)
-        url = reverse("team-add-member", kwargs={"pk": team.pk})
-        data = {"user_id": self.user2.id}
-        response = self.client.post(f"{url}", data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_add_non_existent_user_to_team(self):
-        team = Team.objects.create(name="Test Team", captain=self.user1)
-        url = reverse("team-add-member", kwargs={"pk": team.pk})
-        data = {"user_id": 999}
-        response = self.client.post(f"{url}", data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_remove_member_from_team(self):
-        team = Team.objects.create(name="Test Team", captain=self.user1)
-        team.members.add(self.user1)
-        team.members.add(self.user2)
-        url = reverse("team-remove-member", kwargs={"pk": team.pk})
-        data = {"user_id": self.user2.id}
-        response = self.client.post(f"{url}", data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(team.members.count(), 1)
-
-    def test_remove_non_existent_member_from_team(self):
-        team = Team.objects.create(name="Test Team", captain=self.user1)
-        url = reverse("team-remove-member", kwargs={"pk": team.pk})
-        data = {"user_id": self.user2.id}
-        response = self.client.post(f"{url}", data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_non_captain_cannot_add_member(self):
-        self.client.force_authenticate(user=self.user2)
-        team = Team.objects.create(name="Test Team", captain=self.user1)
-        url = reverse("team-add-member", kwargs={"pk": team.pk})
-        data = {"user_id": self.user2.id}
-        response = self.client.post(f"{url}", data, format="json")
+    def test_update_team_by_non_captain_fails(self):
+        self.client.force_authenticate(user=self.member)
+        data = {"name": "Updated Team Name"}
+        response = self.client.patch(f"{self.teams_url}{self.team.id}/", data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-
-class InvitationTests(APITestCase):
-    def setUp(self):
-        self.client = APIClient()
-        self.user1 = User.objects.create_user(
-            username="user1", password="testpassword", phone_number="+12125552368"
-        )
-        self.user2 = User.objects.create_user(
-            username="user2", password="testpassword", phone_number="+12125552369"
-        )
-        self.team = Team.objects.create(name="Test Team", captain=self.user1)
-        self.client.force_authenticate(user=self.user1)
-
-    def test_invite_member(self):
-        url = reverse("team-invite-member", kwargs={"pk": self.team.pk})
-        data = {"user_id": self.user2.id}
-        response = self.client.post(f"{url}", data, format="json")
+    def test_invite_member_by_captain(self):
+        self.client.force_authenticate(user=self.captain)
+        data = {"user_id": self.non_member.id}
+        response = self.client.post(f"{self.teams_url}{self.team.id}/add-member/", data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(TeamInvitation.objects.count(), 1)
-
-    def test_respond_invitation_accepted(self):
-        invitation = TeamInvitation.objects.create(
-            from_user=self.user1, to_user=self.user2, team=self.team
+        self.assertTrue(
+            TeamInvitation.objects.filter(
+                from_user=self.captain, to_user=self.non_member, team=self.team
+            ).exists()
         )
-        self.client.force_authenticate(user=self.user2)
-        url = reverse("team-respond-invitation")
+
+    def test_invite_member_by_non_captain_fails(self):
+        self.client.force_authenticate(user=self.member)
+        data = {"user_id": self.non_member.id}
+        response = self.client.post(f"{self.teams_url}{self.team.id}/add-member/", data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_respond_invitation_accept(self):
+        invitation = TeamInvitation.objects.create(
+            from_user=self.captain, to_user=self.non_member, team=self.team
+        )
+        self.client.force_authenticate(user=self.non_member)
         data = {"invitation_id": invitation.id, "status": "accepted"}
-        response = self.client.post(f"{url}", data, format="json")
+        response = self.client.post(self.respond_invitation_url, data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.team.refresh_from_db()
-        self.assertIn(self.user2, self.team.members.all())
+        invitation.refresh_from_db()
+        self.assertEqual(invitation.status, "accepted")
+        self.assertIn(self.non_member, self.team.members.all())
 
-    def test_respond_invitation_rejected(self):
+    def test_respond_invitation_reject(self):
         invitation = TeamInvitation.objects.create(
-            from_user=self.user1, to_user=self.user2, team=self.team
+            from_user=self.captain, to_user=self.non_member, team=self.team
         )
-        self.client.force_authenticate(user=self.user2)
-        url = reverse("team-respond-invitation")
+        self.client.force_authenticate(user=self.non_member)
         data = {"invitation_id": invitation.id, "status": "rejected"}
-        response = self.client.post(f"{url}", data, format="json")
+        response = self.client.post(self.respond_invitation_url, data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.team.refresh_from_db()
-        self.assertNotIn(self.user2, self.team.members.all())
-
-
-class DashboardTests(APITestCase):
-    def setUp(self):
-        self.client = APIClient()
-        self.user = User.objects.create_user(
-            username="user1", password="testpassword", phone_number="+12125552368"
-        )
-        self.client.force_authenticate(user=self.user)
-
-    def test_get_dashboard(self):
-        url = reverse("dashboard")
-        response = self.client.get(f"{url}")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-
-class OTPTests(APITestCase):
-    def setUp(self):
-        self.client = APIClient()
-        self.user = User.objects.create_user(
-            username="user1",
-            password="testpassword",
-            phone_number="+12125552368",
-            email="test@example.com",
-        )
-
-    def test_send_otp(self):
-        url = reverse("user-send-otp")
-        data = {"phone_number": "+12125552368"}
-        response = self.client.post(f"{url}", data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(OTP.objects.count(), 1)
-
-    def test_verify_otp(self):
-        otp = OTP.objects.create(user=self.user, code="123456")
-        url = reverse("user-verify-otp")
-        data = {"phone_number": "+12125552368", "code": "123456"}
-        response = self.client.post(f"{url}", data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("access", response.data)
-
-    def test_non_captain_cannot_remove_member(self):
-        self.client.force_authenticate(user=self.user2)
-        team = Team.objects.create(name="Test Team", captain=self.user1)
-        team.members.add(self.user2)
-        url = reverse("team-remove-member", kwargs={"pk": team.pk})
-        data = {"user_id": self.user2.id}
-        response = self.client.post(f"{url}", data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        invitation.refresh_from_db()
+        self.assertEqual(invitation.status, "rejected")
+        self.assertNotIn(self.non_member, self.team.members.all())

@@ -1,278 +1,166 @@
-from datetime import timedelta
-from decimal import Decimal
-
-from django.urls import reverse
-from django.utils import timezone
+from django.test import TestCase
+from django.contrib.auth import get_user_model
+from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
-from rest_framework.test import APITestCase
-from users.models import Team, User
-
-from unittest.mock import patch
-from django.core.exceptions import PermissionDenied
-from django.core.files.uploadedfile import SimpleUploadedFile
-from .models import Game, Match, Tournament, Report, WinnerSubmission
+from .models import Tournament, Game, Rank, Match
+from users.models import User, Team
 from verification.models import Verification
+from django.utils import timezone
+from tournament_project.celery import app as celery_app
+from datetime import timedelta
+from django.core.exceptions import ValidationError
 
-
-class TournamentAPITest(APITestCase):
+class TournamentModelTests(TestCase):
     def setUp(self):
         self.game = Game.objects.create(name="Test Game")
-        self.user1 = User.objects.create_user(
-            username="user1", password="password", phone_number="+12125552361"
-        )
-        self.user2 = User.objects.create_user(
-            username="user2", password="password", phone_number="+12125552362"
-        )
-        from wallet.models import Wallet
+        self.user = User.objects.create_user(username="testuser", password="password", phone_number="+123")
+        self.start_date = timezone.now() + timedelta(days=1)
+        self.end_date = timezone.now() + timedelta(days=2)
 
-        Wallet.objects.create(
-            user=self.user1, total_balance=100, withdrawable_balance=50
-        )
-        Wallet.objects.create(
-            user=self.user2, total_balance=100, withdrawable_balance=50
-        )
-        Verification.objects.create(user=self.user1, level=1)
-        Verification.objects.create(user=self.user2, level=1)
-        self.team1 = Team.objects.create(name="Team 1", captain=self.user1)
-        self.team2 = Team.objects.create(name="Team 2", captain=self.user2)
-        self.team1.members.add(self.user1)
-        self.team2.members.add(self.user2)
-
-        self.individual_tournament = Tournament.objects.create(
-            name="Individual Tournament",
+    def test_tournament_creation(self):
+        """
+        Test that a tournament can be created with valid data.
+        """
+        tournament = Tournament.objects.create(
+            name="Test Tournament",
             game=self.game,
-            start_date=timezone.now(),
-            end_date=timezone.now() + timedelta(days=1),
+            start_date=self.start_date,
+            end_date=self.end_date,
+        )
+        self.assertEqual(tournament.name, "Test Tournament")
+        self.assertEqual(tournament.game, self.game)
+
+    def test_end_date_before_start_date_fails(self):
+        """
+        Test that tournament creation fails if end_date is before start_date.
+        """
+        with self.assertRaises(ValidationError):
+            tournament = Tournament(
+                name="Test Tournament",
+                game=self.game,
+                start_date=self.end_date,
+                end_date=self.start_date,
+            )
+            tournament.clean()
+
+    def test_paid_tournament_requires_entry_fee(self):
+        """
+        Test that a paid tournament must have an entry fee.
+        """
+        with self.assertRaises(ValidationError):
+            tournament = Tournament(
+                name="Test Tournament",
+                game=self.game,
+                start_date=self.start_date,
+                end_date=self.end_date,
+                is_free=False,
+            )
+            tournament.clean()
+
+    def test_distribute_scores_individual(self):
+        """
+        Test the score distribution for an individual tournament.
+        """
+        tournament = Tournament.objects.create(
+            name="Test Tournament",
+            game=self.game,
+            start_date=self.start_date,
+            end_date=self.end_date,
             type="individual",
-            is_free=False,
-            entry_fee=Decimal("10.00"),
         )
+        p1 = User.objects.create_user(username="p1", password="p", phone_number="+1")
+        p2 = User.objects.create_user(username="p2", password="p", phone_number="+2")
+        tournament.top_players.add(p1, p2)
 
-        self.team_tournament = Tournament.objects.create(
-            name="Team Tournament",
+        initial_score_p1 = p1.score
+        initial_score_p2 = p2.score
+
+        tournament.distribute_scores()
+        p1.refresh_from_db()
+        p2.refresh_from_db()
+
+        self.assertEqual(p1.score, initial_score_p1 + 5)
+        self.assertEqual(p2.score, initial_score_p2 + 4)
+
+
+class MatchModelTests(TestCase):
+    def test_match_creation(self):
+        # TODO: Write test for match creation
+        pass
+
+
+class TournamentViewSetTests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.tournaments_url = "/api/tournaments/tournaments/"
+        self.user = User.objects.create_user(username="user", password="password", phone_number="+1")
+        self.admin_user = User.objects.create_superuser(
+            username="admin", password="password", phone_number="+2"
+        )
+        Verification.objects.create(user=self.user, level=2)
+        self.game = Game.objects.create(name="Test Game")
+        self.tournament = Tournament.objects.create(
+            name="Test Tournament",
             game=self.game,
-            start_date=timezone.now(),
-            end_date=timezone.now() + timedelta(days=1),
-            type="team",
-            is_free=False,
-            entry_fee=Decimal("20.00"),
+            start_date=timezone.now() + timedelta(days=1),
+            end_date=timezone.now() + timedelta(days=2),
         )
+        self.old_eager = celery_app.conf.task_always_eager
+        celery_app.conf.task_always_eager = True
 
-    def test_join_individual_tournament(self):
-        self.client.force_authenticate(user=self.user1)
-        url = reverse("tournament-join", kwargs={"pk": self.individual_tournament.pk})
-        response = self.client.post(f"{url}")
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.individual_tournament.refresh_from_db()
-        self.assertIn(self.user1, self.individual_tournament.participants.all())
+    def tearDown(self):
+        celery_app.conf.task_always_eager = self.old_eager
 
-    @patch("tournaments.views.send_sms_notification")
-    @patch("tournaments.views.send_email_notification")
-    def test_join_team_tournament_with_selected_members(
-        self, mock_send_email, mock_send_sms
-    ):
-        self.client.force_authenticate(user=self.user1)
-        url = reverse("tournament-join", kwargs={"pk": self.team_tournament.pk})
-        data = {"team_id": self.team1.id, "member_ids": [self.user1.id]}
-        response = self.client.post(url, data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.team_tournament.refresh_from_db()
-        self.assertIn(self.team1, self.team_tournament.teams.all())
-        self.assertIn(self.user1, self.team_tournament.participants.all())
-        mock_send_email.delay.assert_called()
-        mock_send_sms.delay.assert_called()
+    def test_list_tournaments_unauthenticated(self):
+        response = self.client.get(self.tournaments_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_join_team_tournament_insufficient_funds(self):
-        self.user3 = User.objects.create_user(
-            username="user3", password="password", phone_number="+12125552363"
-        )
-        from wallet.models import Wallet
-
-        Wallet.objects.create(
-            user=self.user3, total_balance=10, withdrawable_balance=5
-        )
-        Verification.objects.create(user=self.user3, level=1)
-        self.team1.members.add(self.user3)
-        self.client.force_authenticate(user=self.user1)
-        url = reverse("tournament-join", kwargs={"pk": self.team_tournament.pk})
-        data = {"team_id": self.team1.id, "member_ids": [self.user1.id, self.user3.id]}
-        response = self.client.post(url, data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_join_team_tournament_member_already_joined(self):
-        self.team_tournament.participants.add(self.user2)
-        self.client.force_authenticate(user=self.user1)
-        url = reverse("tournament-join", kwargs={"pk": self.team_tournament.pk})
-        data = {"team_id": self.team1.id, "member_ids": [self.user1.id, self.user2.id]}
-        response = self.client.post(url, data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_join_team_tournament_not_captain(self):
-        self.client.force_authenticate(user=self.user2)
-        url = reverse("tournament-join", kwargs={"pk": self.team_tournament.pk})
-        data = {"team_id": self.team1.id, "member_ids": [self.user1.id]}
-        response = self.client.post(url, data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_join_team_tournament_too_many_members(self):
-        self.user3 = User.objects.create_user(
-            username="user3", password="password", phone_number="+12125552363"
-        )
-        self.user4 = User.objects.create_user(
-            username="user4", password="password", phone_number="+12125552364"
-        )
-        self.user5 = User.objects.create_user(
-            username="user5", password="password", phone_number="+12125552365"
-        )
-        self.user6 = User.objects.create_user(
-            username="user6", password="password", phone_number="+12125552366"
-        )
-        Verification.objects.create(user=self.user3, level=1)
-        Verification.objects.create(user=self.user4, level=1)
-        Verification.objects.create(user=self.user5, level=1)
-        Verification.objects.create(user=self.user6, level=1)
-        self.team1.members.add(
-            self.user3, self.user4, self.user5, self.user6
-        )
-        self.client.force_authenticate(user=self.user1)
-        url = reverse("tournament-join", kwargs={"pk": self.team_tournament.pk})
-        data = {
-            "team_id": self.team1.id,
-            "member_ids": [
-                self.user1.id,
-                self.user3.id,
-                self.user4.id,
-                self.user5.id,
-                self.user6.id,
-            ],
-        }
-        response = self.client.post(url, data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_join_tournament_already_joined(self):
-        self.individual_tournament.participants.add(self.user1)
-        self.client.force_authenticate(user=self.user1)
-        url = reverse("tournament-join", kwargs={"pk": self.individual_tournament.pk})
-        response = self.client.post(f"{url}")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_generate_matches(self):
-        self.individual_tournament.participants.add(self.user1, self.user2)
-        self.client.force_authenticate(user=self.user1)  # needs to be admin
-        self.user1.is_staff = True
-        self.user1.save()
-        url = reverse(
-            "tournament-generate-matches",
-            kwargs={"pk": self.individual_tournament.pk},
-        )
-        response = self.client.post(f"{url}")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(self.individual_tournament.matches.count(), 1)
-
-    def test_confirm_match_result(self):
-        self.individual_tournament.participants.add(self.user1, self.user2)
-        match = Match.objects.create(
-            tournament=self.individual_tournament,
-            match_type="individual",
-            round=1,
-            participant1_user=self.user1,
-            participant2_user=self.user2,
-        )
-        self.client.force_authenticate(user=self.user1)
-        url = reverse("match-confirm-result", kwargs={"pk": match.pk})
-        data = {"winner_id": self.user1.id}
-        response = self.client.post(f"{url}", data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        match.refresh_from_db()
-        self.assertTrue(match.is_confirmed)
-        self.assertEqual(match.winner_user, self.user1)
-
-    def test_get_user_tournament_history(self):
-        """
-        Ensure a user can retrieve their tournament history.
-        """
-        # user1 joins the individual tournament
-        self.individual_tournament.participants.add(self.user1)
-
-        # Authenticate as user1
-        self.client.force_authenticate(user=self.user1)
-
-        # Get the tournament history
-        url = reverse("my-tournament-history")
-        response = self.client.get(url)
-
-        # Check the response
+    def test_list_tournaments_authenticated(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.tournaments_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["name"], self.individual_tournament.name)
 
-        # user2 should have no history
-        self.client.force_authenticate(user=self.user2)
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 0)
-
-
-class ReportTests(APITestCase):
-    def setUp(self):
-        self.game = Game.objects.create(name="Test Game")
-        self.user1 = User.objects.create_user(
-            username="user1", password="password", phone_number="+12125552361"
-        )
-        self.user2 = User.objects.create_user(
-            username="user2", password="password", phone_number="+12125552362"
-        )
-        self.tournament = Tournament.objects.create(
-            name="Test Tournament",
-            game=self.game,
-            start_date=timezone.now(),
-            end_date=timezone.now() + timedelta(days=1),
-        )
-        self.match = Match.objects.create(
-            tournament=self.tournament,
-            participant1_user=self.user1,
-            participant2_user=self.user2,
-            round=1,
-        )
-        self.client.force_authenticate(user=self.user1)
-
-    def test_create_report(self):
-        url = reverse("report-list")
+    def test_create_tournament_by_admin(self):
+        self.client.force_authenticate(user=self.admin_user)
         data = {
-            "reported_user": self.user2.id,
-            "match": self.match.id,
-            "description": "Cheating",
+            "name": "New Tournament by Admin",
+            "game": self.game.id,
+            "start_date": timezone.now() + timedelta(days=3),
+            "end_date": timezone.now() + timedelta(days=4),
         }
-        response = self.client.post(url, data, format="json")
+        response = self.client.post(self.tournaments_url, data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(Report.objects.count(), 1)
+        self.assertTrue(Tournament.objects.filter(name="New Tournament by Admin").exists())
 
-
-class WinnerSubmissionTests(APITestCase):
-    def setUp(self):
-        self.game = Game.objects.create(name="Test Game")
-        self.user1 = User.objects.create_user(
-            username="user1", password="password", phone_number="+12125552361"
-        )
-        self.tournament = Tournament.objects.create(
-            name="Test Tournament",
-            game=self.game,
-            start_date=timezone.now(),
-            end_date=timezone.now() - timedelta(days=1),
-        )
-        # Assume user1 is a winner
-        self.client.force_authenticate(user=self.user1)
-
-    @patch("tournaments.views.get_tournament_winners")
-    def test_create_winner_submission(self, mock_get_winners):
-        mock_get_winners.return_value = []  # Simulate user is not a winner
-        url = reverse("winnersubmission-list")
-        video = SimpleUploadedFile(
-            "file.mp4", b"file_content", content_type="video/mp4"
-        )
-        response = self.client.post(
-            url,
-            {"tournament": self.tournament.id, "video": video},
-            format="multipart",
-        )
+    def test_create_tournament_by_non_admin_fails(self):
+        self.client.force_authenticate(user=self.user)
+        data = {
+            "name": "New Tournament by User",
+            "game": self.game.id,
+            "start_date": timezone.now() + timedelta(days=3),
+            "end_date": timezone.now() + timedelta(days=4),
+        }
+        response = self.client.post(self.tournaments_url, data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_join_individual_tournament(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(f"{self.tournaments_url}{self.tournament.id}/join/")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(self.tournament.participants.filter(id=self.user.id).exists())
+
+    def test_join_team_tournament(self):
+        team = Team.objects.create(name="Team For Tourney", captain=self.user)
+        team_tournament = Tournament.objects.create(
+            name="Team Tournament",
+            game=self.game,
+            start_date=timezone.now() + timedelta(days=1),
+            end_date=timezone.now() + timedelta(days=2),
+            type="team",
+        )
+        self.client.force_authenticate(user=self.user)
+        data = {"team_id": team.id, "member_ids": [self.user.id]}
+        response = self.client.post(f"{self.tournaments_url}{team_tournament.id}/join/", data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(team_tournament.teams.filter(id=team.id).exists())

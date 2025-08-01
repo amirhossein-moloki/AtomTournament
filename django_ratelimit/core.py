@@ -226,7 +226,7 @@ def get_usage(
     count = None
     try:
         added = cache.add(cache_key, initial_value, period + EXPIRATION_FUDGE)
-    except socket.gaierror:  # for redis
+    except (socket.gaierror, ConnectionError):
         added = False
     if added:
         count = initial_value
@@ -237,10 +237,13 @@ def get_usage(
                 # unavailable or (somehow) the key doesn't exist. redis, on the
                 # other hand, simply returns None.
                 count = cache.incr(cache_key)
-            except ValueError:
+            except (ValueError, ConnectionError):
                 pass
         else:
-            count = cache.get(cache_key, initial_value)
+            try:
+                count = cache.get(cache_key, initial_value)
+            except ConnectionError:
+                count = None
 
     # Getting or setting the count from the cache failed
     if count is None or count is False:

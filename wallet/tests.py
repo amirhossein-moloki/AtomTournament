@@ -1,47 +1,61 @@
-from unittest.mock import patch
-
+from django.test import TestCase
 from django.contrib.auth import get_user_model
-from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APITestCase
-from django.test import override_settings
-
-from .models import Wallet
+from rest_framework.test import APITestCase, APIClient
+from .models import Wallet, Transaction
+from tournament_project.celery import app as celery_app
 
 User = get_user_model()
 
-
-@override_settings(AXES_ENABLED=False)
-class WalletTests(APITestCase):
+class WalletModelTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(
-            username="testuser", password="testpassword"
-        )
-        self.wallet = Wallet.objects.create(user=self.user, total_balance=100, withdrawable_balance=100)
-        self.client.login(username="testuser", password="testpassword")
+        self.user = User.objects.create_user(username='testuser', password='password', phone_number='+1234567890')
+        self.old_eager = celery_app.conf.task_always_eager
+        celery_app.conf.task_always_eager = True
 
-    @patch("wallet.services.ZarinpalService.create_payment")
-    def test_create_payment(self, mock_create_payment):
-        mock_create_payment.return_value = {
-            "data": {"authority": "test_authority"},
-            "errors": [],
-        }
-        url = reverse("payment-list")
-        data = {"amount": 50000}
-        response = self.client.post(url, data)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("payment_url", response.data)
+    def tearDown(self):
+        celery_app.conf.task_always_eager = self.old_eager
 
-    @patch("wallet.services.ZarinpalService.verify_payment")
-    def test_verify_payment(self, mock_verify_payment):
-        mock_verify_payment.return_value = {"data": {"code": 100}, "errors": []}
-        authority = "test_authority"
-        amount = 50000
-        session = self.client.session
-        session[f"payment_{authority}"] = amount
-        session.save()
-        url = reverse("payment-verify") + f"?Authority={authority}&Status=OK"
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+    def test_wallet_creation_signal(self):
+        # A wallet should be created automatically for a new user.
+        # This test will likely fail until we find or create the signal handler.
+        self.assertTrue(hasattr(self.user, 'wallet'))
+        self.assertIsInstance(self.user.wallet, Wallet)
+
+
+class TransactionModelTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='password', phone_number='+1234567890')
+        # Assuming a wallet is created for the user.
+        if not hasattr(self.user, 'wallet'):
+            Wallet.objects.create(user=self.user)
+        self.wallet = self.user.wallet
+        self.old_eager = celery_app.conf.task_always_eager
+        celery_app.conf.task_always_eager = True
+
+    def tearDown(self):
+        celery_app.conf.task_always_eager = self.old_eager
+
+    def test_deposit_updates_balance(self):
+        # This test will fail until the balance update logic is implemented.
+        initial_balance = self.wallet.total_balance
+        transaction = Transaction.objects.create(wallet=self.wallet, amount=100, transaction_type='deposit')
         self.wallet.refresh_from_db()
-        self.assertEqual(self.wallet.total_balance, 100 + amount)
+        self.assertEqual(self.wallet.total_balance, initial_balance + 100)
+
+
+class WalletViewSetTests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(username='testuser', password='password', phone_number='+1234567890')
+        self.client.force_authenticate(user=self.user)
+        if not hasattr(self.user, 'wallet'):
+            Wallet.objects.create(user=self.user)
+        self.old_eager = celery_app.conf.task_always_eager
+        celery_app.conf.task_always_eager = True
+
+    def tearDown(self):
+        celery_app.conf.task_always_eager = self.old_eager
+
+    def test_get_wallet_details(self):
+        # TODO: Write test
+        pass

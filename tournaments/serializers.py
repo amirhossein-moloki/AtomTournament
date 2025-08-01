@@ -37,7 +37,7 @@ class TournamentSerializer(serializers.ModelSerializer):
 
     participants = UserSerializer(many=True, read_only=True)
     teams = TeamSerializer(many=True, read_only=True)
-    game = GameSerializer(read_only=True)
+    game = serializers.PrimaryKeyRelatedField(queryset=Game.objects.all())
     creator = UserSerializer(read_only=True)
 
     final_rank = serializers.SerializerMethodField()

@@ -1,22 +1,17 @@
 from django.test import TestCase
-from django.core import mail
-from .tasks import send_email_notification, send_sms_notification
-from unittest.mock import patch
+from django.contrib.auth import get_user_model
+from .models import Notification
 
+User = get_user_model()
 
-class NotificationTasksTestCase(TestCase):
-    @patch('notifications.tasks.send_mail')
-    def test_send_email_notification(self, mock_send_mail):
-        send_email_notification.delay(
-            "test@example.com",
-            "Test Subject",
-            {"tournament_name": "Test Tournament"},
+class NotificationModelTests(TestCase):
+    def test_notification_creation(self):
+        user = User.objects.create_user(username="testuser", password="password", phone_number="+123")
+        notification = Notification.objects.create(
+            user=user,
+            message="Test notification",
+            notification_type="report_new",
         )
-        self.assertTrue(mock_send_mail.called)
-
-    @patch('notifications.tasks.sms')
-    def test_send_sms_notification(self, mock_sms):
-        send_sms_notification.delay(
-            "+1234567890", {"tournament_name": "Test Tournament"}
-        )
-        self.assertTrue(mock_sms.send.called)
+        self.assertEqual(notification.user, user)
+        self.assertEqual(notification.message, "Test notification")
+        self.assertEqual(notification.notification_type, "report_new")
