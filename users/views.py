@@ -180,7 +180,7 @@ class TeamViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(captain=self.request.user)
 
-    @action(detail=True, methods=["post"], permission_classes=[IsCaptain])
+    @action(detail=True, methods=["post"], permission_classes=[IsCaptain], url_path="add-member")
     def invite_member(self, request, pk=None):
         """
         Invite a member to a team.
@@ -225,8 +225,8 @@ class TeamViewSet(viewsets.ModelViewSet):
         Respond to a team invitation.
         """
         invitation_id = request.data.get("invitation_id")
-        status = request.data.get("status")
-        if not invitation_id or not status:
+        invitation_status = request.data.get("status")
+        if not invitation_id or not invitation_status:
             return Response(
                 {"error": "Invitation ID and status are required."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -239,14 +239,14 @@ class TeamViewSet(viewsets.ModelViewSet):
             return Response(
                 {"error": "Invitation not found."}, status=status.HTTP_400_BAD_REQUEST
             )
-        if status == "accepted":
+        if invitation_status == "accepted":
             invitation.status = "accepted"
             invitation.team.members.add(request.user)
             invitation.save()
             return Response(
                 {"message": "Invitation accepted."}, status=status.HTTP_200_OK
             )
-        elif status == "rejected":
+        elif invitation_status == "rejected":
             invitation.status = "rejected"
             invitation.save()
             return Response(

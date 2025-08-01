@@ -15,9 +15,6 @@ class Ticket(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        app_label = "support"
-
     def __str__(self):
         return self.title
 
@@ -35,9 +32,6 @@ class TicketMessage(models.Model):
 
     def __str__(self):
         return f"Message by {self.user.username} in ticket {self.ticket.title}"
-
-    class Meta:
-        app_label = "support"
 
     class Meta:
         app_label = "support"

@@ -40,7 +40,6 @@ class UserSerializer(serializers.ModelSerializer):
         user = User(**validated_data)
         user.set_password(password)
         user.save()
-        Wallet.objects.create(user=user)
         for in_game_id_data in in_game_ids_data:
             InGameID.objects.create(user=user, **in_game_id_data)
         return user
@@ -79,6 +78,7 @@ class TeamSerializer(serializers.ModelSerializer):
     class Meta:
         model = Team
         fields = ("id", "name", "captain", "members")
+        read_only_fields = ("captain",)
 
 
 class RoleSerializer(serializers.ModelSerializer):
