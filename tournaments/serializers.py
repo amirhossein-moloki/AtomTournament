@@ -67,25 +67,23 @@ class TournamentSerializer(serializers.ModelSerializer):
         user = self.context["request"].user
         if not user.is_authenticated:
             return None
-        try:
-            participant = Participant.objects.get(user=user, tournament=obj)
-            # This assumes you have a `rank` field on the Participant model.
-            # If not, you'll need to adjust this.
-            return participant.rank
-        except Participant.DoesNotExist:
-            return None
+
+        # Access the prefetched participants to avoid N+1 queries
+        for p in obj.participant_set.all():
+            if p.user_id == user.id:
+                return p.rank
+        return None
 
     def get_prize_won(self, obj):
         user = self.context["request"].user
         if not user.is_authenticated:
             return None
-        try:
-            # This assumes you have a `prize` field on the Participant model.
-            # If not, you'll need to adjust this.
-            participant = Participant.objects.get(user=user, tournament=obj)
-            return participant.prize
-        except Participant.DoesNotExist:
-            return None
+
+        # Access the prefetched participants to avoid N+1 queries
+        for p in obj.participant_set.all():
+            if p.user_id == user.id:
+                return p.prize
+        return None
 
 
 class MatchSerializer(serializers.ModelSerializer):

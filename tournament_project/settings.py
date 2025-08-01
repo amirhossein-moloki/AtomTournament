@@ -257,6 +257,7 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
 if "test" in sys.argv:
     CELERY_TASK_ALWAYS_EAGER = True
+    RATELIMIT_ENABLED = False
 
 # SMS.ir Configuration
 SMSIR_API_KEY = os.environ.get("SMSIR_API_KEY")

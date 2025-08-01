@@ -21,7 +21,6 @@ urlpatterns = [
     path("api/chat/", include("chat.urls")),
     path("api/wallet/", include("wallet.urls")),
     path("api/notifications/", include("notifications.urls")),
-    path("api/notifications/", include("notifications.urls")),
     re_path(r"^private-media/(?P<path>.*)$", private_media_view, name="private_media"),
     path("auth/", include("djoser.urls")),
     path("auth/", include("djoser.urls.jwt")),

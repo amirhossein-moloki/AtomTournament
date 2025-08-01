@@ -6,6 +6,13 @@ from .models import Team, TeamInvitation, OTP, Role, TeamMembership
 from django.contrib.auth.models import Group
 from django.db.utils import IntegrityError
 from tournaments.models import Rank
+from unittest.mock import patch
+from .services import (
+    invite_member_service, respond_to_invitation_service,
+    leave_team_service, remove_member_service, ApplicationError
+)
+from django.utils import timezone
+from datetime import timedelta
 
 User = get_user_model()
 
@@ -165,6 +172,54 @@ class UserViewSetTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(User.objects.filter(username="newuser").exists())
 
+    @patch("users.services.send_sms_notification.delay")
+    @patch("users.services.send_email_notification.delay")
+    def test_send_otp_success(self, mock_send_email, mock_send_sms):
+        """
+        Test that OTP is sent successfully.
+        """
+        data = {"phone_number": self.user1.phone_number}
+        response = self.client.post(f"{self.users_url}send_otp/", data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(OTP.objects.filter(user=self.user1).exists())
+        mock_send_sms.assert_called_once()
+        mock_send_email.assert_not_called()
+
+    def test_verify_otp_success(self):
+        """
+        Test that a valid OTP is verified successfully.
+        """
+        otp = OTP.objects.create(user=self.user1, code="123456")
+        data = {"phone_number": self.user1.phone_number, "code": "123456"}
+        response = self.client.post(f"{self.users_url}verify_otp/", data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+        self.assertIn("refresh", response.data)
+        otp.refresh_from_db()
+        self.assertFalse(otp.is_active)
+
+    def test_verify_otp_invalid_code(self):
+        """
+        Test that an invalid OTP fails verification.
+        """
+        OTP.objects.create(user=self.user1, code="123456")
+        data = {"phone_number": self.user1.phone_number, "code": "654321"}
+        response = self.client.post(f"{self.users_url}verify_otp/", data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["error"], "Invalid OTP.")
+
+    def test_verify_otp_expired(self):
+        """
+        Test that an expired OTP fails verification.
+        """
+        otp = OTP.objects.create(user=self.user1, code="123456")
+        otp.created_at = timezone.now() - timedelta(minutes=10)
+        otp.save()
+        data = {"phone_number": self.user1.phone_number, "code": "123456"}
+        response = self.client.post(f"{self.users_url}verify_otp/", data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["error"], "OTP expired.")
+
 
 class TeamViewSetTests(APITestCase):
     def setUp(self):
@@ -256,3 +311,51 @@ class TeamViewSetTests(APITestCase):
         invitation.refresh_from_db()
         self.assertEqual(invitation.status, "rejected")
         self.assertNotIn(self.non_member, self.team.members.all())
+
+
+class UserServicesTests(TestCase):
+    def setUp(self):
+        self.captain = User.objects.create_user(username="captain", password="p", phone_number="+100")
+        self.member = User.objects.create_user(username="member", password="p", phone_number="+101")
+        self.non_member = User.objects.create_user(username="nonmember", password="p", phone_number="+102")
+        self.team = Team.objects.create(name="Service Test Team", captain=self.captain)
+        self.team.members.add(self.captain, self.member)
+
+    def test_invite_member_service_success(self):
+        invitation = invite_member_service(
+            team=self.team, from_user=self.captain, to_user_id=self.non_member.id
+        )
+        self.assertIsInstance(invitation, TeamInvitation)
+        self.assertEqual(invitation.team, self.team)
+        self.assertEqual(invitation.to_user, self.non_member)
+
+    def test_invite_member_service_not_captain_fails(self):
+        with self.assertRaisesMessage(ApplicationError, "Only the team captain can invite members."):
+            invite_member_service(team=self.team, from_user=self.member, to_user_id=self.non_member.id)
+
+    def test_invite_member_service_already_member_fails(self):
+        with self.assertRaisesMessage(ApplicationError, "User is already a member of the team."):
+            invite_member_service(team=self.team, from_user=self.captain, to_user_id=self.member.id)
+
+    def test_respond_to_invitation_accept_success(self):
+        invitation = TeamInvitation.objects.create(
+            from_user=self.captain, to_user=self.non_member, team=self.team
+        )
+        respond_to_invitation_service(invitation.id, self.non_member, "accepted")
+        self.assertIn(self.non_member, self.team.members.all())
+
+    def test_leave_team_service_success(self):
+        leave_team_service(team=self.team, user=self.member)
+        self.assertNotIn(self.member, self.team.members.all())
+
+    def test_leave_team_service_captain_fails(self):
+        with self.assertRaisesMessage(ApplicationError, "The captain cannot leave the team. Please transfer captaincy first."):
+            leave_team_service(team=self.team, user=self.captain)
+
+    def test_remove_member_service_success(self):
+        remove_member_service(team=self.team, captain=self.captain, member_id=self.member.id)
+        self.assertNotIn(self.member, self.team.members.all())
+
+    def test_remove_member_service_not_captain_fails(self):
+        with self.assertRaisesMessage(ApplicationError, "Only the team captain can remove members."):
+            remove_member_service(team=self.team, captain=self.member, member_id=self.captain.id)

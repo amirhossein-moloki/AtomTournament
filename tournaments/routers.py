@@ -10,7 +10,7 @@ from .views import (
 )
 
 router = DefaultRouter()
-router.register(r"tournaments", TournamentViewSet)
+router.register(r"tournaments", TournamentViewSet, basename="tournament")
 router.register(r"matches", MatchViewSet)
 router.register(r"games", GameViewSet)
 router.register(r"reports", ReportViewSet)

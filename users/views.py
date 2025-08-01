@@ -10,9 +10,10 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from notifications.tasks import (
-    send_email_notification,
-    send_sms_notification,
+from .services import (
+    send_otp_service, verify_otp_service, ApplicationError,
+    invite_member_service, respond_to_invitation_service,
+    leave_team_service, remove_member_service
 )
 from .models import OTP, Role, Team, User, TeamInvitation
 from .permissions import (IsAdminUser, IsCaptain, IsCaptainOrReadOnly,
@@ -69,45 +70,11 @@ class UserViewSet(viewsets.ModelViewSet):
         """
         phone_number = request.data.get("phone_number")
         email = request.data.get("email")
-        if not phone_number and not email:
-            return Response(
-                {"error": "Phone number or email is required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        user = None
-        if phone_number:
-            try:
-                user = User.objects.get(phone_number=phone_number)
-            except User.DoesNotExist:
-                pass
-        if email and not user:
-            try:
-                user = User.objects.get(email=email)
-            except User.DoesNotExist:
-                return Response(
-                    {"error": "User not found."}, status=status.HTTP_400_BAD_REQUEST
-                )
-        if not user:
-            return Response(
-                {"error": "User not found."}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        otp = OTP.objects.create(
-            user=user, code="".join(random.choices(string.digits, k=6))
-        )
-        # Send SMS
-        if user.phone_number:
-            send_sms_notification.delay(
-                str(user.phone_number), {"code": otp.code}
-            )
-        # Send Email
-        if user.email:
-            send_email_notification.delay(
-                user.email, "OTP Code", {"code": otp.code}
-            )
-        return Response(
-            {"message": "OTP sent successfully."}, status=status.HTTP_200_OK
-        )
+        try:
+            send_otp_service(phone_number=phone_number, email=email)
+            return Response({"message": "OTP sent successfully."}, status=status.HTTP_200_OK)
+        except ApplicationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["post"])
     def verify_otp(self, request):
@@ -117,52 +84,11 @@ class UserViewSet(viewsets.ModelViewSet):
         phone_number = request.data.get("phone_number")
         email = request.data.get("email")
         code = request.data.get("code")
-        if not code or (not phone_number and not email):
-            return Response(
-                {"error": "Phone number or email and code are required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        user = None
-        if phone_number:
-            try:
-                user = User.objects.get(phone_number=phone_number)
-            except User.DoesNotExist:
-                pass
-        if email and not user:
-            try:
-                user = User.objects.get(email=email)
-            except User.DoesNotExist:
-                return Response(
-                    {"error": "User not found."}, status=status.HTTP_400_BAD_REQUEST
-                )
-        if not user:
-            return Response(
-                {"error": "User not found."}, status=status.HTTP_400_BAD_REQUEST
-            )
-
         try:
-            otp = OTP.objects.get(user=user, code=code, is_active=True)
-            if (
-                timezone.now() - otp.created_at
-            ).total_seconds() > 300:  # 5 minutes
-                otp.is_active = False
-                otp.save()
-                return Response(
-                    {"error": "OTP expired."}, status=status.HTTP_400_BAD_REQUEST
-                )
-            otp.is_active = False
-            otp.save()
-            refresh = RefreshToken.for_user(user)
-            return Response(
-                {
-                    "refresh": str(refresh),
-                    "access": str(refresh.access_token),
-                }
-            )
-        except OTP.DoesNotExist:
-            return Response(
-                {"error": "Invalid OTP."}, status=status.HTTP_400_BAD_REQUEST
-            )
+            tokens = verify_otp_service(phone_number=phone_number, email=email, code=code)
+            return Response(tokens, status=status.HTTP_200_OK)
+        except ApplicationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 
@@ -188,31 +114,13 @@ class TeamViewSet(viewsets.ModelViewSet):
         team = self.get_object()
         user_id = request.data.get("user_id")
         if not user_id:
-            return Response(
-                {"error": "User ID is required."}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "User ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return Response(
-                {"error": "User not found."}, status=status.HTTP_400_BAD_REQUEST
-            )
-        if user in team.members.all():
-            return Response(
-                {"error": "User is already a member of the team."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        invitation, created = TeamInvitation.objects.get_or_create(
-            from_user=request.user, to_user=user, team=team
-        )
-        if not created:
-            return Response(
-                {"error": "Invitation already sent."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        return Response(
-            {"message": "Invitation sent successfully."}, status=status.HTTP_200_OK
-        )
+            invite_member_service(team=team, from_user=request.user, to_user_id=user_id)
+            return Response({"message": "Invitation sent successfully."}, status=status.HTTP_200_OK)
+        except ApplicationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(
         detail=False,
@@ -225,37 +133,15 @@ class TeamViewSet(viewsets.ModelViewSet):
         Respond to a team invitation.
         """
         invitation_id = request.data.get("invitation_id")
-        invitation_status = request.data.get("status")
-        if not invitation_id or not invitation_status:
-            return Response(
-                {"error": "Invitation ID and status are required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        status_action = request.data.get("status")
+        if not invitation_id or not status_action:
+            return Response({"error": "Invitation ID and status are required."}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            invitation = TeamInvitation.objects.get(
-                id=invitation_id, to_user=request.user
-            )
-        except TeamInvitation.DoesNotExist:
-            return Response(
-                {"error": "Invitation not found."}, status=status.HTTP_400_BAD_REQUEST
-            )
-        if invitation_status == "accepted":
-            invitation.status = "accepted"
-            invitation.team.members.add(request.user)
-            invitation.save()
-            return Response(
-                {"message": "Invitation accepted."}, status=status.HTTP_200_OK
-            )
-        elif invitation_status == "rejected":
-            invitation.status = "rejected"
-            invitation.save()
-            return Response(
-                {"message": "Invitation rejected."}, status=status.HTTP_200_OK
-            )
-        else:
-            return Response(
-                {"error": "Invalid status."}, status=status.HTTP_400_BAD_REQUEST
-            )
+            respond_to_invitation_service(invitation_id=invitation_id, user=request.user, status=status_action)
+            return Response({"message": f"Invitation {status_action}."}, status=status.HTTP_200_OK)
+        except ApplicationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
     def leave_team(self, request, pk=None):
@@ -263,20 +149,11 @@ class TeamViewSet(viewsets.ModelViewSet):
         Leave a team.
         """
         team = self.get_object()
-        if request.user not in team.members.all():
-            return Response(
-                {"error": "You are not a member of this team."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        if request.user == team.captain:
-            return Response(
-                {"error": "The captain cannot leave the team."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        team.members.remove(request.user)
-        return Response(
-            {"message": "You have left the team."}, status=status.HTTP_200_OK
-        )
+        try:
+            leave_team_service(team=team, user=request.user)
+            return Response({"message": "You have left the team."}, status=status.HTTP_200_OK)
+        except ApplicationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=["post"], permission_classes=[IsCaptain])
     def remove_member(self, request, pk=None):
@@ -286,30 +163,17 @@ class TeamViewSet(viewsets.ModelViewSet):
         team = self.get_object()
         user_id = request.data.get("user_id")
         if not user_id:
-            return Response(
-                {"error": "User ID is required."}, status=status.HTTP_400_BAD_REQUEST
-            )
-        try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return Response(
-                {"error": "User not found."}, status=status.HTTP_400_BAD_REQUEST
-            )
-        if user not in team.members.all():
-            return Response(
-                {"error": "User is not a member of the team."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        if user == team.captain:
-            return Response(
-                {"error": "The captain cannot be removed from the team."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        team.members.remove(user)
-        return Response(
-            {"message": "Member removed successfully."}, status=status.HTTP_200_OK
-        )
+            return Response({"error": "User ID is required."}, status=status.HTTP_400_BAD_REQUEST)
 
+        try:
+            remove_member_service(team=team, captain=request.user, member_id=user_id)
+            return Response({"message": "Member removed successfully."}, status=status.HTTP_200_OK)
+        except ApplicationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+from django.db.models import Prefetch
+from wallet.models import Transaction
 
 class DashboardView(APIView):
     """
@@ -319,17 +183,22 @@ class DashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user = request.user
-        upcoming_tournaments = user.tournaments.filter(
-            start_date__gte=timezone.now()
-        ).order_by("start_date")
-        sent_invitations = user.sent_invitations.filter(status="pending")
-        received_invitations = user.received_invitations.filter(status="pending")
-        latest_transactions = user.wallet.transaction_set.order_by("-timestamp")[:5]
+        user = User.objects.prefetch_related(
+            Prefetch('tournaments', queryset=Tournament.objects.filter(start_date__gte=timezone.now()).order_by("start_date")),
+            Prefetch('sent_invitations', queryset=TeamInvitation.objects.filter(status="pending")),
+            Prefetch('received_invitations', queryset=TeamInvitation.objects.filter(status="pending")),
+            Prefetch('wallet__transaction_set', queryset=Transaction.objects.order_by("-timestamp")[:5])
+        ).get(pk=request.user.pk)
+
+        # The data is now pre-fetched, so accessing it doesn't cause new queries.
+        upcoming_tournaments = user.tournaments.all()
+        sent_invitations = user.sent_invitations.all()
+        received_invitations = user.received_invitations.all()
+        latest_transactions = user.wallet.transaction_set.all()
 
         data = {
             "upcoming_tournaments": TournamentSerializer(
-                upcoming_tournaments, many=True
+                upcoming_tournaments, many=True, context={'request': request}
             ).data,
             "sent_invitations": TeamInvitationSerializer(
                 sent_invitations, many=True
