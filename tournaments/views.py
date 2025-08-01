@@ -36,6 +36,8 @@ from .services import (
     pay_prize,
     refund_entry_fees,
     get_tournament_winners,
+    confirm_match_result,
+    dispute_match_result,
 )
 from notifications.services import send_notification
 from .models import Report, WinnerSubmission
@@ -213,7 +215,18 @@ class MatchViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            confirm_match_result(match, user, winner_id)
+            if match.match_type == "individual":
+                winner = User.objects.get(id=winner_id)
+            else:
+                winner = Team.objects.get(id=winner_id)
+        except (User.DoesNotExist, Team.DoesNotExist):
+            return Response(
+                {"error": "Invalid winner ID."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            confirm_match_result(match, winner)
             return Response({"message": "Match result confirmed successfully."})
         except (PermissionDenied, ValidationError) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

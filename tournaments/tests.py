@@ -7,8 +7,11 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from users.models import Team, User
 
+from unittest.mock import patch
 from django.core.exceptions import PermissionDenied
+from django.core.files.uploadedfile import SimpleUploadedFile
 from .models import Game, Match, Tournament, Report, WinnerSubmission
+from verification.models import Verification
 
 
 class TournamentAPITest(APITestCase):
@@ -28,6 +31,8 @@ class TournamentAPITest(APITestCase):
         Wallet.objects.create(
             user=self.user2, total_balance=100, withdrawable_balance=50
         )
+        Verification.objects.create(user=self.user1, level=1)
+        Verification.objects.create(user=self.user2, level=1)
         self.team1 = Team.objects.create(name="Team 1", captain=self.user1)
         self.team2 = Team.objects.create(name="Team 2", captain=self.user2)
         self.team1.members.add(self.user1)
@@ -57,11 +62,15 @@ class TournamentAPITest(APITestCase):
         self.client.force_authenticate(user=self.user1)
         url = reverse("tournament-join", kwargs={"pk": self.individual_tournament.pk})
         response = self.client.post(f"{url}")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.individual_tournament.refresh_from_db()
         self.assertIn(self.user1, self.individual_tournament.participants.all())
 
-    def test_join_team_tournament_with_selected_members(self):
+    @patch("tournaments.views.send_sms_notification")
+    @patch("tournaments.views.send_email_notification")
+    def test_join_team_tournament_with_selected_members(
+        self, mock_send_email, mock_send_sms
+    ):
         self.client.force_authenticate(user=self.user1)
         url = reverse("tournament-join", kwargs={"pk": self.team_tournament.pk})
         data = {"team_id": self.team1.id, "member_ids": [self.user1.id]}
@@ -70,6 +79,8 @@ class TournamentAPITest(APITestCase):
         self.team_tournament.refresh_from_db()
         self.assertIn(self.team1, self.team_tournament.teams.all())
         self.assertIn(self.user1, self.team_tournament.participants.all())
+        mock_send_email.delay.assert_called()
+        mock_send_sms.delay.assert_called()
 
     def test_join_team_tournament_insufficient_funds(self):
         self.user3 = User.objects.create_user(
@@ -80,6 +91,7 @@ class TournamentAPITest(APITestCase):
         Wallet.objects.create(
             user=self.user3, total_balance=10, withdrawable_balance=5
         )
+        Verification.objects.create(user=self.user3, level=1)
         self.team1.members.add(self.user3)
         self.client.force_authenticate(user=self.user1)
         url = reverse("tournament-join", kwargs={"pk": self.team_tournament.pk})
@@ -115,6 +127,10 @@ class TournamentAPITest(APITestCase):
         self.user6 = User.objects.create_user(
             username="user6", password="password", phone_number="+12125552366"
         )
+        Verification.objects.create(user=self.user3, level=1)
+        Verification.objects.create(user=self.user4, level=1)
+        Verification.objects.create(user=self.user5, level=1)
+        Verification.objects.create(user=self.user6, level=1)
         self.team1.members.add(
             self.user3, self.user4, self.user5, self.user6
         )
@@ -216,6 +232,7 @@ class ReportTests(APITestCase):
             tournament=self.tournament,
             participant1_user=self.user1,
             participant2_user=self.user2,
+            round=1,
         )
         self.client.force_authenticate(user=self.user1)
 
@@ -246,14 +263,16 @@ class WinnerSubmissionTests(APITestCase):
         # Assume user1 is a winner
         self.client.force_authenticate(user=self.user1)
 
-    def test_create_winner_submission(self):
+    @patch("tournaments.views.get_tournament_winners")
+    def test_create_winner_submission(self, mock_get_winners):
+        mock_get_winners.return_value = []  # Simulate user is not a winner
         url = reverse("winnersubmission-list")
-        # This test will fail because the logic to determine top 5 winners is not implemented yet
-        # and there is no prize pool.
-        # For now, we just check if the endpoint is reachable.
-        with self.assertRaises(PermissionDenied):
-            self.client.post(
-                url,
-                {"tournament": self.tournament.id, "video": "some_video.mp4"},
-                format="multipart",
-            )
+        video = SimpleUploadedFile(
+            "file.mp4", b"file_content", content_type="video/mp4"
+        )
+        response = self.client.post(
+            url,
+            {"tournament": self.tournament.id, "video": video},
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
