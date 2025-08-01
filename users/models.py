@@ -14,9 +14,6 @@ class User(AbstractUser):
         "tournaments.Rank", on_delete=models.SET_NULL, null=True, blank=True
     )
 
-    class Meta:
-        app_label = "users"
-
     def __str__(self):
         return self.username
 
@@ -46,9 +43,6 @@ class Role(models.Model):
     description = models.TextField(blank=True)
     is_default = models.BooleanField(default=False)
 
-    class Meta:
-        app_label = "users"
-
     def __str__(self):
         return self.group.name
 
@@ -76,7 +70,6 @@ class InGameID(models.Model):
 
     class Meta:
         unique_together = ("user", "game")
-        app_label = "users"
 
 
 from django.core.exceptions import ValidationError
@@ -93,9 +86,6 @@ class Team(models.Model):
     def __str__(self):
         return self.name
 
-    class Meta:
-        app_label = "users"
-
 
 def validate_user_team_limit(user):
     if user.teams.count() >= 10:
@@ -109,7 +99,6 @@ class TeamMembership(models.Model):
 
     class Meta:
         unique_together = ("user", "team")
-        app_label = "users"
 
     def save(self, *args, **kwargs):
         validate_user_team_limit(self.user)
@@ -136,7 +125,6 @@ class TeamInvitation(models.Model):
 
     class Meta:
         unique_together = ("from_user", "to_user", "team")
-        app_label = "users"
 
 
 class OTP(models.Model):
@@ -147,6 +135,3 @@ class OTP(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.code}"
-
-    class Meta:
-        app_label = "users"

@@ -10,25 +10,10 @@ class Rank(models.Model):
     def __str__(self):
         return self.name
 
-    class Meta:
-        app_label = "tournaments"
-
-    class Meta:
-        app_label = "tournaments"
-
-    class Meta:
-        app_label = "tournaments"
-
-    class Meta:
-        app_label = "tournaments"
-
 
 class Game(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField()
-
-    class Meta:
-        app_label = "tournaments"
 
 
 from users.models import User
@@ -41,7 +26,6 @@ class Scoring(models.Model):
 
     class Meta:
         unique_together = ("tournament", "user")
-        app_label = "tournaments"
 
 
 class GameImage(models.Model):
@@ -59,16 +43,11 @@ class GameImage(models.Model):
     image_type = models.CharField(max_length=20, choices=IMAGE_TYPE_CHOICES)
     image = models.ImageField(upload_to="game_images/")
 
-    class Meta:
-        app_label = "tournaments"
-
     def __str__(self):
         return f"{self.game.name} - {self.get_image_type_display()}"
 
 
 class Tournament(models.Model):
-    class Meta:
-        app_label = "tournaments"
     TOURNAMENT_TYPE_CHOICES = (
         ("individual", "Individual"),
         ("team", "Team"),
@@ -157,7 +136,6 @@ class Participant(models.Model):
 
     class Meta:
         unique_together = ("user", "tournament")
-        app_label = "tournaments"
 
 
 class Match(models.Model):
@@ -240,9 +218,6 @@ class Match(models.Model):
         else:
             return f"{self.participant1_team} vs {self.participant2_team} - Tournament: {self.tournament}"
 
-    class Meta:
-        app_label = "tournaments"
-
 
 class Report(models.Model):
     REPORT_STATUS_CHOICES = (
@@ -267,12 +242,6 @@ class Report(models.Model):
     def __str__(self):
         return f"Report by {self.reporter.username} against {self.reported_user.username} in {self.match}"
 
-    class Meta:
-        app_label = "tournaments"
-
-    class Meta:
-        app_label = "tournaments"
-
 
 class WinnerSubmission(models.Model):
     SUBMISSION_STATUS_CHOICES = (
@@ -290,12 +259,3 @@ class WinnerSubmission(models.Model):
 
     def __str__(self):
         return f"Submission by {self.winner.username} for {self.tournament.name}"
-
-    class Meta:
-        app_label = "tournaments"
-
-    class Meta:
-        app_label = "tournaments"
-
-    class Meta:
-        app_label = "tournaments"

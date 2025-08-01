@@ -38,8 +38,13 @@ from .services import (
     get_tournament_winners,
     confirm_match_result,
     dispute_match_result,
+    create_report_service,
+    resolve_report_service,
+    reject_report_service,
+    create_winner_submission_service,
+    approve_winner_submission_service,
+    reject_winner_submission_service,
 )
-from notifications.services import send_notification
 from .models import Report, WinnerSubmission
 from .serializers import ReportSerializer, WinnerSubmissionSerializer, ScoringSerializer
 from .models import Scoring
@@ -58,14 +63,28 @@ class TournamentParticipantListView(generics.ListAPIView):
         return Participant.objects.filter(tournament_id=tournament_id)
 
 
+from django.db.models import Prefetch
+
 class TournamentViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing tournaments.
     """
 
-    queryset = Tournament.objects.all()
     serializer_class = TournamentSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        Prefetch related data to optimize performance and avoid N+1 queries.
+        - `participant_set` is needed by the serializer to get user-specific rank and prize.
+        - `teams` and `game` are also serialized.
+        """
+        participant_queryset = Participant.objects.select_related('user')
+        return Tournament.objects.prefetch_related(
+            Prefetch('participant_set', queryset=participant_queryset),
+            'teams',
+            'game'
+        ).all()
     filter_backends = [DjangoFilterBackend]
     filterset_class = TournamentFilter
 
@@ -81,83 +100,23 @@ class TournamentViewSet(viewsets.ModelViewSet):
         """
         tournament = self.get_object()
         user = request.user
+        team_id = request.data.get("team_id")
+        member_ids = request.data.get("member_ids")
 
         try:
-            verification = user.verification
-        except Verification.DoesNotExist:
-            verification = None
-
-        if verification is None or verification.level < tournament.required_verification_level:
-            return Response({'error': 'You do not have the required verification level to join this tournament.'}, status=status.HTTP_403_FORBIDDEN)
-
-        if user.score >= 1000 and (verification is None or verification.level < 2):
-            return Response({'error': 'You must be verified at level 2 to join this tournament.'}, status=status.HTTP_403_FORBIDDEN)
-
-        if user.score >= 2000 and (verification is None or verification.level < 3):
-            return Response({'error': 'You must be verified at level 3 to join this tournament.'}, status=status.HTTP_403_FORBIDDEN)
-
-        if tournament.type == "individual":
-            try:
-                participant = join_tournament(
-                    tournament=tournament, user=user, team=None, members=None
-                )
-                serializer = ParticipantSerializer(participant)
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            except ApplicationError as e:
-                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-        elif tournament.type == "team":
-            team_id = request.data.get("team_id")
-            member_ids = request.data.get("member_ids")
-
-            if not team_id or not member_ids:
-                return Response(
-                    {"error": "Team ID and member IDs are required."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            try:
-                team = Team.objects.get(id=team_id)
-                members = User.objects.filter(id__in=member_ids)
-            except (Team.DoesNotExist, User.DoesNotExist):
-                return Response(
-                    {"error": "Invalid team or member ID."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            if user != team.captain:
-                return Response(
-                    {"error": "Only the team captain can join a tournament."},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
-
-            if len(members) > 4:
-                return Response(
-                    {"error": "You can select a maximum of 4 members."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            try:
-                team = join_tournament(
-                    tournament=tournament, user=user, team=team, members=members
-                )
-
-                # Send notifications
-                context = {
-                    "tournament_name": tournament.name,
-                    "entry_code": "placeholder-entry-code",  # Replace with actual entry code
-                    "room_id": "placeholder-room-id",  # Replace with actual room ID
-                }
-                for member in members:
-                    send_email_notification.delay(
-                        member.email, "Tournament Joined", context
-                    )
-                    send_sms_notification.delay(str(member.phone_number), context)
-
-                serializer = TeamSerializer(team)
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            except ApplicationError as e:
-                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            result = join_tournament(
+                tournament=tournament,
+                user=user,
+                team_id=team_id,
+                member_ids=member_ids,
+            )
+            if tournament.type == "individual":
+                serializer = ParticipantSerializer(result)
+            else:
+                serializer = TeamSerializer(result)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ApplicationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
     def generate_matches(self, request, pk=None):
@@ -205,30 +164,15 @@ class MatchViewSet(viewsets.ModelViewSet):
         Confirm the result of a match.
         """
         match = self.get_object()
-        user = request.user
         winner_id = request.data.get("winner_id")
 
         if not winner_id:
-            return Response(
-                {"error": "Winner ID not provided."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response({"error": "Winner ID not provided."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            if match.match_type == "individual":
-                winner = User.objects.get(id=winner_id)
-            else:
-                winner = Team.objects.get(id=winner_id)
-        except (User.DoesNotExist, Team.DoesNotExist):
-            return Response(
-                {"error": "Invalid winner ID."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            confirm_match_result(match, winner)
+            confirm_match_result(match, winner_id=winner_id)
             return Response({"message": "Match result confirmed successfully."})
-        except (PermissionDenied, ValidationError) as e:
+        except (ApplicationError, PermissionDenied, ValidationError) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=["post"])
@@ -315,11 +259,13 @@ class ReportViewSet(viewsets.ModelViewSet):
         return Report.objects.filter(reporter=self.request.user)
 
     def perform_create(self, serializer):
-        report = serializer.save(reporter=self.request.user)
-        send_notification(
-            user=report.reported_user,
-            message=f"You have been reported in match {report.match}.",
-            notification_type="report_new",
+        validated_data = serializer.validated_data
+        create_report_service(
+            reporter=self.request.user,
+            reported_user_id=validated_data["reported_user"].id,
+            match_id=validated_data["match"].id,
+            description=validated_data["description"],
+            evidence=validated_data.get("evidence")
         )
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
@@ -329,27 +275,9 @@ class ReportViewSet(viewsets.ModelViewSet):
         """
         report = self.get_object()
         ban_user = request.data.get("ban_user", False)
-        if ban_user:
-            reported_user = report.reported_user
-            reported_user.is_active = False
-            reported_user.save()
-            report.status = "resolved"
-            report.save()
-            send_notification(
-                user=report.reporter,
-                message=f"Your report against {reported_user.username} has been resolved and the user has been banned.",
-                notification_type="report_status_change",
-            )
-            return Response({"message": "Report resolved and user banned."})
-        else:
-            report.status = "resolved"
-            report.save()
-            send_notification(
-                user=report.reporter,
-                message=f"Your report against {report.reported_user.username} has been resolved.",
-                notification_type="report_status_change",
-            )
-            return Response({"message": "Report resolved."})
+        resolve_report_service(report, ban_user)
+        message = "Report resolved and user banned." if ban_user else "Report resolved."
+        return Response({"message": message})
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
     def reject(self, request, pk=None):
@@ -357,13 +285,7 @@ class ReportViewSet(viewsets.ModelViewSet):
         Reject a report.
         """
         report = self.get_object()
-        report.status = "rejected"
-        report.save()
-        send_notification(
-            user=report.reporter,
-            message=f"Your report against {report.reported_user.username} has been rejected.",
-            notification_type="report_status_change",
-        )
+        reject_report_service(report)
         return Response({"message": "Report rejected."})
 
 
@@ -382,16 +304,16 @@ class WinnerSubmissionViewSet(viewsets.ModelViewSet):
         return WinnerSubmission.objects.filter(winner=self.request.user)
 
     def perform_create(self, serializer):
-        # Check if the user is one of the top 5 winners
-        winners = get_tournament_winners(serializer.validated_data["tournament"])
-        if self.request.user not in winners:
-            raise PermissionDenied("You are not one of the top 5 winners.")
-        submission = serializer.save(winner=self.request.user)
-        send_notification(
-            user=self.request.user,
-            message="Your winner submission has been received.",
-            notification_type="winner_submission_status_change",
-        )
+        validated_data = serializer.validated_data
+        try:
+            create_winner_submission_service(
+                user=self.request.user,
+                tournament=validated_data["tournament"],
+                video=validated_data["video"]
+            )
+        except ApplicationError as e:
+            # DRF's exception handler will turn this into a 400 response
+            raise ValidationError(str(e))
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
     def approve(self, request, pk=None):
@@ -399,14 +321,7 @@ class WinnerSubmissionViewSet(viewsets.ModelViewSet):
         Approve a winner submission and pay the prize.
         """
         submission = self.get_object()
-        submission.status = "approved"
-        submission.save()
-        pay_prize(submission.tournament, submission.winner)
-        send_notification(
-            user=submission.winner,
-            message=f"Your submission for {submission.tournament.name} has been approved.",
-            notification_type="winner_submission_status_change",
-        )
+        approve_winner_submission_service(submission)
         return Response({"message": "Submission approved and prize paid."})
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
@@ -415,14 +330,7 @@ class WinnerSubmissionViewSet(viewsets.ModelViewSet):
         Reject a winner submission.
         """
         submission = self.get_object()
-        submission.status = "rejected"
-        submission.save()
-        refund_entry_fees(submission.tournament, submission.winner)
-        send_notification(
-            user=submission.winner,
-            message=f"Your submission for {submission.tournament.name} has been rejected.",
-            notification_type="winner_submission_status_change",
-        )
+        reject_winner_submission_service(submission)
         return Response({"message": "Submission rejected and entry fees refunded."})
 
 

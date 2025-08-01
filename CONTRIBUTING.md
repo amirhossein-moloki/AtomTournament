@@ -20,10 +20,12 @@ git checkout -b 123-add-a-contributing-file
 
 ## Get the test suite running
 
-Be sure to have the test suite running before you make any changes. You'll need to have `docker` and `docker-compose` installed.
+Follow the installation instructions in `README.md` to set up your local development environment.
+
+Once set up, you can run the test suite with the following command:
 
 ```sh
-docker-compose up
+python manage.py test
 ```
 
 ## Implement your fix or feature

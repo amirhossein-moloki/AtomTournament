@@ -18,7 +18,7 @@ This is a Django-based tournament management system that allows users to create 
 ### Prerequisites
 
 *   Python 3.8+
-*   PostgreSQL
+*   PostgreSQL 12+
 *   Redis
 
 ### Installation
@@ -45,15 +45,20 @@ This is a Django-based tournament management system that allows users to create 
 
 4.  **Set up the environment variables:**
 
-    Create a `.env` file in the `tournament_project` directory and add the following variables:
+    Copy the example environment file and fill in your details.
 
+    ```bash
+    cp env.example .env
     ```
-    SECRET_KEY=your-secret-key
+
+    You must set the `SECRET_KEY` and `DATABASE_URL` for your local PostgreSQL instance. The other variables have sensible defaults for local development.
+
+    **Example `.env`:**
+    ```
+    SECRET_KEY="your-super-secret-key-here"
     DEBUG=True
-    DATABASE_URL=postgres://user:password@host:port/dbname
-    REDIS_URL=redis://localhost:6379/0
-    ZARINPAL_MERCHANT_ID="your-merchant-id"
-    ZARINPAL_SANDBOX=True
+    DATABASE_URL="postgres://user:password@localhost:5432/tournament_db"
+    REDIS_URL="redis://localhost:6379/0"
     ```
 
 5.  **Run the database migrations:**

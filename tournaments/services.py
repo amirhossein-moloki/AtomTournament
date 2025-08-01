@@ -45,21 +45,25 @@ def generate_matches(tournament: Tournament):
             )
 
 
-def confirm_match_result(match: Match, winner, proof_image=None):
+def confirm_match_result(match: Match, winner_id: int, proof_image=None):
     """
     Confirms the result of a match and advances the winner.
     """
     if match.is_confirmed:
         raise ApplicationError("Match result has already been confirmed.")
 
+    try:
+        if match.match_type == "individual":
+            winner = User.objects.get(id=winner_id)
+            match.winner_user = winner
+        else:
+            winner = Team.objects.get(id=winner_id)
+            match.winner_team = winner
+    except (User.DoesNotExist, Team.DoesNotExist):
+        raise ApplicationError("Invalid winner ID.")
+
     match.is_confirmed = True
     match.result_proof = proof_image
-
-    if match.match_type == "individual":
-        match.winner_user = winner
-    else:
-        match.winner_team = winner
-
     match.save()
 
     # Check if all matches in the round are confirmed
@@ -132,51 +136,94 @@ def record_match_result(match: Match, winner_id, proof_image=None):
 
 
 from wallet.models import Wallet
+from verification.models import Verification
+from notifications.tasks import send_email_notification, send_sms_notification
 
 
-def join_tournament(tournament: Tournament, user, team, members):
+def join_tournament(tournament: Tournament, user: User, team_id: int = None, member_ids: list[int] = None):
     """
-    Adds a user or a team to a tournament.
+    Handles the logic for a user or a team to join a tournament,
+    including validation, fee deduction, and notification.
     """
+    # 1. Verification and Score Checks
+    try:
+        verification = user.verification
+    except Verification.DoesNotExist:
+        verification = None
+
+    if verification is None or verification.level < tournament.required_verification_level:
+        raise ApplicationError('You do not have the required verification level to join this tournament.')
+
+    if user.score >= 1000 and (verification is None or verification.level < 2):
+        raise ApplicationError('You must be verified at level 2 to join this tournament.')
+
+    if user.score >= 2000 and (verification is None or verification.level < 3):
+        raise ApplicationError('You must be verified at level 3 to join this tournament.')
+
+    # 2. Handle Individual vs. Team Tournament
     if tournament.type == "individual":
         if tournament.participants.filter(id=user.id).exists():
             raise ApplicationError("You have already joined this tournament.")
-        # Check wallet balance
+
+        # 3. Handle Entry Fee
         if not tournament.is_free:
             wallet = Wallet.objects.get(user=user)
             if wallet.withdrawable_balance < tournament.entry_fee:
                 raise ApplicationError("Insufficient funds to join the tournament.")
             wallet.withdrawable_balance -= tournament.entry_fee
             wallet.save()
+
         participant = Participant.objects.create(user=user, tournament=tournament)
         return participant
+
     elif tournament.type == "team":
+        if not team_id or not member_ids:
+            raise ApplicationError("Team ID and member IDs are required for team tournaments.")
+
+        try:
+            team = Team.objects.get(id=team_id)
+            members = User.objects.filter(id__in=member_ids)
+        except (Team.DoesNotExist, User.DoesNotExist):
+            raise ApplicationError("Invalid team or member ID.")
+
+        if user != team.captain:
+            raise ApplicationError("Only the team captain can join a tournament.")
+
+        if len(members) > 4:
+            raise ApplicationError("You can select a maximum of 4 members.")
+
         if tournament.teams.filter(id=team.id).exists():
             raise ApplicationError("Your team has already joined this tournament.")
-        if any(
-            tournament.participants.filter(id=member.id).exists() for member in members
-        ):
-            raise ApplicationError(
-                "One or more members of your team are already in this tournament."
-            )
-        # Check wallet balance for all members
+
+        if any(tournament.participants.filter(id=member.id).exists() for member in members):
+            raise ApplicationError("One or more members of your team are already in this tournament.")
+
+        # 3. Handle Entry Fee for Team
         if not tournament.is_free:
             for member in members:
                 wallet = Wallet.objects.get(user=member)
                 if wallet.withdrawable_balance < tournament.entry_fee:
-                    raise ApplicationError(
-                        f"Insufficient funds for member {member.username}."
-                    )
-        # Deduct entry fee from all members
-        if not tournament.is_free:
+                    raise ApplicationError(f"Insufficient funds for member {member.username}.")
+            # Deduct fees only after all members' balances are confirmed
             for member in members:
                 wallet = Wallet.objects.get(user=member)
                 wallet.withdrawable_balance -= tournament.entry_fee
                 wallet.save()
+
         tournament.teams.add(team)
-        # Create participant entries for all team members
         for member in members:
             Participant.objects.get_or_create(user=member, tournament=tournament)
+
+        # 4. Send Notifications
+        context = {
+            "tournament_name": tournament.name,
+            "entry_code": "placeholder-entry-code",  # Replace with actual entry code
+            "room_id": "placeholder-room-id",  # Replace with actual room ID
+        }
+        for member in members:
+            send_email_notification.delay(member.email, "Tournament Joined", context)
+            send_sms_notification.delay(str(member.phone_number), context)
+
         return team
 
 
@@ -234,3 +281,114 @@ def refund_entry_fees(tournament: Tournament, cheater):
             wallet = Wallet.objects.get(user=participant.user)
             wallet.withdrawable_balance += tournament.entry_fee
             wallet.save()
+
+
+from notifications.services import send_notification
+from .models import Report
+
+def create_report_service(reporter: User, reported_user_id: int, match_id: int, description: str, evidence=None):
+    """
+    Creates a report and sends a notification.
+    """
+    report = Report.objects.create(
+        reporter=reporter,
+        reported_user_id=reported_user_id,
+        match_id=match_id,
+        description=description,
+        evidence=evidence
+    )
+    send_notification(
+        user=report.reported_user,
+        message=f"You have been reported in match {report.match}.",
+        notification_type="report_new",
+    )
+    return report
+
+def resolve_report_service(report: Report, ban_user: bool):
+    """
+    Resolves a report, optionally banning the user, and sends a notification.
+    """
+    if ban_user:
+        reported_user = report.reported_user
+        reported_user.is_active = False
+        reported_user.save()
+        report.status = "resolved"
+        report.save()
+        send_notification(
+            user=report.reporter,
+            message=f"Your report against {reported_user.username} has been resolved and the user has been banned.",
+            notification_type="report_status_change",
+        )
+    else:
+        report.status = "resolved"
+        report.save()
+        send_notification(
+            user=report.reporter,
+            message=f"Your report against {report.reported_user.username} has been resolved.",
+            notification_type="report_status_change",
+        )
+    return report
+
+def reject_report_service(report: Report):
+    """
+    Rejects a report and sends a notification.
+    """
+    report.status = "rejected"
+    report.save()
+    send_notification(
+        user=report.reporter,
+        message=f"Your report against {report.reported_user.username} has been rejected.",
+        notification_type="report_status_change",
+    )
+    return report
+
+
+from .models import WinnerSubmission
+
+def create_winner_submission_service(user: User, tournament: Tournament, video):
+    """
+    Creates a winner submission after checking if the user is a top 5 winner.
+    """
+    winners = get_tournament_winners(tournament)
+    if user not in winners:
+        raise ApplicationError("You are not one of the top 5 winners.")
+
+    submission = WinnerSubmission.objects.create(
+        winner=user,
+        tournament=tournament,
+        video=video
+    )
+    send_notification(
+        user=user,
+        message="Your winner submission has been received.",
+        notification_type="winner_submission_status_change",
+    )
+    return submission
+
+def approve_winner_submission_service(submission: WinnerSubmission):
+    """
+    Approves a winner submission, pays the prize, and sends a notification.
+    """
+    submission.status = "approved"
+    submission.save()
+    pay_prize(submission.tournament, submission.winner)
+    send_notification(
+        user=submission.winner,
+        message=f"Your submission for {submission.tournament.name} has been approved.",
+        notification_type="winner_submission_status_change",
+    )
+    return submission
+
+def reject_winner_submission_service(submission: WinnerSubmission):
+    """
+    Rejects a winner submission, refunds entry fees, and sends a notification.
+    """
+    submission.status = "rejected"
+    submission.save()
+    refund_entry_fees(submission.tournament, submission.winner)
+    send_notification(
+        user=submission.winner,
+        message=f"Your submission for {submission.tournament.name} has been rejected.",
+        notification_type="winner_submission_status_change",
+    )
+    return submission
