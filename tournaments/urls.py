@@ -7,10 +7,16 @@ from .views import (
     TopTournamentsView,
     TotalPrizeMoneyView,
     TotalTournamentsView,
+    UserTournamentHistoryView,
 )
 
 urlpatterns = [
     path("", include(router.urls)),
+    path(
+        "my-tournaments/",
+        UserTournamentHistoryView.as_view(),
+        name="my-tournament-history",
+    ),
     path("admin/reports/", AdminReportListView.as_view(), name="admin-reports"),
     path(
         "admin/winner-submissions/",
