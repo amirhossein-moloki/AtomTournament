@@ -1,3 +1,4 @@
+import magic
 from django.core.exceptions import ValidationError
 from django.core.files.uploadhandler import TemporaryFileUploadHandler
 
@@ -22,7 +23,14 @@ class SafeFileUploadHandler(TemporaryFileUploadHandler):
         return super().receive_data_chunk(raw_data, start)
 
     def file_complete(self, file_size):
-        self.file.content_type = self.content_type
-        if self.content_type not in self.allowed_content_types:
-            raise ValidationError(f"Invalid content type: {self.content_type}")
+        self.file.seek(0)
+        file_content = self.file.read(2048)  # Read first 2KB for MIME check
+        self.file.seek(0)
+
+        mime_type = magic.from_buffer(file_content, mime=True)
+
+        if mime_type not in self.allowed_content_types:
+            raise ValidationError(f"Invalid content type: {mime_type}")
+
+        self.file.content_type = mime_type
         return super().file_complete(file_size)

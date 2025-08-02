@@ -23,6 +23,7 @@ from .serializers import (
     RoleSerializer,
     TeamSerializer,
     UserSerializer,
+    UserListSerializer,
     TeamInvitationSerializer,
     TopPlayerSerializer,
     TopTeamSerializer,
@@ -53,6 +54,11 @@ class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["username", "email"]
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return UserListSerializer
+        return UserSerializer
 
     def get_permissions(self):
         if self.action in ["create", "send_otp", "verify_otp"]:

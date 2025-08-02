@@ -12,6 +12,14 @@ class InGameIDSerializer(serializers.ModelSerializer):
         fields = ("game", "player_id")
 
 
+class UserListSerializer(serializers.ModelSerializer):
+    """Serializer for listing users (public data only)."""
+
+    class Meta:
+        model = User
+        fields = ("id", "username")
+
+
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for the User model."""
 

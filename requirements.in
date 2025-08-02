@@ -9,7 +9,7 @@ django-ratelimit
 django-redis
 django-sslserver
 django_celery_results
-djoser
+djoser>=2.3.0
 drf-nested-routers
 drf-spectacular
 
@@ -41,3 +41,5 @@ pip-tools
 twilio
 smsir-python
 pillow
+python-magic
+phonenumbers

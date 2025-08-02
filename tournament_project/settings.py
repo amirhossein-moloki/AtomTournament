@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 import os
 import sys
+import warnings
 from pathlib import Path
 
 import dj_database_url
@@ -27,10 +28,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("SECRET_KEY", "a-default-secret-key")
+SECRET_KEY = os.environ.get("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "t")
+
+if not DEBUG and not SECRET_KEY:
+    raise ValueError("SECRET_KEY must be set in production mode.")
+
+if DEBUG and not SECRET_KEY:
+    SECRET_KEY = "a-weak-dev-secret-key"
 
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "").split(",")
 
@@ -269,6 +276,12 @@ CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "False").lower
     "1",
     "t",
 )
+
+if not DEBUG and CORS_ALLOW_ALL_ORIGINS:
+    warnings.warn(
+        "CORS_ALLOW_ALL_ORIGINS is set to True in a production environment. "
+        "This is a security risk and should be disabled."
+    )
 
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 1
