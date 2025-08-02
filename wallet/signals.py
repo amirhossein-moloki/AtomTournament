@@ -9,10 +9,10 @@ from users.models import User
 def transaction_post_save(sender, instance, created, **kwargs):
     if created:
         wallet = instance.wallet
-        if instance.transaction_type in ['deposit', 'prize']:
+        if instance.transaction_type in ["deposit", "prize"]:
             wallet.total_balance += instance.amount
             wallet.withdrawable_balance += instance.amount
-        elif instance.transaction_type in ['withdrawal', 'entry_fee']:
+        elif instance.transaction_type in ["withdrawal", "entry_fee"]:
             wallet.total_balance -= instance.amount
             wallet.withdrawable_balance -= instance.amount
         wallet.save()
@@ -24,9 +24,7 @@ def transaction_post_save(sender, instance, created, **kwargs):
             "timestamp": instance.timestamp,
         }
         if user.email:
-            send_email_notification.delay(
-                user.email, "New Transaction", context
-            )
+            send_email_notification.delay(user.email, "New Transaction", context)
         if user.phone_number:
             send_sms_notification.delay(str(user.phone_number), context)
 

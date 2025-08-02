@@ -47,7 +47,7 @@ INSTALLED_APPS = [
     "channels",
     "django_filters",
     "phonenumber_field",
-    "drf_spectacular", # این خط را فقط یک بار نگه دارید
+    "drf_spectacular",  # این خط را فقط یک بار نگه دارید
     "users",
     "tournaments",
     "wallet",
@@ -59,9 +59,9 @@ INSTALLED_APPS = [
     "djoser",
     "support",
     "django_ratelimit",
-    'sslserver',
-    'verification',
-    'rewards',
+    "sslserver",
+    "verification",
+    "rewards",
 ]
 
 AUTHENTICATION_BACKENDS = [
@@ -160,6 +160,24 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 PRIVATE_MEDIA_ROOT = os.path.join(BASE_DIR, "private_media")
 
+# Custom Storage Settings
+STORAGE_BACKEND = os.environ.get("STORAGE_BACKEND", "local")
+
+if STORAGE_BACKEND == "s3":
+    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+    AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
+    AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME")
+    AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+    AWS_S3_OBJECT_PARAMETERS = {
+        "CacheControl": "max-age=86400",
+    }
+    AWS_LOCATION = "media"
+    MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/"
+else:
+    DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
@@ -187,7 +205,6 @@ else:
 REST_FRAMEWORK = {
     # این خط برای drf-spectacular الزامیه
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-
     # این خط برای استفاده از JWT Authentication
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -195,11 +212,11 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Tournament Platform API',
-    'DESCRIPTION': 'API for managing tournaments, users, wallets, and more.',
-    'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,  # Optional: hides the schema endpoint from the UI
-    'SCHEMA_PATH_PREFIX': r'/api',
+    "TITLE": "Tournament Platform API",
+    "DESCRIPTION": "API for managing tournaments, users, wallets, and more.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,  # Optional: hides the schema endpoint from the UI
+    "SCHEMA_PATH_PREFIX": r"/api",
 }
 
 DJOSER = {
@@ -225,27 +242,37 @@ FILE_UPLOAD_HANDLERS = [
 
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
-if not DEBUG: # این بخش را اضافه کنید
+if not DEBUG:  # این بخش را اضافه کنید
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-else: # این بخش را اضافه کنید
-    SECURE_HSTS_SECONDS = 0 # یا کلا کامنت کنید
+else:  # این بخش را اضافه کنید
+    SECURE_HSTS_SECONDS = 0  # یا کلا کامنت کنید
     SECURE_HSTS_INCLUDE_SUBDOMAINS = False
     SECURE_HSTS_PRELOAD = False
-SECURE_SSL_REDIRECT = False # این خط را قبلاً بررسی کردیم
+SECURE_SSL_REDIRECT = False  # این خط را قبلاً بررسی کردیم
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
-CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
-CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "False").lower() in ("true", "1", "t")
+CORS_ALLOWED_ORIGINS = os.environ.get(
+    "CORS_ALLOWED_ORIGINS", "http://localhost:3000"
+).split(",")
+CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "False").lower() in (
+    "true",
+    "1",
+    "t",
+)
 
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 1
 AXES_RESET_ON_SUCCESS = True
 
 ZARINPAL_MERCHANT_ID = os.environ.get("ZARINPAL_MERCHANT_ID", "")
-ZARINPAL_SANDBOX = os.environ.get("ZARINPAL_SANDBOX", "False").lower() in ("true", "1", "t")
+ZARINPAL_SANDBOX = os.environ.get("ZARINPAL_SANDBOX", "False").lower() in (
+    "true",
+    "1",
+    "t",
+)
 
 # Celery Configuration
 CELERY_BROKER_URL = "redis://127.0.0.1:6379"
@@ -270,7 +297,7 @@ CACHES = {
         "LOCATION": "redis://127.0.0.1:6379/1",  # دیتابیس 1 برای کش، 0 برای channels/celery
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        }
+        },
     },
     "connection-errors": {
         "BACKEND": "django_ratelimit.tests.MockCache",
@@ -292,27 +319,27 @@ if "test" in sys.argv:
             "LOCATION": "redis://127.0.0.1:6379/1",
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            }
+            },
         },
         "connection-errors": {
             "BACKEND": "django_redis.cache.RedisCache",
             "LOCATION": "redis://127.0.0.1:6379/1",
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            }
+            },
         },
         "connection-errors-redis": {
             "BACKEND": "django_redis.cache.RedisCache",
             "LOCATION": "redis://127.0.0.1:6379/1",
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            }
+            },
         },
         "instant-expiration": {
             "BACKEND": "django_redis.cache.RedisCache",
             "LOCATION": "redis://127.0.0.1:6379/1",
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            }
+            },
         },
     }

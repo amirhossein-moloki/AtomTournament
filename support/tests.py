@@ -4,9 +4,12 @@ from .models import Ticket, TicketMessage
 
 User = get_user_model()
 
+
 class SupportTicketModelTests(TestCase):
     def test_ticket_creation(self):
-        user = User.objects.create_user(username="testuser", password="password", phone_number="+123")
+        user = User.objects.create_user(
+            username="testuser", password="password", phone_number="+123"
+        )
         ticket = Ticket.objects.create(user=user, title="Test Ticket")
         message = TicketMessage.objects.create(
             ticket=ticket,

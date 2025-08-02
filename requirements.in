@@ -1,0 +1,43 @@
+# Framework
+Django
+djangorestframework
+django-cors-headers
+django-filter
+django-phonenumber-field
+django-axes
+django-ratelimit
+django-redis
+django-sslserver
+django_celery_results
+djoser
+drf-nested-routers
+drf-spectacular
+
+# Async & Real-time
+celery
+channels
+redis
+
+# Database & Environment
+dj-database-url
+python-dotenv
+psycopg2-binary
+gunicorn
+
+# Storage
+django-storages
+boto3
+
+# Testing
+fakeredis
+coverage
+
+# Code Quality
+black
+flake8
+pip-tools
+
+# Other
+twilio
+smsir-python
+pillow

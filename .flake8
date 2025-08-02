@@ -1,0 +1,11 @@
+[flake8]
+# Ignore some flake8 warnings that are not compatible with black
+# E203: whitespace before ':'
+# E231: missing whitespace after ','
+# E501: line too long (handled by black)
+# W503: line break before binary operator
+ignore = E203, E231, E501, W503
+max-line-length = 88
+exclude = .git,__pycache__,docs/source/conf.py,old,build,dist,
+    */migrations/*,
+    */venv/*,

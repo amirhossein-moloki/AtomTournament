@@ -1,9 +1,16 @@
 import random
+from decimal import Decimal
 
 from django.db import models
+from rest_framework.exceptions import PermissionDenied
+
 from users.models import Team, User
 from .exceptions import ApplicationError
-from .models import Match, Participant, Tournament
+from .models import Match, Participant, Tournament, Report, WinnerSubmission
+from wallet.models import Wallet
+from verification.models import Verification
+from notifications.tasks import send_email_notification, send_sms_notification
+from notifications.services import send_notification
 
 
 def generate_matches(tournament: Tournament):
@@ -119,9 +126,9 @@ def record_match_result(match: Match, winner_id, proof_image=None):
     """
     try:
         if match.match_type == "individual":
-            winner = Tournament.objects.get(
-                id=match.tournament.id
-            ).participants.get(id=winner_id)
+            winner = Tournament.objects.get(id=match.tournament.id).participants.get(
+                id=winner_id
+            )
         else:
             winner = Tournament.objects.get(id=match.tournament.id).teams.get(
                 id=winner_id
@@ -135,12 +142,12 @@ def record_match_result(match: Match, winner_id, proof_image=None):
     confirm_match_result(match, winner, proof_image)
 
 
-from wallet.models import Wallet
-from verification.models import Verification
-from notifications.tasks import send_email_notification, send_sms_notification
-
-
-def join_tournament(tournament: Tournament, user: User, team_id: int = None, member_ids: list[int] = None):
+def join_tournament(
+    tournament: Tournament,
+    user: User,
+    team_id: int = None,
+    member_ids: list[int] = None,
+):
     """
     Handles the logic for a user or a team to join a tournament,
     including validation, fee deduction, and notification.
@@ -151,14 +158,23 @@ def join_tournament(tournament: Tournament, user: User, team_id: int = None, mem
     except Verification.DoesNotExist:
         verification = None
 
-    if verification is None or verification.level < tournament.required_verification_level:
-        raise ApplicationError('You do not have the required verification level to join this tournament.')
+    if (
+        verification is None
+        or verification.level < tournament.required_verification_level
+    ):
+        raise ApplicationError(
+            "You do not have the required verification level to join this tournament."
+        )
 
     if user.score >= 1000 and (verification is None or verification.level < 2):
-        raise ApplicationError('You must be verified at level 2 to join this tournament.')
+        raise ApplicationError(
+            "You must be verified at level 2 to join this tournament."
+        )
 
     if user.score >= 2000 and (verification is None or verification.level < 3):
-        raise ApplicationError('You must be verified at level 3 to join this tournament.')
+        raise ApplicationError(
+            "You must be verified at level 3 to join this tournament."
+        )
 
     # 2. Handle Individual vs. Team Tournament
     if tournament.type == "individual":
@@ -178,7 +194,9 @@ def join_tournament(tournament: Tournament, user: User, team_id: int = None, mem
 
     elif tournament.type == "team":
         if not team_id or not member_ids:
-            raise ApplicationError("Team ID and member IDs are required for team tournaments.")
+            raise ApplicationError(
+                "Team ID and member IDs are required for team tournaments."
+            )
 
         try:
             team = Team.objects.get(id=team_id)
@@ -195,15 +213,21 @@ def join_tournament(tournament: Tournament, user: User, team_id: int = None, mem
         if tournament.teams.filter(id=team.id).exists():
             raise ApplicationError("Your team has already joined this tournament.")
 
-        if any(tournament.participants.filter(id=member.id).exists() for member in members):
-            raise ApplicationError("One or more members of your team are already in this tournament.")
+        if any(
+            tournament.participants.filter(id=member.id).exists() for member in members
+        ):
+            raise ApplicationError(
+                "One or more members of your team are already in this tournament."
+            )
 
         # 3. Handle Entry Fee for Team
         if not tournament.is_free:
             for member in members:
                 wallet = Wallet.objects.get(user=member)
                 if wallet.withdrawable_balance < tournament.entry_fee:
-                    raise ApplicationError(f"Insufficient funds for member {member.username}.")
+                    raise ApplicationError(
+                        f"Insufficient funds for member {member.username}."
+                    )
             # Deduct fees only after all members' balances are confirmed
             for member in members:
                 wallet = Wallet.objects.get(user=member)
@@ -266,7 +290,9 @@ def pay_prize(tournament: Tournament, winner):
     """
     # This is a simplified logic. In a real application, you would
     # probably have a more complex prize distribution system.
-    prize_amount = tournament.entry_fee * tournament.participants.count() * 0.8  # 80% of the pot
+    prize_amount = (
+        tournament.entry_fee * tournament.participants.count() * Decimal("0.8")
+    )  # 80% of the pot
     wallet = Wallet.objects.get(user=winner)
     wallet.withdrawable_balance += prize_amount
     wallet.save()
@@ -283,10 +309,13 @@ def refund_entry_fees(tournament: Tournament, cheater):
             wallet.save()
 
 
-from notifications.services import send_notification
-from .models import Report
-
-def create_report_service(reporter: User, reported_user_id: int, match_id: int, description: str, evidence=None):
+def create_report_service(
+    reporter: User,
+    reported_user_id: int,
+    match_id: int,
+    description: str,
+    evidence=None,
+):
     """
     Creates a report and sends a notification.
     """
@@ -295,7 +324,7 @@ def create_report_service(reporter: User, reported_user_id: int, match_id: int, 
         reported_user_id=reported_user_id,
         match_id=match_id,
         description=description,
-        evidence=evidence
+        evidence=evidence,
     )
     send_notification(
         user=report.reported_user,
@@ -303,6 +332,7 @@ def create_report_service(reporter: User, reported_user_id: int, match_id: int, 
         notification_type="report_new",
     )
     return report
+
 
 def resolve_report_service(report: Report, ban_user: bool):
     """
@@ -329,6 +359,7 @@ def resolve_report_service(report: Report, ban_user: bool):
         )
     return report
 
+
 def reject_report_service(report: Report):
     """
     Rejects a report and sends a notification.
@@ -343,8 +374,6 @@ def reject_report_service(report: Report):
     return report
 
 
-from .models import WinnerSubmission
-
 def create_winner_submission_service(user: User, tournament: Tournament, video):
     """
     Creates a winner submission after checking if the user is a top 5 winner.
@@ -354,9 +383,7 @@ def create_winner_submission_service(user: User, tournament: Tournament, video):
         raise ApplicationError("You are not one of the top 5 winners.")
 
     submission = WinnerSubmission.objects.create(
-        winner=user,
-        tournament=tournament,
-        video=video
+        winner=user, tournament=tournament, video=video
     )
     send_notification(
         user=user,
@@ -364,6 +391,7 @@ def create_winner_submission_service(user: User, tournament: Tournament, video):
         notification_type="winner_submission_status_change",
     )
     return submission
+
 
 def approve_winner_submission_service(submission: WinnerSubmission):
     """
@@ -378,6 +406,7 @@ def approve_winner_submission_service(submission: WinnerSubmission):
         notification_type="winner_submission_status_change",
     )
     return submission
+
 
 def reject_winner_submission_service(submission: WinnerSubmission):
     """

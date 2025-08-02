@@ -45,9 +45,7 @@ class TransactionSignalTests(TestCase):
         self.wallet.withdrawable_balance = Decimal("80.00")
         self.wallet.save()
 
-    def test_deposit_updates_balance_correctly(
-        self, mock_send_sms, mock_send_email
-    ):
+    def test_deposit_updates_balance_correctly(self, mock_send_sms, mock_send_email):
         """Test that a 'deposit' transaction correctly updates wallet balances."""
         Transaction.objects.create(
             wallet=self.wallet, amount=Decimal("50.00"), transaction_type="deposit"
@@ -69,9 +67,7 @@ class TransactionSignalTests(TestCase):
         mock_send_sms.assert_called_once()
         mock_send_email.assert_called_once()
 
-    def test_entry_fee_updates_balance_correctly(
-        self, mock_send_sms, mock_send_email
-    ):
+    def test_entry_fee_updates_balance_correctly(self, mock_send_sms, mock_send_email):
         """Test that an 'entry_fee' transaction correctly updates wallet balances."""
         Transaction.objects.create(
             wallet=self.wallet, amount=Decimal("10.00"), transaction_type="entry_fee"
@@ -82,9 +78,7 @@ class TransactionSignalTests(TestCase):
         mock_send_sms.assert_called_once()
         mock_send_email.assert_called_once()
 
-    def test_withdrawal_updates_balance_correctly(
-        self, mock_send_sms, mock_send_email
-    ):
+    def test_withdrawal_updates_balance_correctly(self, mock_send_sms, mock_send_email):
         """Test that a 'withdrawal' transaction correctly updates wallet balances."""
         Transaction.objects.create(
             wallet=self.wallet, amount=Decimal("30.00"), transaction_type="withdrawal"
@@ -150,7 +144,9 @@ class WalletViewSetTests(APITestCase):
         response = self.client.get(self.wallet_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["id"], self.wallet.id)
-        self.assertEqual(Decimal(response.data["total_balance"]), self.wallet.total_balance)
+        self.assertEqual(
+            Decimal(response.data["total_balance"]), self.wallet.total_balance
+        )
 
     def test_cannot_get_other_user_wallet_details(self):
         """Test that a user cannot retrieve another user's wallet details."""

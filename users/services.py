@@ -1,12 +1,11 @@
 import random
 import string
-from datetime import timedelta
 
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from notifications.tasks import send_email_notification, send_sms_notification
-from .models import OTP, User
+from .models import OTP, User, Team, TeamInvitation
 
 
 class ApplicationError(Exception):
@@ -87,8 +86,6 @@ def verify_otp_service(phone_number=None, email=None, code=None):
         raise ApplicationError("Invalid OTP.")
 
 
-from .models import Team, TeamInvitation
-
 def invite_member_service(team: Team, from_user: User, to_user_id: int):
     """
     Invites a user to a team.
@@ -112,6 +109,7 @@ def invite_member_service(team: Team, from_user: User, to_user_id: int):
 
     return invitation
 
+
 def respond_to_invitation_service(invitation_id: int, user: User, status: str):
     """
     Responds to a team invitation.
@@ -133,6 +131,7 @@ def respond_to_invitation_service(invitation_id: int, user: User, status: str):
 
     return invitation
 
+
 def leave_team_service(team: Team, user: User):
     """
     Allows a user to leave a team.
@@ -140,9 +139,12 @@ def leave_team_service(team: Team, user: User):
     if user not in team.members.all():
         raise ApplicationError("You are not a member of this team.")
     if user == team.captain:
-        raise ApplicationError("The captain cannot leave the team. Please transfer captaincy first.")
+        raise ApplicationError(
+            "The captain cannot leave the team. Please transfer captaincy first."
+        )
 
     team.members.remove(user)
+
 
 def remove_member_service(team: Team, captain: User, member_id: int):
     """

@@ -16,12 +16,9 @@ class Game(models.Model):
     description = models.TextField()
 
 
-from users.models import User
-
-
 class Scoring(models.Model):
     tournament = models.ForeignKey("Tournament", on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE)
     score = models.IntegerField()
 
     class Meta:
@@ -65,11 +62,11 @@ class Tournament(models.Model):
     )
     rules = models.TextField(blank=True)
     participants = models.ManyToManyField(
-        'users.User', through="Participant", related_name="tournaments", blank=True
+        "users.User", through="Participant", related_name="tournaments", blank=True
     )
-    teams = models.ManyToManyField('users.Team', related_name="tournaments", blank=True)
+    teams = models.ManyToManyField("users.Team", related_name="tournaments", blank=True)
     creator = models.ForeignKey(
-        'users.User',
+        "users.User",
         on_delete=models.CASCADE,
         related_name="created_tournaments",
         null=True,
@@ -78,16 +75,24 @@ class Tournament(models.Model):
     countdown_start_time = models.DateTimeField(null=True, blank=True)
     required_verification_level = models.IntegerField(default=1)
     min_rank = models.ForeignKey(
-        Rank, on_delete=models.SET_NULL, null=True, blank=True, related_name="min_rank_tournaments"
+        Rank,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="min_rank_tournaments",
     )
     max_rank = models.ForeignKey(
-        Rank, on_delete=models.SET_NULL, null=True, blank=True, related_name="max_rank_tournaments"
+        Rank,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="max_rank_tournaments",
     )
     top_players = models.ManyToManyField(
-        'users.User', related_name="top_placements", blank=True
+        "users.User", related_name="top_placements", blank=True
     )
     top_teams = models.ManyToManyField(
-        'users.Team', related_name="top_placements", blank=True
+        "users.Team", related_name="top_placements", blank=True
     )
 
     def clean(self):
@@ -120,7 +125,7 @@ class Tournament(models.Model):
 
 
 class Participant(models.Model):
-    user = models.ForeignKey('users.User', on_delete=models.CASCADE)
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE)
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
     status = models.CharField(
         max_length=20,
@@ -151,42 +156,42 @@ class Match(models.Model):
     )
     round = models.IntegerField()
     participant1_user = models.ForeignKey(
-        'users.User',
+        "users.User",
         on_delete=models.CASCADE,
         related_name="matches_as_participant1",
         null=True,
         blank=True,
     )
     participant2_user = models.ForeignKey(
-        'users.User',
+        "users.User",
         on_delete=models.CASCADE,
         related_name="matches_as_participant2",
         null=True,
         blank=True,
     )
     participant1_team = models.ForeignKey(
-        'users.Team',
+        "users.Team",
         on_delete=models.CASCADE,
         related_name="matches_as_participant1",
         null=True,
         blank=True,
     )
     participant2_team = models.ForeignKey(
-        'users.Team',
+        "users.Team",
         on_delete=models.CASCADE,
         related_name="matches_as_participant2",
         null=True,
         blank=True,
     )
     winner_user = models.ForeignKey(
-        'users.User',
+        "users.User",
         on_delete=models.CASCADE,
         related_name="won_matches",
         null=True,
         blank=True,
     )
     winner_team = models.ForeignKey(
-        'users.Team',
+        "users.Team",
         on_delete=models.CASCADE,
         related_name="won_matches",
         null=True,
@@ -212,6 +217,12 @@ class Match(models.Model):
             if not self.participant1_team or not self.participant2_team:
                 raise ValidationError("Team matches must have team participants.")
 
+    def is_participant(self, user):
+        if self.match_type == "individual":
+            return user in [self.participant1_user, self.participant2_user]
+        else:
+            return user in self.participant1_team.members.all() or user in self.participant2_team.members.all()
+
     def __str__(self):
         if self.match_type == "individual":
             return f"{self.participant1_user} vs {self.participant2_user} - Tournament: {self.tournament}"
@@ -226,10 +237,10 @@ class Report(models.Model):
         ("rejected", "Rejected"),
     )
     reporter = models.ForeignKey(
-        'users.User', on_delete=models.CASCADE, related_name="sent_reports"
+        "users.User", on_delete=models.CASCADE, related_name="sent_reports"
     )
     reported_user = models.ForeignKey(
-        'users.User', on_delete=models.CASCADE, related_name="received_reports"
+        "users.User", on_delete=models.CASCADE, related_name="received_reports"
     )
     match = models.ForeignKey(Match, on_delete=models.CASCADE)
     description = models.TextField()
@@ -249,7 +260,7 @@ class WinnerSubmission(models.Model):
         ("approved", "Approved"),
         ("rejected", "Rejected"),
     )
-    winner = models.ForeignKey(User, on_delete=models.CASCADE)
+    winner = models.ForeignKey("users.User", on_delete=models.CASCADE)
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
     video = models.FileField(upload_to="winner_submissions/")
     status = models.CharField(

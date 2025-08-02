@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractUser, Group
 from django.db import models
 from django.db.models.signals import post_save
 from phonenumber_field.modelfields import PhoneNumberField
+from django.core.exceptions import ValidationError
 
 
 class User(AbstractUser):
@@ -72,15 +73,14 @@ class InGameID(models.Model):
         unique_together = ("user", "game")
 
 
-from django.core.exceptions import ValidationError
-
-
 class Team(models.Model):
     name = models.CharField(max_length=100)
     captain = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="captained_teams"
     )
-    members = models.ManyToManyField(User, through="TeamMembership", related_name="teams")
+    members = models.ManyToManyField(
+        User, through="TeamMembership", related_name="teams"
+    )
     team_picture = models.ImageField(upload_to="team_pictures/", null=True, blank=True)
 
     def __str__(self):

@@ -7,9 +7,13 @@ from django.contrib.auth.models import Group
 from django.db.utils import IntegrityError
 from tournaments.models import Rank
 from unittest.mock import patch
+from django.core.exceptions import ValidationError
 from .services import (
-    invite_member_service, respond_to_invitation_service,
-    leave_team_service, remove_member_service, ApplicationError
+    invite_member_service,
+    respond_to_invitation_service,
+    leave_team_service,
+    remove_member_service,
+    ApplicationError,
 )
 from django.utils import timezone
 from datetime import timedelta
@@ -77,8 +81,6 @@ class UserModelTests(TestCase):
         user.update_rank()
         self.assertEqual(user.rank.id, self.rank2.id)
 
-
-from django.core.exceptions import ValidationError
 
 class TeamModelTests(TestCase):
     def setUp(self):
@@ -315,9 +317,15 @@ class TeamViewSetTests(APITestCase):
 
 class UserServicesTests(TestCase):
     def setUp(self):
-        self.captain = User.objects.create_user(username="captain", password="p", phone_number="+100")
-        self.member = User.objects.create_user(username="member", password="p", phone_number="+101")
-        self.non_member = User.objects.create_user(username="nonmember", password="p", phone_number="+102")
+        self.captain = User.objects.create_user(
+            username="captain", password="p", phone_number="+100"
+        )
+        self.member = User.objects.create_user(
+            username="member", password="p", phone_number="+101"
+        )
+        self.non_member = User.objects.create_user(
+            username="nonmember", password="p", phone_number="+102"
+        )
         self.team = Team.objects.create(name="Service Test Team", captain=self.captain)
         self.team.members.add(self.captain, self.member)
 
@@ -330,12 +338,20 @@ class UserServicesTests(TestCase):
         self.assertEqual(invitation.to_user, self.non_member)
 
     def test_invite_member_service_not_captain_fails(self):
-        with self.assertRaisesMessage(ApplicationError, "Only the team captain can invite members."):
-            invite_member_service(team=self.team, from_user=self.member, to_user_id=self.non_member.id)
+        with self.assertRaisesMessage(
+            ApplicationError, "Only the team captain can invite members."
+        ):
+            invite_member_service(
+                team=self.team, from_user=self.member, to_user_id=self.non_member.id
+            )
 
     def test_invite_member_service_already_member_fails(self):
-        with self.assertRaisesMessage(ApplicationError, "User is already a member of the team."):
-            invite_member_service(team=self.team, from_user=self.captain, to_user_id=self.member.id)
+        with self.assertRaisesMessage(
+            ApplicationError, "User is already a member of the team."
+        ):
+            invite_member_service(
+                team=self.team, from_user=self.captain, to_user_id=self.member.id
+            )
 
     def test_respond_to_invitation_accept_success(self):
         invitation = TeamInvitation.objects.create(
@@ -349,13 +365,22 @@ class UserServicesTests(TestCase):
         self.assertNotIn(self.member, self.team.members.all())
 
     def test_leave_team_service_captain_fails(self):
-        with self.assertRaisesMessage(ApplicationError, "The captain cannot leave the team. Please transfer captaincy first."):
+        with self.assertRaisesMessage(
+            ApplicationError,
+            "The captain cannot leave the team. Please transfer captaincy first.",
+        ):
             leave_team_service(team=self.team, user=self.captain)
 
     def test_remove_member_service_success(self):
-        remove_member_service(team=self.team, captain=self.captain, member_id=self.member.id)
+        remove_member_service(
+            team=self.team, captain=self.captain, member_id=self.member.id
+        )
         self.assertNotIn(self.member, self.team.members.all())
 
     def test_remove_member_service_not_captain_fails(self):
-        with self.assertRaisesMessage(ApplicationError, "Only the team captain can remove members."):
-            remove_member_service(team=self.team, captain=self.member, member_id=self.captain.id)
+        with self.assertRaisesMessage(
+            ApplicationError, "Only the team captain can remove members."
+        ):
+            remove_member_service(
+                team=self.team, captain=self.member, member_id=self.captain.id
+            )

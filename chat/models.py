@@ -7,7 +7,11 @@ class Conversation(models.Model):
     participants = models.ManyToManyField(User, related_name="conversations")
     created_at = models.DateTimeField(auto_now_add=True)
     support_ticket = models.ForeignKey(
-        Ticket, on_delete=models.CASCADE, related_name="conversations", null=True, blank=True
+        Ticket,
+        on_delete=models.CASCADE,
+        related_name="conversations",
+        null=True,
+        blank=True,
     )
 
     class Meta:
@@ -27,6 +31,7 @@ class Message(models.Model):
 
     class Meta:
         app_label = "chat"
+
     is_edited = models.BooleanField(default=False)
     is_deleted = models.BooleanField(default=False)
 
