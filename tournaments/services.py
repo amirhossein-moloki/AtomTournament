@@ -52,19 +52,26 @@ def generate_matches(tournament: Tournament):
             )
 
 
-def confirm_match_result(match: Match, winner_id: int, proof_image=None):
+def confirm_match_result(match: Match, requesting_user: User, winner_id: int, proof_image=None):
     """
     Confirms the result of a match and advances the winner.
     """
+    if not match.is_participant(requesting_user):
+        raise PermissionDenied("You are not a participant in this match.")
+
     if match.is_confirmed:
         raise ApplicationError("Match result has already been confirmed.")
 
     try:
         if match.match_type == "individual":
             winner = User.objects.get(id=winner_id)
+            if not match.is_participant(winner):
+                raise ApplicationError("Winner is not a participant in this match.")
             match.winner_user = winner
         else:
             winner = Team.objects.get(id=winner_id)
+            if not match.is_participant(winner):
+                raise ApplicationError("Winner is not a participant in this match.")
             match.winner_team = winner
     except (User.DoesNotExist, Team.DoesNotExist):
         raise ApplicationError("Invalid winner ID.")

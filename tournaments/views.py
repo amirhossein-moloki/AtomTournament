@@ -163,7 +163,7 @@ class MatchViewSet(viewsets.ModelViewSet):
             return Response({"error": "Winner ID not provided."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            confirm_match_result(match, winner_id=winner_id)
+            confirm_match_result(match, requesting_user=request.user, winner_id=winner_id)
             return Response({"message": "Match result confirmed successfully."})
         except (ApplicationError, PermissionDenied, ValidationError) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
