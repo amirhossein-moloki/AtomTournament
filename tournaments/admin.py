@@ -2,6 +2,7 @@ from django.contrib import admin
 from .models import (
     Game,
     GameImage,
+    GameManager,
     Tournament,
     Match,
     Participant,
@@ -15,9 +16,14 @@ class GameImageInline(admin.TabularInline):
     extra = 1
 
 
+class GameManagerInline(admin.TabularInline):
+    model = GameManager
+    extra = 1
+
+
 @admin.register(Game)
 class GameAdmin(admin.ModelAdmin):
-    inlines = [GameImageInline]
+    inlines = [GameImageInline, GameManagerInline]
 
 
 admin.site.register(Tournament)

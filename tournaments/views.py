@@ -15,6 +15,7 @@ from rest_framework.views import APIView
 from users.serializers import TeamSerializer
 from .exceptions import ApplicationError
 from .filters import TournamentFilter
+from .permissions import IsGameManagerOrAdmin
 from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import Game, Match, Tournament, Participant
@@ -79,9 +80,17 @@ class TournamentViewSet(viewsets.ModelViewSet):
     filterset_class = TournamentFilter
 
     def get_permissions(self):
-        if self.action in ["create", "destroy"]:
-            return [IsAdminUser()]
-        return super().get_permissions()
+        # Use our custom permission for actions that modify tournaments
+        if self.action in ['create', 'update', 'partial_update', 'destroy', 'generate_matches', 'start_countdown']:
+            return [IsGameManagerOrAdmin()]
+        # For other actions, just require authentication
+        return [IsAuthenticated()]
+
+    def perform_create(self, serializer):
+        # Automatically set the tournament creator to the current user.
+        # The permission class has already verified they are allowed to create
+        # a tournament for the game specified in serializer.validated_data.
+        serializer.save(creator=self.request.user)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
     def join(self, request, pk=None):

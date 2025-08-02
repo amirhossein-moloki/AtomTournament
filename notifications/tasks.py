@@ -8,7 +8,14 @@ from django.template.loader import render_to_string
 def send_sms_notification(phone_number, context):
     """
     Sends an SMS notification using sms.ir.
+    This is a placeholder. The actual implementation for sending SMS
+    using the sms.ir API would go here.
     """
+    # from smsir_python import Smsir
+    # smsir = Smsir(api_key=settings.SMSIR_API_KEY, line_number=settings.SMSIR_LINE_NUMBER)
+    # message = f"Your notification: {context}" # Customize message based on context
+    # smsir.send_bulk(message, [phone_number])
+    print(f"--- FAKE SMS to {phone_number}: {context} ---") # Placeholder for development
     pass
 
 
@@ -33,21 +40,31 @@ def send_email_notification(email, subject, context):
 @shared_task
 def send_tournament_credentials(tournament_id):
     """
-    Sends tournament credentials to all participants.
+    Sends tournament credentials to all participants for their specific matches.
     """
     from tournaments.models import Tournament
 
     tournament = Tournament.objects.get(id=tournament_id)
-    participants = tournament.participants.all()
-    context = {
-        "tournament_name": tournament.name,
-        "room_id": "your_room_id",  # Replace with actual room ID
-        "password": "your_password",  # Replace with actual password
-    }
-    for participant in participants:
-        if participant.user.email:
-            send_email_notification.delay(
-                participant.user.email, "Tournament Credentials", context
-            )
-        if participant.user.phone_number:
-            send_sms_notification.delay(str(participant.user.phone_number), context)
+
+    for match in tournament.matches.all():
+        # Assuming individual tournaments for simplicity. A similar logic can be applied for teams.
+        if match.match_type == 'individual' and match.participant1_user and match.participant2_user:
+            participants = [match.participant1_user, match.participant2_user]
+            context = {
+                "tournament_name": tournament.name,
+                "room_id": match.room_id,
+                "password": match.password,
+                "opponent_name": "" # Placeholder for opponent's name
+            }
+
+            for i, p in enumerate(participants):
+                # Set the opponent's name for the notification context
+                opponent = participants[1-i]
+                context["opponent_name"] = opponent.username
+
+                if p.email:
+                    send_email_notification.delay(
+                        p.email, "Your Tournament Match Credentials", context
+                    )
+                if p.phone_number:
+                    send_sms_notification.delay(str(p.phone_number), context)

@@ -2,7 +2,7 @@ from django.test import TestCase
 from rest_framework.test import APITestCase, APIClient
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
-from .models import Tournament, Game, Match, Participant, Report, WinnerSubmission
+from .models import Tournament, Game, Match, Participant, Report, WinnerSubmission, GameManager
 from users.models import User, Team
 from verification.models import Verification
 from django.utils import timezone
@@ -415,3 +415,96 @@ class WinnerSubmissionViewSetTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         submission.refresh_from_db()
         self.assertEqual(submission.status, "rejected")
+
+
+class GameManagerPermissionsTests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+        # Games
+        self.managed_game = Game.objects.create(name="Managed Game")
+        self.other_game = Game.objects.create(name="Other Game")
+
+        # Users
+        self.admin_user = User.objects.create_superuser(
+            username="admin", password="password", phone_number="+1"
+        )
+        self.game_manager = User.objects.create_user(
+            username="gamemanager", password="password", phone_number="+2"
+        )
+        self.regular_user = User.objects.create_user(
+            username="regularuser", password="password", phone_number="+3"
+        )
+
+        # Assign manager to the game
+        GameManager.objects.create(user=self.game_manager, game=self.managed_game)
+
+        # A tournament that belongs to the managed game
+        self.tournament_in_managed_game = Tournament.objects.create(
+            name="Tournament in Managed Game",
+            game=self.managed_game,
+            start_date=timezone.now(),
+            end_date=timezone.now() + timedelta(days=1),
+        )
+
+        self.tournaments_url = "/api/tournaments/tournaments/"
+        self.tournament_detail_url = f"{self.tournaments_url}{self.tournament_in_managed_game.id}/"
+
+    def test_manager_can_create_tournament_for_managed_game(self):
+        """A game manager should be able to create a tournament for their game."""
+        self.client.force_authenticate(user=self.game_manager)
+        data = {
+            "name": "New Tournament by Manager",
+            "game": self.managed_game.id,
+            "start_date": timezone.now() + timedelta(days=2),
+            "end_date": timezone.now() + timedelta(days=3),
+        }
+        response = self.client.post(self.tournaments_url, data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(Tournament.objects.filter(name="New Tournament by Manager").exists())
+
+    def test_manager_cannot_create_tournament_for_other_game(self):
+        """A game manager should NOT be able to create a tournament for another game."""
+        self.client.force_authenticate(user=self.game_manager)
+        data = {
+            "name": "Illegal Tournament",
+            "game": self.other_game.id,
+            "start_date": timezone.now() + timedelta(days=2),
+            "end_date": timezone.now() + timedelta(days=3),
+        }
+        response = self.client.post(self.tournaments_url, data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_manager_can_update_tournament_in_managed_game(self):
+        """A game manager should be able to update a tournament in their game."""
+        self.client.force_authenticate(user=self.game_manager)
+        data = {"name": "Updated Name"}
+        response = self.client.patch(self.tournament_detail_url, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.tournament_in_managed_game.refresh_from_db()
+        self.assertEqual(self.tournament_in_managed_game.name, "Updated Name")
+
+    def test_manager_cannot_update_tournament_in_other_game(self):
+        """A game manager should NOT be able to update a tournament in another game."""
+        other_tournament = Tournament.objects.create(
+            name="Tournament in Other Game",
+            game=self.other_game,
+            start_date=timezone.now(),
+            end_date=timezone.now() + timedelta(days=1),
+        )
+        self.client.force_authenticate(user=self.game_manager)
+        data = {"name": "Updated Name"}
+        response = self.client.patch(f"{self.tournaments_url}{other_tournament.id}/", data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_regular_user_cannot_create_tournament(self):
+        """A regular user should NOT be able to create a tournament."""
+        self.client.force_authenticate(user=self.regular_user)
+        data = {
+            "name": "Tournament by Regular User",
+            "game": self.managed_game.id,
+            "start_date": timezone.now() + timedelta(days=2),
+            "end_date": timezone.now() + timedelta(days=3),
+        }
+        response = self.client.post(self.tournaments_url, data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

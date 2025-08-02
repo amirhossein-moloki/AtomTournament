@@ -16,6 +16,19 @@ class Game(models.Model):
     description = models.TextField()
 
 
+class GameManager(models.Model):
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="managed_games")
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="managers")
+
+    class Meta:
+        unique_together = ('user', 'game')
+        verbose_name = "Game Manager"
+        verbose_name_plural = "Game Managers"
+
+    def __str__(self):
+        return f"{self.user.username} is a manager for {self.game.name}"
+
+
 class Scoring(models.Model):
     tournament = models.ForeignKey("Tournament", on_delete=models.CASCADE)
     user = models.ForeignKey("users.User", on_delete=models.CASCADE)
@@ -202,6 +215,9 @@ class Match(models.Model):
     )
     is_confirmed = models.BooleanField(default=False)
     is_disputed = models.BooleanField(default=False)
+    dispute_reason = models.TextField(blank=True)
+    room_id = models.CharField(max_length=100, blank=True)
+    password = models.CharField(max_length=100, blank=True)
 
     def clean(self):
         if self.match_type == "individual":

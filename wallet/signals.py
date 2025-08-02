@@ -1,3 +1,4 @@
+from django.db.models import F
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from notifications.tasks import send_email_notification, send_sms_notification
@@ -10,11 +11,11 @@ def transaction_post_save(sender, instance, created, **kwargs):
     if created:
         wallet = instance.wallet
         if instance.transaction_type in ["deposit", "prize"]:
-            wallet.total_balance += instance.amount
-            wallet.withdrawable_balance += instance.amount
+            wallet.total_balance = F("total_balance") + instance.amount
+            wallet.withdrawable_balance = F("withdrawable_balance") + instance.amount
         elif instance.transaction_type in ["withdrawal", "entry_fee"]:
-            wallet.total_balance -= instance.amount
-            wallet.withdrawable_balance -= instance.amount
+            wallet.total_balance = F("total_balance") - instance.amount
+            wallet.withdrawable_balance = F("withdrawable_balance") - instance.amount
         wallet.save()
 
         user = instance.wallet.user
