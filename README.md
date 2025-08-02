@@ -85,6 +85,58 @@ The API will be available at `http://127.0.0.1:8000/api/`.
 
 The API documentation is available at `http://127.0.0.1:8000/api/docs/`.
 
+## Running with Docker
+
+This project is configured to run with Docker and Docker Compose. This is the recommended way to run the project for development.
+
+### Prerequisites
+
+*   Docker
+*   Docker Compose
+
+### Installation
+
+1.  **Clone the repository:**
+
+    ```bash
+    git clone https://github.com/your-username/tournament-project.git
+    cd tournament-project
+    ```
+
+2.  **Set up the environment variables:**
+
+    The project uses a `.env` file for environment variables. You can copy the example file:
+
+    ```bash
+    cp env.example .env
+    ```
+
+    The default values in `.env` are configured to work with the Docker Compose setup. You may want to change the `SECRET_KEY` to a new, randomly generated value.
+
+3.  **Build and run the application:**
+
+    ```bash
+    docker-compose up --build
+    ```
+
+    This command will build the Docker images and start all the services. The application will be available at `http://localhost:80`.
+
+4.  **Create a superuser (optional):**
+
+    To create a superuser, run the following command in a separate terminal:
+
+    ```bash
+    docker-compose exec web python manage.py createsuperuser
+    ```
+
+### Stopping the application
+
+To stop the application, press `Ctrl+C` in the terminal where `docker-compose up` is running, and then run:
+
+```bash
+docker-compose down
+```
+
 ## Project Structure
 
 ```
