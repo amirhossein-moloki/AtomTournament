@@ -3,6 +3,7 @@ from .models import (
     Game,
     GameImage,
     Tournament,
+    TournamentManager,
     Match,
     Participant,
     Report,
@@ -20,7 +21,23 @@ class GameAdmin(admin.ModelAdmin):
     inlines = [GameImageInline]
 
 
-admin.site.register(Tournament)
+class TournamentManagerInline(admin.TabularInline):
+    model = TournamentManager
+    extra = 1
+
+
+class TournamentAdmin(admin.ModelAdmin):
+    list_display = ('name', 'game', 'start_date', 'end_date', 'type', 'is_free')
+    list_filter = ('type', 'is_free', 'game')
+    search_fields = ('name', 'game__name')
+    inlines = [TournamentManagerInline]
+
+
+# Unregister the basic Tournament admin and re-register with the custom one
+if admin.site.is_registered(Tournament):
+    admin.site.unregister(Tournament)
+admin.site.register(Tournament, TournamentAdmin)
+
 admin.site.register(Match)
 admin.site.register(Participant)
 admin.site.register(Report)
