@@ -1,5 +1,4 @@
 from rest_framework import serializers
-from wallet.models import Wallet
 from verification.serializers import VerificationSerializer
 
 from .models import InGameID, Role, Team, User, TeamInvitation
@@ -50,9 +49,7 @@ class UserSerializer(serializers.ModelSerializer):
 
         if in_game_ids_data is not None:
             # Create a map of existing game IDs for quick lookups
-            existing_ids = {
-                item.game.id: item for item in instance.in_game_ids.all()
-            }
+            existing_ids = {item.game.id: item for item in instance.in_game_ids.all()}
 
             for item_data in in_game_ids_data:
                 game = item_data["game"]

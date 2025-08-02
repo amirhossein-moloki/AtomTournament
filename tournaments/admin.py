@@ -1,5 +1,13 @@
 from django.contrib import admin
-from .models import Game, GameImage, Tournament, Match, Participant, Report, WinnerSubmission
+from .models import (
+    Game,
+    GameImage,
+    Tournament,
+    Match,
+    Participant,
+    Report,
+    WinnerSubmission,
+)
 
 
 class GameImageInline(admin.TabularInline):

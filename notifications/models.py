@@ -9,7 +9,9 @@ class Notification(models.Model):
         ("winner_submission_required", "Winner Submission Required"),
         ("winner_submission_status_change", "Winner Submission Status Change"),
     )
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="notifications"
+    )
     message = models.CharField(max_length=255)
     notification_type = models.CharField(
         max_length=50,

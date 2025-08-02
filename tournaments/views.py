@@ -1,22 +1,21 @@
 from django.conf import settings
 from django.http import FileResponse, Http404
-from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from django.db import models
+from django.db.models import Prefetch
 from wallet.models import Transaction
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import ValidationError
 from rest_framework import generics, status, viewsets
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from users.models import Team, User
 from users.serializers import TeamSerializer
 from .exceptions import ApplicationError
 from .filters import TournamentFilter
 from django_filters.rest_framework import DjangoFilterBackend
-from verification.models import Verification
 
 from .models import Game, Match, Tournament, Participant
 from .serializers import (
@@ -25,17 +24,10 @@ from .serializers import (
     TournamentSerializer,
     ParticipantSerializer,
 )
-from notifications.tasks import (
-    send_email_notification,
-    send_sms_notification,
-)
-from django.core.exceptions import PermissionDenied
+from notifications.tasks import send_tournament_credentials
 from .services import (
     join_tournament,
     generate_matches,
-    pay_prize,
-    refund_entry_fees,
-    get_tournament_winners,
     confirm_match_result,
     dispute_match_result,
     create_report_service,
@@ -62,8 +54,6 @@ class TournamentParticipantListView(generics.ListAPIView):
         tournament_id = self.kwargs["pk"]
         return Participant.objects.filter(tournament_id=tournament_id)
 
-
-from django.db.models import Prefetch
 
 class TournamentViewSet(viewsets.ModelViewSet):
     """
@@ -304,6 +294,8 @@ class WinnerSubmissionViewSet(viewsets.ModelViewSet):
         return WinnerSubmission.objects.filter(winner=self.request.user)
 
     def perform_create(self, serializer):
+        if not serializer.is_valid():
+            print("Serializer errors:", serializer.errors)
         validated_data = serializer.validated_data
         try:
             create_winner_submission_service(

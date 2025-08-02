@@ -15,6 +15,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing conversations.
     """
+
     serializer_class = ConversationSerializer
     permission_classes = [IsAuthenticated]
 
@@ -28,6 +29,7 @@ class MessageViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing messages.
     """
+
     serializer_class = MessageSerializer
     permission_classes = [IsAuthenticated, IsSenderOrReadOnly]
 
@@ -47,6 +49,7 @@ class AttachmentViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing attachments.
     """
+
     queryset = Attachment.objects.all()
     serializer_class = AttachmentSerializer
     permission_classes = [IsAuthenticated]

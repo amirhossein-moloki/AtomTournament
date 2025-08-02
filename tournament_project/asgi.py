@@ -13,9 +13,10 @@ from channels.auth import AuthMiddlewareStack
 from channels.routing import ProtocolTypeRouter, URLRouter
 from django.core.asgi import get_asgi_application
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tournament_project.settings")
-
 import tournament_project.chat.routing
+import tournament_project.notifications.routing
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tournament_project.settings")
 
 application = ProtocolTypeRouter(
     {
