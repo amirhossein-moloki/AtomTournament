@@ -1,3 +1,4 @@
+import os
 from django.conf import settings
 from django.http import FileResponse, Http404
 from django.utils import timezone
@@ -229,8 +230,15 @@ def private_media_view(request, path):
             is_participant = True
 
     if is_participant or request.user.is_staff:
-        file_path = f"{settings.PRIVATE_MEDIA_ROOT}/{path}"
-        return FileResponse(open(file_path, "rb"))
+        safe_base_path = os.path.abspath(settings.PRIVATE_MEDIA_ROOT)
+        requested_path = os.path.abspath(os.path.join(safe_base_path, path))
+
+        if not requested_path.startswith(safe_base_path) or not os.path.exists(
+            requested_path
+        ):
+            raise Http404
+
+        return FileResponse(open(requested_path, "rb"))
     else:
         return Response(
             {"error": "You do not have permission to access this file."}, status=403
