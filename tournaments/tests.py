@@ -2,7 +2,7 @@ from django.test import TestCase
 from rest_framework.test import APITestCase, APIClient
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
-from .models import Tournament, Game, Match, Participant, Report, WinnerSubmission
+from .models import Tournament, Game, Match, Participant, Report, WinnerSubmission, TournamentManager
 from users.models import User, Team
 from verification.models import Verification
 from django.utils import timezone
@@ -415,3 +415,81 @@ class WinnerSubmissionViewSetTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         submission.refresh_from_db()
         self.assertEqual(submission.status, "rejected")
+
+
+class TournamentManagerPermissionsTests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.game = Game.objects.create(name="Test Game")
+
+        # Create users
+        self.admin_user = User.objects.create_superuser(
+            username="admin", password="password", phone_number="+1"
+        )
+        self.tournament_manager_user = User.objects.create_user(
+            username="manager", password="password", phone_number="+2"
+        )
+        self.regular_user = User.objects.create_user(
+            username="regular", password="password", phone_number="+3"
+        )
+        self.other_manager_user = User.objects.create_user(
+            username="othermanager", password="password", phone_number="+4"
+        )
+
+        # Create tournaments
+        self.tournament_to_manage = Tournament.objects.create(
+            name="Managed Tournament",
+            game=self.game,
+            start_date=timezone.now(),
+            end_date=timezone.now() + timedelta(days=1),
+        )
+        self.other_tournament = Tournament.objects.create(
+            name="Other Tournament",
+            game=self.game,
+            start_date=timezone.now(),
+            end_date=timezone.now() + timedelta(days=1),
+        )
+
+        # Assign a manager
+        TournamentManager.objects.create(
+            user=self.tournament_manager_user, tournament=self.tournament_to_manage
+        )
+        TournamentManager.objects.create(
+            user=self.other_manager_user, tournament=self.other_tournament
+        )
+
+        self.update_url = f"/api/tournaments/tournaments/{self.tournament_to_manage.id}/"
+        self.update_data = {"name": "Updated Tournament Name"}
+
+    def test_admin_can_update_tournament(self):
+        """Superusers/staff should be able to update any tournament."""
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.patch(self.update_url, self.update_data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.tournament_to_manage.refresh_from_db()
+        self.assertEqual(self.tournament_to_manage.name, "Updated Tournament Name")
+
+    def test_assigned_manager_can_update_tournament(self):
+        """A user assigned as a manager for a tournament should be able to update it."""
+        self.client.force_authenticate(user=self.tournament_manager_user)
+        response = self.client.patch(self.update_url, self.update_data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.tournament_to_manage.refresh_from_db()
+        self.assertEqual(self.tournament_to_manage.name, "Updated Tournament Name")
+
+    def test_regular_user_cannot_update_tournament(self):
+        """A regular user who is not a manager should receive a 403 Forbidden error."""
+        self.client.force_authenticate(user=self.regular_user)
+        response = self.client.patch(self.update_url, self.update_data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_manager_of_other_tournament_cannot_update(self):
+        """A manager of a different tournament should receive a 403 Forbidden error."""
+        self.client.force_authenticate(user=self.other_manager_user)
+        response = self.client.patch(self.update_url, self.update_data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_unauthenticated_user_cannot_update_tournament(self):
+        """An unauthenticated user should receive a 401 Unauthorized error."""
+        response = self.client.patch(self.update_url, self.update_data)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

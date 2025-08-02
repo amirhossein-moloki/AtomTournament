@@ -15,6 +15,7 @@ from rest_framework.views import APIView
 from users.serializers import TeamSerializer
 from .exceptions import ApplicationError
 from .filters import TournamentFilter
+from .permissions import IsTournamentManagerOrAdmin
 from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import Game, Match, Tournament, Participant
@@ -79,9 +80,11 @@ class TournamentViewSet(viewsets.ModelViewSet):
     filterset_class = TournamentFilter
 
     def get_permissions(self):
-        if self.action in ["create", "destroy"]:
+        if self.action in ['update', 'partial_update', 'destroy', 'generate_matches', 'start_countdown']:
+            return [IsTournamentManagerOrAdmin()]
+        if self.action == 'create':
             return [IsAdminUser()]
-        return super().get_permissions()
+        return [IsAuthenticated()]
 
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
     def join(self, request, pk=None):

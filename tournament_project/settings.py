@@ -306,18 +306,18 @@ CACHES = {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
     },
-    "connection-errors": {
-        "BACKEND": "django_ratelimit.tests.MockCache",
-        "LOCATION": "connection-errors",
-    },
-    "connection-errors-redis": {
-        "BACKEND": "django_ratelimit.tests.MockRedisCache",
-        "LOCATION": "connection-errors-redis",
-    },
-    "instant-expiration": {
-        "BACKEND": "django_ratelimit.tests.MockCache",
-        "LOCATION": "instant-expiration",
-    },
+    # "connection-errors": {
+    #     "BACKEND": "django_ratelimit.tests.MockCache",
+    #     "LOCATION": "connection-errors",
+    # },
+    # "connection-errors-redis": {
+    #     "BACKEND": "django_ratelimit.tests.MockRedisCache",
+    #     "LOCATION": "connection-errors-redis",
+    # },
+    # "instant-expiration": {
+    #     "BACKEND": "django_ratelimit.tests.MockCache",
+    #     "LOCATION": "instant-expiration",
+    # },
 }
 if "test" in sys.argv:
     CACHES = {

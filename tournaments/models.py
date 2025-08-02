@@ -44,6 +44,19 @@ class GameImage(models.Model):
         return f"{self.game.name} - {self.get_image_type_display()}"
 
 
+class TournamentManager(models.Model):
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="managed_tournaments")
+    tournament = models.ForeignKey("Tournament", on_delete=models.CASCADE, related_name="managers")
+
+    class Meta:
+        unique_together = ('user', 'tournament')
+        verbose_name = "Tournament Manager"
+        verbose_name_plural = "Tournament Managers"
+
+    def __str__(self):
+        return f"{self.user.username} is a manager for {self.tournament.name}"
+
+
 class Tournament(models.Model):
     TOURNAMENT_TYPE_CHOICES = (
         ("individual", "Individual"),
