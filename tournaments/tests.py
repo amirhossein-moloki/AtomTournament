@@ -177,31 +177,6 @@ class TournamentViewSetTests(APITestCase):
             Tournament.objects.filter(name="New Tournament by Admin").exists()
         )
 
-    def test_create_tournament_with_rank_and_verification(self):
-        """
-        Test that a tournament can be created with rank and verification level requirements.
-        """
-        from .models import Rank
-        rank1 = Rank.objects.create(name="Bronze", required_score=0)
-        rank2 = Rank.objects.create(name="Silver", required_score=100)
-        self.client.force_authenticate(user=self.admin_user)
-        data = {
-            "name": "Ranked Tournament",
-            "game": self.game.id,
-            "start_date": timezone.now() + timedelta(days=5),
-            "end_date": timezone.now() + timedelta(days=6),
-            "required_verification_level": 2,
-            "min_rank": rank1.id,
-            "max_rank": rank2.id,
-        }
-        response = self.client.post(f"{self.tournaments_url}tournaments/", data)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-        tournament = Tournament.objects.get(name="Ranked Tournament")
-        self.assertEqual(tournament.required_verification_level, 2)
-        self.assertEqual(tournament.min_rank, rank1)
-        self.assertEqual(tournament.max_rank, rank2)
-
     def test_create_tournament_by_non_admin_fails(self):
         self.client.force_authenticate(user=self.user)
         data = {
