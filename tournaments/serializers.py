@@ -60,6 +60,9 @@ class TournamentSerializer(serializers.ModelSerializer):
             "creator",
             "final_rank",
             "prize_won",
+            "required_verification_level",
+            "min_rank",
+            "max_rank",
         )
         read_only_fields = ("id", "participants", "teams", "creator")
 

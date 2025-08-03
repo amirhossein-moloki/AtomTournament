@@ -174,6 +174,8 @@ packaging==25.0
     #   kombu
 pathspec==0.12.1
     # via black
+phonenumbers==9.0.10
+    # via -r requirements.in
 pillow==11.3.0
     # via -r requirements.in
 pip-tools==7.5.0

@@ -4,6 +4,7 @@ djangorestframework
 django-cors-headers
 django-filter
 django-phonenumber-field
+phonenumbers
 django-axes
 django-ratelimit
 django-redis

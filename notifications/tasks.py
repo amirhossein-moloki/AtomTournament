@@ -4,19 +4,29 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string
 
 
+from sms_ir import SmsIr
+
 @shared_task
 def send_sms_notification(phone_number, context):
     """
     Sends an SMS notification using sms.ir.
-    This is a placeholder. The actual implementation for sending SMS
-    using the sms.ir API would go here.
     """
-    # from smsir_python import Smsir
-    # smsir = Smsir(api_key=settings.SMSIR_API_KEY, line_number=settings.SMSIR_LINE_NUMBER)
-    # message = f"Your notification: {context}" # Customize message based on context
-    # smsir.send_bulk(message, [phone_number])
-    print(f"--- FAKE SMS to {phone_number}: {context} ---") # Placeholder for development
-    pass
+    if not settings.SMSIR_API_KEY:
+        print(f"--- FAKE SMS to {phone_number}: {context} ---")
+        return
+
+    smsir = SmsIr(api_key=settings.SMSIR_API_KEY, line_number=settings.SMSIR_LINE_NUMBER)
+
+    # Simple message formatting based on context
+    if 'code' in context:
+        message = f"Your verification code is: {context['code']}"
+    elif 'tournament_name' in context:
+        message = f"You have joined the tournament: {context['tournament_name']}. Room ID: {context.get('room_id', 'N/A')}"
+    else:
+        message = f"You have a new notification: {context}"
+
+    # The smsir library expects a list of numbers.
+    smsir.send_bulk(message, [str(phone_number)])
 
 
 @shared_task
