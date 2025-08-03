@@ -82,6 +82,7 @@ class Team(models.Model):
         User, through="TeamMembership", related_name="teams"
     )
     team_picture = models.ImageField(upload_to="team_pictures/", null=True, blank=True)
+    max_members = models.PositiveIntegerField(default=5)
 
     def __str__(self):
         return self.name
@@ -102,6 +103,8 @@ class TeamMembership(models.Model):
 
     def save(self, *args, **kwargs):
         validate_user_team_limit(self.user)
+        if self.team.members.count() >= self.team.max_members:
+            raise ValidationError("This team is already full.")
         super().save(*args, **kwargs)
 
 

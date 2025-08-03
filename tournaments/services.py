@@ -18,6 +18,11 @@ def generate_matches(tournament: Tournament):
     """
     Generates matches for the first round of a tournament.
     """
+    if tournament.mode == "battle_royale":
+        # For Battle Royale, we don't generate traditional matches.
+        # Winner determination will be handled differently, e.g., through winner submissions.
+        return
+
     if tournament.matches.exists():
         raise ApplicationError(
             "Matches have already been generated for this tournament."
@@ -153,6 +158,14 @@ def join_tournament(
     Handles the logic for a user or a team to join a tournament,
     including validation, fee deduction, and notification.
     """
+    # 0. Capacity Check
+    if tournament.type == "individual":
+        if tournament.participants.count() >= tournament.max_participants:
+            raise ApplicationError("This tournament is full.")
+    else:  # team
+        if tournament.teams.count() >= tournament.max_participants:
+            raise ApplicationError("This tournament is full.")
+
     # 1. Verification and Score Checks
     try:
         verification = user.verification
@@ -194,25 +207,27 @@ def join_tournament(
         return participant
 
     elif tournament.type == "team":
-        if not team_id or not member_ids:
-            raise ApplicationError(
-                "Team ID and member IDs are required for team tournaments."
-            )
+        if not team_id:
+            raise ApplicationError("Team ID is required for team tournaments.")
 
         try:
             team = Team.objects.get(id=team_id)
-            members = User.objects.filter(id__in=member_ids)
-        except (Team.DoesNotExist, User.DoesNotExist):
-            raise ApplicationError("Invalid team or member ID.")
+        except Team.DoesNotExist:
+            raise ApplicationError("Invalid team ID.")
 
         if user != team.captain:
             raise ApplicationError("Only the team captain can join a tournament.")
 
-        if len(members) > 4:
-            raise ApplicationError("You can select a maximum of 4 members.")
+        if team.members.count() + 1 != tournament.team_size:
+            raise ApplicationError(
+                f"This tournament requires teams of size {tournament.team_size}."
+            )
 
         if tournament.teams.filter(id=team.id).exists():
             raise ApplicationError("Your team has already joined this tournament.")
+
+        # Fetch all members including the captain
+        members = list(team.members.all()) + [team.captain]
 
         if any(
             tournament.participants.filter(id=member.id).exists() for member in members

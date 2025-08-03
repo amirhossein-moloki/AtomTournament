@@ -10,7 +10,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
-from tournaments.models import Rank
+from tournaments.models import Game, Match, Rank, Tournament
 
 from .models import OTP, Role, Team, TeamInvitation, TeamMembership
 from .services import (ApplicationError, invite_member_service,
@@ -383,3 +383,83 @@ class UserServicesTests(TestCase):
             remove_member_service(
                 team=self.team, captain=self.member, member_id=self.captain.id
             )
+
+
+class MatchHistoryAPITests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user1 = User.objects.create_user(
+            username="user1", password="password", phone_number="+1"
+        )
+        self.user2 = User.objects.create_user(
+            username="user2", password="password", phone_number="+2"
+        )
+        self.user3 = User.objects.create_user(
+            username="user3", password="password", phone_number="+3"
+        )
+        self.team1 = Team.objects.create(name="Team 1", captain=self.user1)
+        self.team1.members.add(self.user1, self.user2)
+        self.team2 = Team.objects.create(name="Team 2", captain=self.user3)
+        self.team2.members.add(self.user3)
+
+        self.game = Game.objects.create(name="Test Game")
+        self.tournament = Tournament.objects.create(
+            name="Test Tournament",
+            game=self.game,
+            start_date=timezone.now(),
+            end_date=timezone.now() + timedelta(days=1),
+        )
+
+        # Individual match for user1
+        self.match1 = Match.objects.create(
+            tournament=self.tournament,
+            match_type="individual",
+            round=1,
+            participant1_user=self.user1,
+            participant2_user=self.user3,
+        )
+        # Team match for user1 (as part of team1)
+        self.match2 = Match.objects.create(
+            tournament=self.tournament,
+            match_type="team",
+            round=1,
+            participant1_team=self.team1,
+            participant2_team=self.team2,
+        )
+        # Another match not involving user1 or team1
+        self.match3 = Match.objects.create(
+            tournament=self.tournament,
+            match_type="individual",
+            round=1,
+            participant1_user=self.user2,
+            participant2_user=self.user3,
+        )
+
+    def test_get_user_match_history_unauthenticated(self):
+        url = f"/api/users/users/{self.user1.id}/match-history/"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_get_user_match_history_authenticated(self):
+        self.client.force_authenticate(user=self.user1)
+        url = f"/api/users/users/{self.user1.id}/match-history/"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+        match_ids = [item["id"] for item in response.data]
+        self.assertIn(self.match1.id, match_ids)
+        self.assertIn(self.match2.id, match_ids)
+        self.assertNotIn(self.match3.id, match_ids)
+
+    def test_get_team_match_history_unauthenticated(self):
+        url = f"/api/users/teams/{self.team1.id}/match-history/"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_get_team_match_history_authenticated(self):
+        self.client.force_authenticate(user=self.user1)
+        url = f"/api/users/teams/{self.team1.id}/match-history/"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], self.match2.id)
