@@ -283,6 +283,12 @@ class TopTeamsView(APIView):
         return Response(serializer.data)
 
 
+from django.db.models import Q
+from rest_framework import generics
+from tournaments.models import Match
+from tournaments.serializers import MatchSerializer
+
+
 class TotalPlayersView(APIView):
     """
     API view for getting the total number of players.
@@ -291,3 +297,36 @@ class TotalPlayersView(APIView):
     def get(self, request):
         total_players = User.objects.count()
         return Response({"total_players": total_players})
+
+
+class UserMatchHistoryView(generics.ListAPIView):
+    """
+    API view to list match history for a specific user.
+    """
+
+    serializer_class = MatchSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user_id = self.kwargs["pk"]
+        return Match.objects.filter(
+            Q(participant1_user__id=user_id)
+            | Q(participant2_user__id=user_id)
+            | Q(participant1_team__members__id=user_id)
+            | Q(participant2_team__members__id=user_id)
+        ).distinct()
+
+
+class TeamMatchHistoryView(generics.ListAPIView):
+    """
+    API view to list match history for a specific team.
+    """
+
+    serializer_class = MatchSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        team_id = self.kwargs["pk"]
+        return Match.objects.filter(
+            Q(participant1_team__id=team_id) | Q(participant2_team__id=team_id)
+        ).distinct()
