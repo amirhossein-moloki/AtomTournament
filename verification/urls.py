@@ -1,8 +1,10 @@
-from django.urls import path
-from .views import VerificationLevel2View, VerificationLevel3View, AdminVerificationView
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import VerificationViewSet
+
+router = DefaultRouter()
+router.register(r'', VerificationViewSet, basename='verification')
 
 urlpatterns = [
-    path("level2/", VerificationLevel2View.as_view(), name="verification-level2"),
-    path("level3/", VerificationLevel3View.as_view(), name="verification-level3"),
-    path("admin/<int:pk>/", AdminVerificationView.as_view(), name="admin-verification"),
+    path("", include(router.urls)),
 ]

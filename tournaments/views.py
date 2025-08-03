@@ -18,12 +18,15 @@ from .filters import TournamentFilter
 from .permissions import IsGameManagerOrAdmin
 from django_filters.rest_framework import DjangoFilterBackend
 
-from .models import Game, Match, Tournament, Participant
+from .models import Game, Match, Tournament, Participant, Report, WinnerSubmission, Scoring
 from .serializers import (
     GameSerializer,
     MatchSerializer,
     TournamentSerializer,
     ParticipantSerializer,
+    ReportSerializer,
+    WinnerSubmissionSerializer,
+    ScoringSerializer,
 )
 from notifications.tasks import send_tournament_credentials
 from .services import (
@@ -38,9 +41,6 @@ from .services import (
     approve_winner_submission_service,
     reject_winner_submission_service,
 )
-from .models import Report, WinnerSubmission
-from .serializers import ReportSerializer, WinnerSubmissionSerializer, ScoringSerializer
-from .models import Scoring
 
 
 class TournamentParticipantListView(generics.ListAPIView):
@@ -53,14 +53,14 @@ class TournamentParticipantListView(generics.ListAPIView):
 
     def get_queryset(self):
         tournament_id = self.kwargs["pk"]
-        return Participant.objects.filter(tournament_id=tournament_id)
+        return Participant.objects.filter(tournament_id=tournament_id).select_related('user')
 
 
 class TournamentViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing tournaments.
     """
-
+    queryset = Tournament.objects.all()
     serializer_class = TournamentSerializer
     permission_classes = [IsAuthenticated]
 
@@ -148,7 +148,9 @@ class MatchViewSet(viewsets.ModelViewSet):
     ViewSet for managing matches.
     """
 
-    queryset = Match.objects.all()
+    queryset = Match.objects.all().select_related(
+        'tournament', 'participant1_user', 'participant2_user', 'participant1_team', 'participant2_team', 'winner_user', 'winner_team'
+    )
     serializer_class = MatchSerializer
     permission_classes = [IsAuthenticated]
 
@@ -201,7 +203,7 @@ class GameViewSet(viewsets.ModelViewSet):
     ViewSet for managing games.
     """
 
-    queryset = Game.objects.all()
+    queryset = Game.objects.all().prefetch_related('images')
     serializer_class = GameSerializer
 
     def get_permissions(self):
@@ -247,15 +249,15 @@ class ReportViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing reports.
     """
-
     queryset = Report.objects.all()
     serializer_class = ReportSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        if self.request.user.is_staff:
-            return Report.objects.all()
-        return Report.objects.filter(reporter=self.request.user)
+        queryset = Report.objects.all().select_related('reporter', 'reported_user', 'match')
+        if not self.request.user.is_staff:
+            queryset = queryset.filter(reporter=self.request.user)
+        return queryset
 
     def perform_create(self, serializer):
         validated_data = serializer.validated_data
@@ -292,15 +294,15 @@ class WinnerSubmissionViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing winner submissions.
     """
-
     queryset = WinnerSubmission.objects.all()
     serializer_class = WinnerSubmissionSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        if self.request.user.is_staff:
-            return WinnerSubmission.objects.all()
-        return WinnerSubmission.objects.filter(winner=self.request.user)
+        queryset = WinnerSubmission.objects.all().select_related('winner', 'tournament')
+        if not self.request.user.is_staff:
+            queryset = queryset.filter(winner=self.request.user)
+        return queryset
 
     def perform_create(self, serializer):
         if not serializer.is_valid():
@@ -360,7 +362,7 @@ class ScoringViewSet(viewsets.ModelViewSet):
     ViewSet for managing scores.
     """
 
-    queryset = Scoring.objects.all()
+    queryset = Scoring.objects.all().select_related('tournament', 'user')
     serializer_class = ScoringSerializer
     permission_classes = [IsAdminUser]
 
@@ -430,4 +432,9 @@ class UserTournamentHistoryView(generics.ListAPIView):
         for the currently authenticated user.
         """
         user = self.request.user
-        return Tournament.objects.filter(participants=user)
+        participant_queryset = Participant.objects.select_related('user')
+        return Tournament.objects.filter(participants=user).prefetch_related(
+            Prefetch('participant_set', queryset=participant_queryset),
+            'teams',
+            'game'
+        )

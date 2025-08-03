@@ -5,7 +5,7 @@ from .models import Ticket, TicketMessage, SupportAssignment
 class TicketMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = TicketMessage
-        fields = ("id", "user", "message", "created_at")
+        fields = ("id", "ticket", "user", "message", "created_at")
         read_only_fields = ("id", "user", "created_at")
 
 

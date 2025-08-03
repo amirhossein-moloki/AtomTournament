@@ -23,8 +23,13 @@ class UserSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "username",
+            "first_name",
+            "last_name",
             "email",
             "phone_number",
+            "profile_picture",
+            "score",
+            "rank",
             "role",
             "in_game_ids",
             "password",
@@ -74,7 +79,7 @@ class TeamSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Team
-        fields = ("id", "name", "captain", "members")
+        fields = ("id", "name", "captain", "members", "team_picture")
         read_only_fields = ("captain",)
 
 
@@ -85,13 +90,7 @@ class RoleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Role
-        fields = ("id", "name", "description")
-
-    def update(self, instance, validated_data):
-        members_data = validated_data.pop("members", [])
-        instance = super().update(instance, validated_data)
-        instance.members.set(members_data)
-        return instance
+        fields = ("id", "name", "description", "is_default")
 
 
 class TeamInvitationSerializer(serializers.ModelSerializer):

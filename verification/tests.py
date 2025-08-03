@@ -30,9 +30,9 @@ class VerificationViewTests(APITestCase):
         self.admin_user = User.objects.create_superuser(
             username="admin", password="password", phone_number="+54321"
         )
-        self.level2_url = "/api/verification/level2/"
-        self.level3_url = "/api/verification/level3/"
-        self.admin_url_template = "/api/verification/admin/{}/"
+        self.level2_url = "/api/verification/submit_level2/"
+        self.level3_url = "/api/verification/submit_level3/"
+        self.admin_url_template = "/api/verification/{}/approve/"
 
     def _generate_dummy_image(self, name="test.png"):
         file = BytesIO()
@@ -79,7 +79,7 @@ class VerificationViewTests(APITestCase):
         self.client.force_authenticate(user=self.admin_user)
         url = self.admin_url_template.format(verification.pk)
         data = {"is_verified": True}
-        response = self.client.patch(url, data)
+        response = self.client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         verification.refresh_from_db()
         self.assertTrue(verification.is_verified)
@@ -91,7 +91,7 @@ class VerificationViewTests(APITestCase):
         self.client.force_authenticate(user=self.admin_user)
         url = self.admin_url_template.format(verification.pk)
         data = {"is_verified": False}
-        response = self.client.patch(url, data)
+        response = self.client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         verification.refresh_from_db()
         self.assertFalse(verification.is_verified)
@@ -101,7 +101,7 @@ class VerificationViewTests(APITestCase):
         self.client.force_authenticate(user=self.user)
         url = self.admin_url_template.format(verification.pk)
         data = {"is_verified": True}
-        response = self.client.patch(url, data)
+        response = self.client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_submit_level3_not_level2_verified_fails(self):

@@ -10,6 +10,8 @@ from .models import (
     Report,
     WinnerSubmission,
     Scoring,
+    Rank,
+    GameManager,
 )
 from .validators import FileValidator
 
@@ -19,7 +21,7 @@ class GameImageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = GameImage
-        fields = ("image_type", "image")
+        fields = ("game", "image_type", "image")
 
 
 class GameSerializer(serializers.ModelSerializer):
@@ -60,6 +62,12 @@ class TournamentSerializer(serializers.ModelSerializer):
             "creator",
             "final_rank",
             "prize_won",
+            "countdown_start_time",
+            "required_verification_level",
+            "min_rank",
+            "max_rank",
+            "top_players",
+            "top_teams",
         )
         read_only_fields = ("id", "participants", "teams", "creator")
 
@@ -119,7 +127,11 @@ class MatchSerializer(serializers.ModelSerializer):
             "result_proof",
             "is_confirmed",
             "is_disputed",
+            "dispute_reason",
+            "room_id",
+            "password",
         )
+        extra_kwargs = {"password": {"write_only": True}}
         read_only_fields = (
             "id",
             "participant1_user",
@@ -141,7 +153,7 @@ class ParticipantSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Participant
-        fields = ["username", "status", "display_picture"]
+        fields = ["user", "tournament", "username", "status", "rank", "prize", "display_picture"]
 
     def get_display_picture(self, obj):
         if obj.tournament.type == "team":
@@ -190,4 +202,20 @@ class ScoringSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Scoring
+        fields = "__all__"
+
+
+class RankSerializer(serializers.ModelSerializer):
+    """Serializer for the Rank model."""
+
+    class Meta:
+        model = Rank
+        fields = "__all__"
+
+
+class GameManagerSerializer(serializers.ModelSerializer):
+    """Serializer for the GameManager model."""
+
+    class Meta:
+        model = GameManager
         fields = "__all__"

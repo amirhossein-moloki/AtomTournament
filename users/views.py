@@ -31,7 +31,7 @@ from .serializers import (
 from wallet.serializers import TransactionSerializer
 from tournaments.serializers import TournamentSerializer
 from rest_framework.views import APIView
-from tournaments.models import Tournament
+from tournaments.models import Tournament, Participant
 
 
 class RoleViewSet(viewsets.ModelViewSet):
@@ -49,7 +49,7 @@ class UserViewSet(viewsets.ModelViewSet):
     ViewSet for managing users.
     """
 
-    queryset = User.objects.all()
+    queryset = User.objects.all().prefetch_related('in_game_ids').select_related('verification', 'rank')
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
     filter_backends = [DjangoFilterBackend]
@@ -63,7 +63,12 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"])
     def tournaments(self, request, pk=None):
         user = self.get_object()
-        tournaments = Tournament.objects.filter(participants=user)
+        participant_queryset = Participant.objects.select_related('user')
+        tournaments = Tournament.objects.filter(participants=user).prefetch_related(
+            Prefetch('participant_set', queryset=participant_queryset),
+            'teams',
+            'game'
+        )
         serializer = TournamentSerializer(tournaments, many=True)
         return Response(serializer.data)
 
@@ -104,7 +109,7 @@ class TeamViewSet(viewsets.ModelViewSet):
     ViewSet for managing teams.
     """
 
-    queryset = Team.objects.all()
+    queryset = Team.objects.all().select_related('captain').prefetch_related('members')
     serializer_class = TeamSerializer
     permission_classes = [IsAuthenticated, IsCaptainOrReadOnly]
     filter_backends = [DjangoFilterBackend]

@@ -12,7 +12,7 @@ class MessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Message
-        fields = ("id", "sender", "content", "timestamp", "is_edited", "is_deleted")
+        fields = ("id", "conversation", "sender", "content", "timestamp", "is_read", "is_edited", "is_deleted")
 
 
 class ConversationSerializer(serializers.ModelSerializer):
@@ -23,7 +23,7 @@ class ConversationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Conversation
-        fields = ("id", "participants", "created_at", "last_message")
+        fields = ("id", "participants", "created_at", "last_message", "support_ticket")
 
     def get_last_message(self, obj):
         """
