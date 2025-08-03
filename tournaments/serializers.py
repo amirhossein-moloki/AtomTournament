@@ -35,6 +35,7 @@ class TournamentSerializer(serializers.ModelSerializer):
 
     final_rank = serializers.SerializerMethodField()
     prize_won = serializers.SerializerMethodField()
+    spots_left = serializers.SerializerMethodField()
 
     class Meta:
         model = Tournament
@@ -59,8 +60,18 @@ class TournamentSerializer(serializers.ModelSerializer):
             "max_rank",
             "top_players",
             "top_teams",
+            "max_participants",
+            "team_size",
+            "mode",
+            "spots_left",
         )
         read_only_fields = ("id", "participants", "teams", "creator")
+
+    def get_spots_left(self, obj):
+        if obj.type == "individual":
+            return obj.max_participants - obj.participants.count()
+        else:
+            return obj.max_participants - obj.teams.count()
 
     def get_final_rank(self, obj):
         user = self.context["request"].user

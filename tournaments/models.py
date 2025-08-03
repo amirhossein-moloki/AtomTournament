@@ -64,9 +64,20 @@ class Tournament(models.Model):
         ("individual", "Individual"),
         ("team", "Team"),
     )
+    TOURNAMENT_MODE_CHOICES = (
+        ("team_deathmatch", "Team Deathmatch"),
+        ("battle_royale", "Battle Royale"),
+    )
     type = models.CharField(
         max_length=20, choices=TOURNAMENT_TYPE_CHOICES, default="individual"
     )
+    mode = models.CharField(
+        max_length=20,
+        choices=TOURNAMENT_MODE_CHOICES,
+        default="team_deathmatch",
+    )
+    max_participants = models.PositiveIntegerField(default=100)
+    team_size = models.PositiveIntegerField(default=1)
     name = models.CharField(max_length=100)
     game = models.ForeignKey(Game, on_delete=models.CASCADE)
     start_date = models.DateTimeField()
@@ -111,6 +122,7 @@ class Tournament(models.Model):
     )
 
     def clean(self):
+        super().clean()
         if self.start_date and self.end_date and self.start_date >= self.end_date:
             raise ValidationError("End date must be after start date.")
         if not self.is_free and self.entry_fee is None:
@@ -123,6 +135,12 @@ class Tournament(models.Model):
             raise ValidationError(
                 "Team tournaments cannot have individual participants."
             )
+        if self.type == "individual" and self.team_size != 1:
+            raise ValidationError("Individual tournaments must have a team size of 1.")
+        if self.type == "team" and self.team_size <= 1:
+            raise ValidationError("Team tournaments must have a team size greater than 1.")
+        if self.mode == "battle_royale" and self.type != "individual":
+            raise ValidationError("Battle Royale tournaments must be individual.")
 
     def distribute_scores(self):
         if self.type == "individual":
