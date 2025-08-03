@@ -1,6 +1,6 @@
 from rest_framework import permissions
 
-from .models import GameManager, Game
+from .models import GameManager
 
 
 class IsGameManagerOrAdmin(permissions.BasePermission):
@@ -18,7 +18,7 @@ class IsGameManagerOrAdmin(permissions.BasePermission):
             return False
 
         # Allow list/retrieve actions for any authenticated user.
-        if view.action in ['list', 'retrieve']:
+        if view.action in ["list", "retrieve"]:
             return True
 
         # Admins can do anything.
@@ -26,11 +26,13 @@ class IsGameManagerOrAdmin(permissions.BasePermission):
             return True
 
         # For 'create' action, we need to check the game from the request data.
-        if view.action == 'create':
-            game_id = request.data.get('game')
+        if view.action == "create":
+            game_id = request.data.get("game")
             if not game_id:
                 return False  # Cannot create a tournament without a game.
-            return GameManager.objects.filter(user=request.user, game_id=game_id).exists()
+            return GameManager.objects.filter(
+                user=request.user, game_id=game_id
+            ).exists()
 
         # For other actions (like update, destroy), object-level permission is the source of truth.
         return True

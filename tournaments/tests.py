@@ -1,27 +1,22 @@
-from django.test import TestCase
-from rest_framework.test import APITestCase, APIClient
-from django.core.files.uploadedfile import SimpleUploadedFile
-from rest_framework import status
-from .models import Tournament, Game, Match, Participant, Report, WinnerSubmission, GameManager
-from users.models import User, Team
-from verification.models import Verification
-from django.utils import timezone
-from tournament_project.celery import app as celery_app
 from datetime import timedelta
-from django.core.exceptions import ValidationError
-from .services import (
-    join_tournament,
-    confirm_match_result,
-    generate_matches,
-    create_report_service,
-    resolve_report_service,
-    reject_report_service,
-    create_winner_submission_service,
-    approve_winner_submission_service,
-    reject_winner_submission_service,
-)
-from .exceptions import ApplicationError
 from unittest.mock import patch
+
+from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase
+from django.utils import timezone
+from rest_framework import status
+from io import BytesIO
+
+from PIL import Image
+from rest_framework.test import APIClient, APITestCase
+
+from tournament_project.celery import app as celery_app
+from users.models import Team, User
+from verification.models import Verification
+
+from .models import (Game, GameManager, Match, Report, Tournament,
+                     WinnerSubmission)
 
 
 class TournamentModelTests(TestCase):
@@ -190,7 +185,9 @@ class TournamentViewSetTests(APITestCase):
 
     def test_join_individual_tournament(self):
         self.client.force_authenticate(user=self.user)
-        response = self.client.post(f"{self.tournaments_url}tournaments/{self.tournament.id}/join/")
+        response = self.client.post(
+            f"{self.tournaments_url}tournaments/{self.tournament.id}/join/"
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(self.tournament.participants.filter(id=self.user.id).exists())
 
@@ -319,7 +316,9 @@ class ReportViewSetTests(APITestCase):
         response = self.client.post(self.reports_url, data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(
-            Report.objects.filter(reporter=self.reporter, reported_user=self.reported).exists()
+            Report.objects.filter(
+                reporter=self.reporter, reported_user=self.reported
+            ).exists()
         )
 
     def test_resolve_report(self):
@@ -348,9 +347,6 @@ class ReportViewSetTests(APITestCase):
         report.refresh_from_db()
         self.assertEqual(report.status, "rejected")
 
-
-from io import BytesIO
-from PIL import Image
 
 class WinnerSubmissionViewSetTests(APITestCase):
     def setUp(self):
@@ -448,7 +444,9 @@ class GameManagerPermissionsTests(APITestCase):
         )
 
         self.tournaments_url = "/api/tournaments/tournaments/"
-        self.tournament_detail_url = f"{self.tournaments_url}{self.tournament_in_managed_game.id}/"
+        self.tournament_detail_url = (
+            f"{self.tournaments_url}{self.tournament_in_managed_game.id}/"
+        )
 
     def test_manager_can_create_tournament_for_managed_game(self):
         """A game manager should be able to create a tournament for their game."""
@@ -461,7 +459,9 @@ class GameManagerPermissionsTests(APITestCase):
         }
         response = self.client.post(self.tournaments_url, data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(Tournament.objects.filter(name="New Tournament by Manager").exists())
+        self.assertTrue(
+            Tournament.objects.filter(name="New Tournament by Manager").exists()
+        )
 
     def test_manager_cannot_create_tournament_for_other_game(self):
         """A game manager should NOT be able to create a tournament for another game."""
@@ -494,7 +494,9 @@ class GameManagerPermissionsTests(APITestCase):
         )
         self.client.force_authenticate(user=self.game_manager)
         data = {"name": "Updated Name"}
-        response = self.client.patch(f"{self.tournaments_url}{other_tournament.id}/", data)
+        response = self.client.patch(
+            f"{self.tournaments_url}{other_tournament.id}/", data
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_regular_user_cannot_create_tournament(self):

@@ -1,5 +1,6 @@
-from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.test import TestCase
+
 from .models import Ticket, TicketMessage
 
 User = get_user_model()

@@ -1,46 +1,35 @@
 from django.conf import settings
-from django.http import FileResponse, Http404
-from django.utils import timezone
-from rest_framework.decorators import api_view, permission_classes
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Prefetch
-from wallet.models import Transaction
-from django.core.exceptions import ValidationError
+from django.http import FileResponse, Http404
+from django.utils import timezone
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, status, viewsets
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from notifications.tasks import send_tournament_credentials
 from users.serializers import TeamSerializer
+from wallet.models import Transaction
+
 from .exceptions import ApplicationError
 from .filters import TournamentFilter
+from .models import (Game, Match, Participant, Report, Scoring, Tournament,
+                     WinnerSubmission)
 from .permissions import IsGameManagerOrAdmin
-from django_filters.rest_framework import DjangoFilterBackend
-
-from .models import Game, Match, Tournament, Participant, Report, WinnerSubmission, Scoring
-from .serializers import (
-    GameSerializer,
-    MatchSerializer,
-    TournamentSerializer,
-    ParticipantSerializer,
-    ReportSerializer,
-    WinnerSubmissionSerializer,
-    ScoringSerializer,
-)
-from notifications.tasks import send_tournament_credentials
-from .services import (
-    join_tournament,
-    generate_matches,
-    confirm_match_result,
-    dispute_match_result,
-    create_report_service,
-    resolve_report_service,
-    reject_report_service,
-    create_winner_submission_service,
-    approve_winner_submission_service,
-    reject_winner_submission_service,
-)
+from .serializers import (GameSerializer, MatchSerializer,
+                          ParticipantSerializer, ReportSerializer,
+                          ScoringSerializer, TournamentSerializer,
+                          WinnerSubmissionSerializer)
+from .services import (approve_winner_submission_service, confirm_match_result,
+                       create_report_service, create_winner_submission_service,
+                       dispute_match_result, generate_matches, join_tournament,
+                       reject_report_service, reject_winner_submission_service,
+                       resolve_report_service)
 
 
 class TournamentParticipantListView(generics.ListAPIView):
@@ -53,13 +42,16 @@ class TournamentParticipantListView(generics.ListAPIView):
 
     def get_queryset(self):
         tournament_id = self.kwargs["pk"]
-        return Participant.objects.filter(tournament_id=tournament_id).select_related('user')
+        return Participant.objects.filter(tournament_id=tournament_id).select_related(
+            "user"
+        )
 
 
 class TournamentViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing tournaments.
     """
+
     queryset = Tournament.objects.all()
     serializer_class = TournamentSerializer
     permission_classes = [IsAuthenticated]
@@ -70,18 +62,24 @@ class TournamentViewSet(viewsets.ModelViewSet):
         - `participant_set` is needed by the serializer to get user-specific rank and prize.
         - `teams` and `game` are also serialized.
         """
-        participant_queryset = Participant.objects.select_related('user')
+        participant_queryset = Participant.objects.select_related("user")
         return Tournament.objects.prefetch_related(
-            Prefetch('participant_set', queryset=participant_queryset),
-            'teams',
-            'game'
+            Prefetch("participant_set", queryset=participant_queryset), "teams", "game"
         ).all()
+
     filter_backends = [DjangoFilterBackend]
     filterset_class = TournamentFilter
 
     def get_permissions(self):
         # Use our custom permission for actions that modify tournaments
-        if self.action in ['create', 'update', 'partial_update', 'destroy', 'generate_matches', 'start_countdown']:
+        if self.action in [
+            "create",
+            "update",
+            "partial_update",
+            "destroy",
+            "generate_matches",
+            "start_countdown",
+        ]:
             return [IsGameManagerOrAdmin()]
         # For other actions, just require authentication
         return [IsAuthenticated()]
@@ -138,7 +136,8 @@ class TournamentViewSet(viewsets.ModelViewSet):
         tournament.countdown_start_time = timezone.now()
         tournament.save()
         send_tournament_credentials.apply_async(
-            (tournament.id,), eta=tournament.countdown_start_time + timezone.timedelta(minutes=5)
+            (tournament.id,),
+            eta=tournament.countdown_start_time + timezone.timedelta(minutes=5),
         )
         return Response({"message": "Countdown started."})
 
@@ -149,7 +148,13 @@ class MatchViewSet(viewsets.ModelViewSet):
     """
 
     queryset = Match.objects.all().select_related(
-        'tournament', 'participant1_user', 'participant2_user', 'participant1_team', 'participant2_team', 'winner_user', 'winner_team'
+        "tournament",
+        "participant1_user",
+        "participant2_user",
+        "participant1_team",
+        "participant2_team",
+        "winner_user",
+        "winner_team",
     )
     serializer_class = MatchSerializer
     permission_classes = [IsAuthenticated]
@@ -168,7 +173,9 @@ class MatchViewSet(viewsets.ModelViewSet):
         winner_id = request.data.get("winner_id")
 
         if not winner_id:
-            return Response({"error": "Winner ID not provided."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Winner ID not provided."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             confirm_match_result(match, winner_id=winner_id)
@@ -203,7 +210,7 @@ class GameViewSet(viewsets.ModelViewSet):
     ViewSet for managing games.
     """
 
-    queryset = Game.objects.all().prefetch_related('images')
+    queryset = Game.objects.all().prefetch_related("images")
     serializer_class = GameSerializer
 
     def get_permissions(self):
@@ -230,10 +237,15 @@ def private_media_view(request, path):
         if request.user in [match.participant1_user, match.participant2_user]:
             is_participant = True
     else:
-        if request.user in [
-            match.participant1_team.captain,
-            match.participant2_team.captain,
-        ] or request.user in match.participant1_team.members.all() or request.user in match.participant2_team.members.all():
+        if (
+            request.user
+            in [
+                match.participant1_team.captain,
+                match.participant2_team.captain,
+            ]
+            or request.user in match.participant1_team.members.all()
+            or request.user in match.participant2_team.members.all()
+        ):
             is_participant = True
 
     if is_participant or request.user.is_staff:
@@ -249,12 +261,15 @@ class ReportViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing reports.
     """
+
     queryset = Report.objects.all()
     serializer_class = ReportSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = Report.objects.all().select_related('reporter', 'reported_user', 'match')
+        queryset = Report.objects.all().select_related(
+            "reporter", "reported_user", "match"
+        )
         if not self.request.user.is_staff:
             queryset = queryset.filter(reporter=self.request.user)
         return queryset
@@ -266,7 +281,7 @@ class ReportViewSet(viewsets.ModelViewSet):
             reported_user_id=validated_data["reported_user"].id,
             match_id=validated_data["match"].id,
             description=validated_data["description"],
-            evidence=validated_data.get("evidence")
+            evidence=validated_data.get("evidence"),
         )
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
@@ -294,12 +309,13 @@ class WinnerSubmissionViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing winner submissions.
     """
+
     queryset = WinnerSubmission.objects.all()
     serializer_class = WinnerSubmissionSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = WinnerSubmission.objects.all().select_related('winner', 'tournament')
+        queryset = WinnerSubmission.objects.all().select_related("winner", "tournament")
         if not self.request.user.is_staff:
             queryset = queryset.filter(winner=self.request.user)
         return queryset
@@ -312,7 +328,7 @@ class WinnerSubmissionViewSet(viewsets.ModelViewSet):
             create_winner_submission_service(
                 user=self.request.user,
                 tournament=validated_data["tournament"],
-                video=validated_data["video"]
+                video=validated_data["video"],
             )
         except ApplicationError as e:
             # DRF's exception handler will turn this into a 400 response
@@ -362,7 +378,7 @@ class ScoringViewSet(viewsets.ModelViewSet):
     ViewSet for managing scores.
     """
 
-    queryset = Scoring.objects.all().select_related('tournament', 'user')
+    queryset = Scoring.objects.all().select_related("tournament", "user")
     serializer_class = ScoringSerializer
     permission_classes = [IsAdminUser]
 
@@ -373,14 +389,12 @@ class TopTournamentsView(APIView):
     """
 
     def get(self, request):
-        past_tournaments = (
-            Tournament.objects.filter(end_date__lt=timezone.now())
-            .order_by("-entry_fee")
-        )
-        future_tournaments = (
-            Tournament.objects.filter(start_date__gte=timezone.now())
-            .order_by("-entry_fee")
-        )
+        past_tournaments = Tournament.objects.filter(
+            end_date__lt=timezone.now()
+        ).order_by("-entry_fee")
+        future_tournaments = Tournament.objects.filter(
+            start_date__gte=timezone.now()
+        ).order_by("-entry_fee")
 
         past_serializer = TournamentSerializer(past_tournaments, many=True)
         future_serializer = TournamentSerializer(future_tournaments, many=True)
@@ -432,9 +446,7 @@ class UserTournamentHistoryView(generics.ListAPIView):
         for the currently authenticated user.
         """
         user = self.request.user
-        participant_queryset = Participant.objects.select_related('user')
+        participant_queryset = Participant.objects.select_related("user")
         return Tournament.objects.filter(participants=user).prefetch_related(
-            Prefetch('participant_set', queryset=participant_queryset),
-            'teams',
-            'game'
+            Prefetch("participant_set", queryset=participant_queryset), "teams", "game"
         )

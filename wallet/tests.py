@@ -3,8 +3,8 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
-from rest_framework.test import APIClient, APITestCase
 from rest_framework import status
+from rest_framework.test import APIClient, APITestCase
 
 from .models import Transaction, Wallet
 

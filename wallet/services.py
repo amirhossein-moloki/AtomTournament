@@ -1,6 +1,6 @@
+from django.conf import settings
 from zarinpal import ZarinPal
 from zarinpal.utils import Config
-from django.conf import settings
 
 
 class ZarinpalService:

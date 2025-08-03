@@ -1,14 +1,9 @@
 from django.urls import include, path
 
 from .routers import router
-from .views import (
-    AdminReportListView,
-    AdminWinnerSubmissionListView,
-    TopTournamentsView,
-    TotalPrizeMoneyView,
-    TotalTournamentsView,
-    UserTournamentHistoryView,
-)
+from .views import (AdminReportListView, AdminWinnerSubmissionListView,
+                    TopTournamentsView, TotalPrizeMoneyView,
+                    TotalTournamentsView, UserTournamentHistoryView)
 
 urlpatterns = [
     path("", include(router.urls)),

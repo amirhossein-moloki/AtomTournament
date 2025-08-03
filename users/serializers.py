@@ -1,7 +1,8 @@
 from rest_framework import serializers
+
 from verification.serializers import VerificationSerializer
 
-from .models import InGameID, Role, Team, User, TeamInvitation
+from .models import InGameID, Role, Team, TeamInvitation, User
 
 
 class InGameIDSerializer(serializers.ModelSerializer):

@@ -1,6 +1,7 @@
 from django.db import models
-from users.models import User
+
 from tournaments.models import Game
+from users.models import User
 
 
 class Ticket(models.Model):

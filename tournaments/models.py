@@ -17,11 +17,13 @@ class Game(models.Model):
 
 
 class GameManager(models.Model):
-    user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="managed_games")
+    user = models.ForeignKey(
+        "users.User", on_delete=models.CASCADE, related_name="managed_games"
+    )
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="managers")
 
     class Meta:
-        unique_together = ('user', 'game')
+        unique_together = ("user", "game")
         verbose_name = "Game Manager"
         verbose_name_plural = "Game Managers"
 
@@ -237,7 +239,10 @@ class Match(models.Model):
         if self.match_type == "individual":
             return user in [self.participant1_user, self.participant2_user]
         else:
-            return user in self.participant1_team.members.all() or user in self.participant2_team.members.all()
+            return (
+                user in self.participant1_team.members.all()
+                or user in self.participant2_team.members.all()
+            )
 
     def __str__(self):
         if self.match_type == "individual":

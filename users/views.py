@@ -1,37 +1,28 @@
 from django.db import models
+from django.db.models import Prefetch
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from django_ratelimit.decorators import ratelimit
 from rest_framework.response import Response
-from django.db.models import Prefetch
-from wallet.models import Transaction
-
-from .services import (
-    send_otp_service,
-    verify_otp_service,
-    ApplicationError,
-    invite_member_service,
-    respond_to_invitation_service,
-    leave_team_service,
-    remove_member_service,
-)
-from .models import Role, Team, User, TeamInvitation
-from .permissions import IsAdminUser, IsCaptain, IsCaptainOrReadOnly, IsOwnerOrReadOnly
-from .serializers import (
-    RoleSerializer,
-    TeamSerializer,
-    UserSerializer,
-    TeamInvitationSerializer,
-    TopPlayerSerializer,
-    TopTeamSerializer,
-)
-from wallet.serializers import TransactionSerializer
-from tournaments.serializers import TournamentSerializer
 from rest_framework.views import APIView
-from tournaments.models import Tournament, Participant
+
+from tournaments.models import Participant, Tournament
+from tournaments.serializers import TournamentSerializer
+from wallet.models import Transaction
+from wallet.serializers import TransactionSerializer
+
+from .models import Role, Team, TeamInvitation, User
+from .permissions import (IsAdminUser, IsCaptain, IsCaptainOrReadOnly,
+                          IsOwnerOrReadOnly)
+from .serializers import (RoleSerializer, TeamInvitationSerializer,
+                          TeamSerializer, TopPlayerSerializer,
+                          TopTeamSerializer, UserSerializer)
+from .services import (ApplicationError, invite_member_service,
+                       leave_team_service, remove_member_service,
+                       respond_to_invitation_service, send_otp_service,
+                       verify_otp_service)
 
 
 class RoleViewSet(viewsets.ModelViewSet):
@@ -49,7 +40,11 @@ class UserViewSet(viewsets.ModelViewSet):
     ViewSet for managing users.
     """
 
-    queryset = User.objects.all().prefetch_related('in_game_ids').select_related('verification', 'rank')
+    queryset = (
+        User.objects.all()
+        .prefetch_related("in_game_ids")
+        .select_related("verification", "rank")
+    )
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
     filter_backends = [DjangoFilterBackend]
@@ -63,11 +58,9 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"])
     def tournaments(self, request, pk=None):
         user = self.get_object()
-        participant_queryset = Participant.objects.select_related('user')
+        participant_queryset = Participant.objects.select_related("user")
         tournaments = Tournament.objects.filter(participants=user).prefetch_related(
-            Prefetch('participant_set', queryset=participant_queryset),
-            'teams',
-            'game'
+            Prefetch("participant_set", queryset=participant_queryset), "teams", "game"
         )
         serializer = TournamentSerializer(tournaments, many=True)
         return Response(serializer.data)
@@ -109,7 +102,7 @@ class TeamViewSet(viewsets.ModelViewSet):
     ViewSet for managing teams.
     """
 
-    queryset = Team.objects.all().select_related('captain').prefetch_related('members')
+    queryset = Team.objects.all().select_related("captain").prefetch_related("members")
     serializer_class = TeamSerializer
     permission_classes = [IsAuthenticated, IsCaptainOrReadOnly]
     filter_backends = [DjangoFilterBackend]

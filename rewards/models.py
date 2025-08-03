@@ -1,6 +1,7 @@
 from django.db import models
-from users.models import User
+
 from tournaments.models import Rank
+from users.models import User
 
 
 class Wheel(models.Model):

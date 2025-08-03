@@ -4,13 +4,14 @@ from decimal import Decimal
 from django.db import models
 from rest_framework.exceptions import PermissionDenied
 
-from users.models import Team, User
-from .exceptions import ApplicationError
-from .models import Match, Participant, Tournament, Report, WinnerSubmission
-from wallet.models import Wallet
-from verification.models import Verification
-from notifications.tasks import send_email_notification, send_sms_notification
 from notifications.services import send_notification
+from notifications.tasks import send_email_notification, send_sms_notification
+from users.models import Team, User
+from verification.models import Verification
+from wallet.models import Wallet
+
+from .exceptions import ApplicationError
+from .models import Match, Participant, Report, Tournament, WinnerSubmission
 
 
 def generate_matches(tournament: Tournament):

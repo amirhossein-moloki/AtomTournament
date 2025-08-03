@@ -1,9 +1,11 @@
 from django.db.models import F
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+
 from notifications.tasks import send_email_notification, send_sms_notification
-from .models import Transaction, Wallet
 from users.models import User
+
+from .models import Transaction, Wallet
 
 
 @receiver(post_save, sender=Transaction)

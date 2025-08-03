@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Wheel, Prize, Spin
+
+from .models import Prize, Spin, Wheel
 
 
 class PrizeSerializer(serializers.ModelSerializer):

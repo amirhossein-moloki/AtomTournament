@@ -1,22 +1,21 @@
-from django.test import TestCase
-from django.contrib.auth import get_user_model
-from rest_framework.test import APITestCase, APIClient
-from rest_framework import status
-from .models import Team, TeamInvitation, OTP, Role, TeamMembership
-from django.contrib.auth.models import Group
-from django.db.utils import IntegrityError
-from tournaments.models import Rank
-from unittest.mock import patch
-from django.core.exceptions import ValidationError
-from .services import (
-    invite_member_service,
-    respond_to_invitation_service,
-    leave_team_service,
-    remove_member_service,
-    ApplicationError,
-)
-from django.utils import timezone
 from datetime import timedelta
+from unittest.mock import patch
+
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
+from django.core.exceptions import ValidationError
+from django.db.utils import IntegrityError
+from django.test import TestCase
+from django.utils import timezone
+from rest_framework import status
+from rest_framework.test import APIClient, APITestCase
+
+from tournaments.models import Rank
+
+from .models import OTP, Role, Team, TeamInvitation, TeamMembership
+from .services import (ApplicationError, invite_member_service,
+                       leave_team_service, remove_member_service,
+                       respond_to_invitation_service)
 
 User = get_user_model()
 

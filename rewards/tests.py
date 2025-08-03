@@ -1,9 +1,11 @@
-from django.test import TestCase
 from django.contrib.auth import get_user_model
-from rest_framework.test import APITestCase, APIClient
+from django.test import TestCase
 from rest_framework import status
-from .models import Wheel, Prize, Spin
+from rest_framework.test import APIClient, APITestCase
+
 from tournaments.models import Rank
+
+from .models import Prize, Spin, Wheel
 
 User = get_user_model()
 
@@ -84,7 +86,9 @@ class WheelViewSetTests(APITestCase):
 
     def test_spin_already_spun(self):
         # First spin
-        Spin.objects.create(user=self.user_high_rank, wheel=self.wheel, prize=self.prize)
+        Spin.objects.create(
+            user=self.user_high_rank, wheel=self.wheel, prize=self.prize
+        )
 
         # Try to spin again
         self.client.force_authenticate(user=self.user_high_rank)

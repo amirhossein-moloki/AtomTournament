@@ -1,22 +1,25 @@
 import random
-from rest_framework import viewsets, status
+
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+
 from users.models import User
-from .models import Wheel, Spin
-from .serializers import WheelSerializer, SpinSerializer
+
+from .models import Spin, Wheel
+from .serializers import SpinSerializer, WheelSerializer
 
 
 class WheelViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Wheel.objects.all().prefetch_related('prizes', 'required_rank')
+    queryset = Wheel.objects.all().prefetch_related("prizes", "required_rank")
     serializer_class = WheelSerializer
     permission_classes = [IsAuthenticated]
 
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
     def spin(self, request, pk=None):
         wheel = self.get_object()
-        user = User.objects.select_related('rank').get(pk=request.user.pk)
+        user = User.objects.select_related("rank").get(pk=request.user.pk)
 
         if Spin.objects.filter(user=user, wheel=wheel).exists():
             return Response(
@@ -50,4 +53,6 @@ class SpinViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Spin.objects.filter(user=self.request.user).select_related('wheel', 'prize')
+        return Spin.objects.filter(user=self.request.user).select_related(
+            "wheel", "prize"
+        )

@@ -5,7 +5,8 @@ from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from notifications.tasks import send_email_notification, send_sms_notification
-from .models import OTP, User, Team, TeamInvitation
+
+from .models import OTP, Team, TeamInvitation, User
 
 
 class ApplicationError(Exception):

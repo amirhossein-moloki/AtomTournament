@@ -1,4 +1,5 @@
-from rest_framework.permissions import BasePermission, SAFE_METHODS
+from rest_framework.permissions import SAFE_METHODS, BasePermission
+
 from .models import Conversation
 
 
@@ -18,10 +19,11 @@ class IsParticipantInConversation(BasePermission):
     """
     Custom permission to only allow participants of a conversation to view attachments.
     """
+
     def has_permission(self, request, view):
-        conversation_pk = view.kwargs.get('conversation_pk')
+        conversation_pk = view.kwargs.get("conversation_pk")
         if not conversation_pk:
-            return False # Should not happen with nested routers
+            return False  # Should not happen with nested routers
         try:
             conversation = Conversation.objects.get(pk=conversation_pk)
             return request.user in conversation.participants.all()

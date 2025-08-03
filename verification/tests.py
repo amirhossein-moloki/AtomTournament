@@ -1,12 +1,14 @@
-from django.test import TestCase
-from django.contrib.auth import get_user_model
-from rest_framework.test import APITestCase, APIClient
-from rest_framework import status
-from .models import Verification
-from django.core.files.uploadedfile import SimpleUploadedFile
 import os
-from PIL import Image
 from io import BytesIO
+
+from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase
+from PIL import Image
+from rest_framework import status
+from rest_framework.test import APIClient, APITestCase
+
+from .models import Verification
 
 User = get_user_model()
 

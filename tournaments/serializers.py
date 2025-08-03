@@ -1,18 +1,9 @@
 from rest_framework import serializers
+
 from users.serializers import TeamSerializer, UserSerializer
 
-from .models import (
-    Game,
-    GameImage,
-    Match,
-    Tournament,
-    Participant,
-    Report,
-    WinnerSubmission,
-    Scoring,
-    Rank,
-    GameManager,
-)
+from .models import (Game, GameImage, GameManager, Match, Participant, Rank,
+                     Report, Scoring, Tournament, WinnerSubmission)
 from .validators import FileValidator
 
 
@@ -153,7 +144,15 @@ class ParticipantSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Participant
-        fields = ["user", "tournament", "username", "status", "rank", "prize", "display_picture"]
+        fields = [
+            "user",
+            "tournament",
+            "username",
+            "status",
+            "rank",
+            "prize",
+            "display_picture",
+        ]
 
     def get_display_picture(self, obj):
         if obj.tournament.type == "team":
