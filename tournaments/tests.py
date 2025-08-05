@@ -199,6 +199,7 @@ class TournamentViewSetTests(APITestCase):
             start_date=timezone.now() + timedelta(days=1),
             end_date=timezone.now() + timedelta(days=2),
             type="team",
+            team_size=1,
         )
         self.client.force_authenticate(user=self.user)
         data = {"team_id": team.id, "member_ids": [self.user.id]}
@@ -207,6 +208,84 @@ class TournamentViewSetTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(team_tournament.teams.filter(id=team.id).exists())
+
+    def test_join_paid_individual_tournament(self):
+        """
+        Test that a user can join a paid individual tournament and the entry fee is deducted.
+        """
+        self.user.wallet.withdrawable_balance = 200
+        self.user.wallet.save()
+        paid_tournament = Tournament.objects.create(
+            name="Paid Tournament",
+            game=self.game,
+            start_date=timezone.now() + timedelta(days=1),
+            end_date=timezone.now() + timedelta(days=2),
+            is_free=False,
+            entry_fee=100,
+            type="individual",
+        )
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(
+            f"{self.tournaments_url}tournaments/{paid_tournament.id}/join/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.wallet.withdrawable_balance, 100)
+        self.assertTrue(
+            paid_tournament.participants.filter(id=self.user.id).exists()
+        )
+
+    def test_join_paid_team_tournament(self):
+        """
+        Test that a user can join a paid team tournament and the entry fee is deducted.
+        """
+        self.user.wallet.withdrawable_balance = 200
+        self.user.wallet.save()
+        team = Team.objects.create(name="Paid Team", captain=self.user)
+        paid_tournament = Tournament.objects.create(
+            name="Paid Team Tournament",
+            game=self.game,
+            start_date=timezone.now() + timedelta(days=1),
+            end_date=timezone.now() + timedelta(days=2),
+            is_free=False,
+            entry_fee=50,
+            type="team",
+            team_size=1,
+        )
+        self.client.force_authenticate(user=self.user)
+        data = {"team_id": team.id, "member_ids": [self.user.id]}
+        response = self.client.post(
+            f"{self.tournaments_url}tournaments/{paid_tournament.id}/join/", data
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.wallet.withdrawable_balance, 150)
+        self.assertTrue(paid_tournament.teams.filter(id=team.id).exists())
+
+    def test_join_paid_tournament_insufficient_balance(self):
+        """
+        Test that a user cannot join a paid tournament if they have insufficient balance.
+        """
+        self.user.wallet.withdrawable_balance = 50
+        self.user.wallet.save()
+        paid_tournament = Tournament.objects.create(
+            name="Expensive Tournament",
+            game=self.game,
+            start_date=timezone.now() + timedelta(days=1),
+            end_date=timezone.now() + timedelta(days=2),
+            is_free=False,
+            entry_fee=100,
+        )
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(
+            f"{self.tournaments_url}tournaments/{paid_tournament.id}/join/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.wallet.withdrawable_balance, 50)
+        self.assertFalse(
+            paid_tournament.participants.filter(id=self.user.id).exists()
+        )
 
     def test_generate_matches(self):
         self.client.force_authenticate(user=self.admin_user)
