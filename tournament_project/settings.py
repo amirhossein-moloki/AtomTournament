@@ -27,7 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("SECRET_KEY", "a-default-secret-key")
+SECRET_KEY = os.environ.get("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "t")
@@ -48,7 +48,7 @@ INSTALLED_APPS = [
     "channels",
     "django_filters",
     "phonenumber_field",
-    "drf_spectacular",  # این خط را فقط یک بار نگه دارید
+    "drf_spectacular",  # Required for drf-spectacular
     "users",
     "tournaments",
     "wallet",
@@ -208,11 +208,11 @@ else:
         },
     }
 
-# تنظیمات Django REST Framework
+# Django REST Framework Settings
 REST_FRAMEWORK = {
-    # این خط برای drf-spectacular الزامیه
+    # This line is required for drf-spectacular
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    # این خط برای استفاده از JWT Authentication
+    # This line is for using JWT Authentication
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
@@ -249,17 +249,23 @@ FILE_UPLOAD_HANDLERS = [
 
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
-if not DEBUG:  # این بخش را اضافه کنید
-    SECURE_HSTS_SECONDS = 31536000
+if not DEBUG:
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-else:  # این بخش را اضافه کنید
-    SECURE_HSTS_SECONDS = 0  # یا کلا کامنت کنید
+else:
+    SECURE_HSTS_SECONDS = 0
     SECURE_HSTS_INCLUDE_SUBDOMAINS = False
     SECURE_HSTS_PRELOAD = False
-SECURE_SSL_REDIRECT = False  # این خط را قبلاً بررسی کردیم
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+
+# In production (when DEBUG is False), redirect all HTTP requests to HTTPS.
+# We disable this during tests as the test client makes plain HTTP requests.
+is_testing = "test" in sys.argv
+
+SECURE_SSL_REDIRECT = not DEBUG and not is_testing
+# In production, use secure cookies.
+SESSION_COOKIE_SECURE = not DEBUG and not is_testing
+CSRF_COOKIE_SECURE = not DEBUG and not is_testing
 
 CORS_ALLOWED_ORIGINS = os.environ.get(
     "CORS_ALLOWED_ORIGINS", "http://localhost:3000"
@@ -301,7 +307,7 @@ SMSIR_LINE_NUMBER = os.environ.get("SMSIR_LINE_NUMBER")
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": f"{REDIS_URL}/1",  # دیتابیس 1 برای کش، 0 برای channels/celery
+        "LOCATION": f"{REDIS_URL}/1",  # DB 1 for cache, 0 for channels/celery
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
