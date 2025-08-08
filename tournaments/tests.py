@@ -70,8 +70,10 @@ class TournamentModelTests(TestCase):
 
     def test_distribute_scores_individual(self):
         """
-        Test the score distribution for an individual tournament.
+        Test the score distribution for an individual tournament using the service.
         """
+        from .services import distribute_scores_for_tournament
+
         tournament = Tournament.objects.create(
             name="Test Tournament",
             game=self.game,
@@ -79,19 +81,88 @@ class TournamentModelTests(TestCase):
             end_date=self.end_date,
             type="individual",
         )
-        p1 = User.objects.create_user(username="p1", password="p", phone_number="+1")
-        p2 = User.objects.create_user(username="p2", password="p", phone_number="+2")
+        p1 = User.objects.create_user(
+            username="p1", password="p", phone_number="+1", score=100
+        )
+        p2 = User.objects.create_user(
+            username="p2", password="p", phone_number="+2", score=100
+        )
         tournament.top_players.add(p1, p2)
 
         initial_score_p1 = p1.score
         initial_score_p2 = p2.score
 
-        tournament.distribute_scores()
+        distribute_scores_for_tournament(tournament)
+
         p1.refresh_from_db()
         p2.refresh_from_db()
 
+        # Default distribution is [5, 4, 3, 2, 1]
         self.assertEqual(p1.score, initial_score_p1 + 5)
         self.assertEqual(p2.score, initial_score_p2 + 4)
+
+    def test_distribute_scores_team(self):
+        """
+        Test the score distribution for a team-based tournament.
+        """
+        from .services import distribute_scores_for_tournament
+
+        tournament = Tournament.objects.create(
+            name="Team Tournament",
+            game=self.game,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            type="team",
+        )
+        captain1 = User.objects.create_user(
+            username="c1", password="p", phone_number="+10", score=50
+        )
+        member1 = User.objects.create_user(
+            username="m1", password="p", phone_number="+11", score=50
+        )
+        team1 = Team.objects.create(name="Team 1", captain=captain1)
+        team1.members.add(member1)
+
+        captain2 = User.objects.create_user(
+            username="c2", password="p", phone_number="+20", score=50
+        )
+        team2 = Team.objects.create(name="Team 2", captain=captain2)
+
+        tournament.top_teams.add(team1, team2)
+
+        distribute_scores_for_tournament(tournament)
+
+        captain1.refresh_from_db()
+        member1.refresh_from_db()
+        captain2.refresh_from_db()
+
+        self.assertEqual(captain1.score, 50 + 5)
+        self.assertEqual(member1.score, 50 + 5)  # Both members get points
+        self.assertEqual(captain2.score, 50 + 4)
+
+    def test_distribute_scores_custom_distribution(self):
+        """
+        Test score distribution with a custom list of scores.
+        """
+        from .services import distribute_scores_for_tournament
+
+        tournament = Tournament.objects.create(
+            name="Custom Score Tournament",
+            game=self.game,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            type="individual",
+        )
+        p1 = User.objects.create_user(
+            username="p1", password="p", phone_number="+1", score=0
+        )
+        tournament.top_players.add(p1)
+
+        custom_scores = [100]
+        distribute_scores_for_tournament(tournament, score_distribution=custom_scores)
+
+        p1.refresh_from_db()
+        self.assertEqual(p1.score, 100)
 
 
 class MatchModelTests(TestCase):
@@ -213,6 +284,7 @@ class TournamentViewSetTests(APITestCase):
         """
         Test that a user can join a paid individual tournament and the entry fee is deducted.
         """
+        self.user.wallet.total_balance = 200
         self.user.wallet.withdrawable_balance = 200
         self.user.wallet.save()
         paid_tournament = Tournament.objects.create(
@@ -239,6 +311,7 @@ class TournamentViewSetTests(APITestCase):
         """
         Test that a user can join a paid team tournament and the entry fee is deducted.
         """
+        self.user.wallet.total_balance = 200
         self.user.wallet.withdrawable_balance = 200
         self.user.wallet.save()
         team = Team.objects.create(name="Paid Team", captain=self.user)
@@ -266,6 +339,7 @@ class TournamentViewSetTests(APITestCase):
         """
         Test that a user cannot join a paid tournament if they have insufficient balance.
         """
+        self.user.wallet.total_balance = 50
         self.user.wallet.withdrawable_balance = 50
         self.user.wallet.save()
         paid_tournament = Tournament.objects.create(

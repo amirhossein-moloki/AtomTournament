@@ -142,17 +142,6 @@ class Tournament(models.Model):
         if self.mode == "battle_royale" and self.type != "individual":
             raise ValidationError("Battle Royale tournaments must be individual.")
 
-    def distribute_scores(self):
-        if self.type == "individual":
-            for i, player in enumerate(self.top_players.all()):
-                player.score += 5 - i
-                player.save()
-        else:
-            for i, team in enumerate(self.top_teams.all()):
-                for member in team.members.all():
-                    member.score += 5 - i
-                    member.save()
-
     def __str__(self):
         return self.name
 

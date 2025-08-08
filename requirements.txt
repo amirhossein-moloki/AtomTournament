@@ -16,6 +16,10 @@ aiosignal==1.4.0
     # via aiohttp
 amqp==5.3.1
     # via kombu
+annotated-types==0.6.0
+    # via
+    #   pydantic
+    #   zarinpal
 asgiref==3.9.1
     # via
     #   channels
@@ -43,14 +47,18 @@ celery==5.5.3
     # via
     #   -r requirements.in
     #   django-celery-results
-certifi==2025.7.14
-    # via requests
+certifi==2023.7.22
+    # via
+    #   requests
+    #   zarinpal
 cffi==1.17.1
     # via cryptography
 channels==4.2.2
     # via -r requirements.in
-charset-normalizer==3.4.2
-    # via requests
+charset-normalizer==3.3.2
+    # via
+    #   requests
+    #   zarinpal
 click==8.2.1
     # via
     #   black
@@ -138,10 +146,11 @@ frozenlist==1.7.0
     #   aiosignal
 gunicorn==23.0.0
     # via -r requirements.in
-idna==3.10
+idna==3.4
     # via
     #   requests
     #   yarl
+    #   zarinpal
 inflection==0.5.1
     # via drf-spectacular
 jmespath==1.0.1
@@ -194,6 +203,12 @@ pycodestyle==2.11.1
     # via flake8
 pycparser==2.22
     # via cffi
+pydantic==2.5.0
+    # via zarinpal
+pydantic-core==2.14.1
+    # via
+    #   pydantic
+    #   zarinpal
 pyflakes==3.2.0
     # via flake8
 pyjwt==2.10.1
@@ -224,11 +239,12 @@ referencing==0.36.2
     # via
     #   jsonschema
     #   jsonschema-specifications
-requests==2.32.4
+requests==2.31.0
     # via
     #   requests-oauthlib
     #   social-auth-core
     #   twilio
+    #   zarinpal
 requests-oauthlib==2.0.0
     # via social-auth-core
 rpds-py==0.26.0
@@ -251,19 +267,23 @@ sqlparse==0.5.3
     # via django
 twilio==9.6.5
     # via -r requirements.in
-typing-extensions==4.14.1
+typing-extensions==4.8.0
     # via
     #   aiosignal
     #   dj-database-url
+    #   pydantic
+    #   pydantic-core
     #   referencing
+    #   zarinpal
 tzdata==2025.2
     # via kombu
 uritemplate==4.2.0
     # via drf-spectacular
-urllib3==2.5.0
+urllib3==2.1.0
     # via
     #   botocore
     #   requests
+    #   zarinpal
 vine==5.1.0
     # via
     #   amqp
@@ -275,6 +295,8 @@ wheel==0.45.1
     # via pip-tools
 yarl==1.20.1
     # via aiohttp
+zarinpal==1.0.0
+    # via -r requirements.in
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip

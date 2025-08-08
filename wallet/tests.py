@@ -28,10 +28,11 @@ class WalletSignalTests(TestCase):
         self.assertEqual(user.wallet.total_balance, 0)
 
 
-@patch("wallet.signals.send_email_notification.delay")
-@patch("wallet.signals.send_sms_notification.delay")
-class TransactionSignalTests(TestCase):
-    """Tests for transaction signal handlers."""
+from .services import process_transaction
+
+
+class WalletServiceTests(TestCase):
+    """Tests for the wallet service layer."""
 
     def setUp(self):
         self.user = User.objects.create_user(
@@ -45,69 +46,79 @@ class TransactionSignalTests(TestCase):
         self.wallet.withdrawable_balance = Decimal("80.00")
         self.wallet.save()
 
-    def test_deposit_updates_balance_correctly(self, mock_send_sms, mock_send_email):
+    def test_deposit_updates_balance_correctly(self):
         """Test that a 'deposit' transaction correctly updates wallet balances."""
-        Transaction.objects.create(
-            wallet=self.wallet, amount=Decimal("50.00"), transaction_type="deposit"
+        transaction, error = process_transaction(
+            user=self.user, amount=Decimal("50.00"), transaction_type="deposit"
         )
+        self.assertIsNone(error)
+        self.assertIsNotNone(transaction)
         self.wallet.refresh_from_db()
         self.assertEqual(self.wallet.total_balance, Decimal("150.00"))
         self.assertEqual(self.wallet.withdrawable_balance, Decimal("130.00"))
-        mock_send_sms.assert_called_once()
-        mock_send_email.assert_called_once()
 
-    def test_prize_updates_balance_correctly(self, mock_send_sms, mock_send_email):
+    def test_prize_updates_balance_correctly(self):
         """Test that a 'prize' transaction correctly updates wallet balances."""
-        Transaction.objects.create(
-            wallet=self.wallet, amount=Decimal("200.00"), transaction_type="prize"
+        transaction, error = process_transaction(
+            user=self.user, amount=Decimal("200.00"), transaction_type="prize"
         )
+        self.assertIsNone(error)
+        self.assertIsNotNone(transaction)
         self.wallet.refresh_from_db()
         self.assertEqual(self.wallet.total_balance, Decimal("300.00"))
         self.assertEqual(self.wallet.withdrawable_balance, Decimal("280.00"))
-        mock_send_sms.assert_called_once()
-        mock_send_email.assert_called_once()
 
-    def test_entry_fee_updates_balance_correctly(self, mock_send_sms, mock_send_email):
+    def test_entry_fee_updates_balance_correctly(self):
         """Test that an 'entry_fee' transaction correctly updates wallet balances."""
-        Transaction.objects.create(
-            wallet=self.wallet, amount=Decimal("10.00"), transaction_type="entry_fee"
+        transaction, error = process_transaction(
+            user=self.user, amount=Decimal("10.00"), transaction_type="entry_fee"
         )
+        self.assertIsNone(error)
+        self.assertIsNotNone(transaction)
         self.wallet.refresh_from_db()
         self.assertEqual(self.wallet.total_balance, Decimal("90.00"))
         self.assertEqual(self.wallet.withdrawable_balance, Decimal("70.00"))
-        mock_send_sms.assert_called_once()
-        mock_send_email.assert_called_once()
 
-    def test_withdrawal_updates_balance_correctly(self, mock_send_sms, mock_send_email):
+    def test_withdrawal_updates_balance_correctly(self):
         """Test that a 'withdrawal' transaction correctly updates wallet balances."""
-        Transaction.objects.create(
-            wallet=self.wallet, amount=Decimal("30.00"), transaction_type="withdrawal"
+        transaction, error = process_transaction(
+            user=self.user, amount=Decimal("30.00"), transaction_type="withdrawal"
         )
+        self.assertIsNone(error)
+        self.assertIsNotNone(transaction)
         self.wallet.refresh_from_db()
         self.assertEqual(self.wallet.total_balance, Decimal("70.00"))
         self.assertEqual(self.wallet.withdrawable_balance, Decimal("50.00"))
-        mock_send_sms.assert_called_once()
-        mock_send_email.assert_called_once()
 
-    def test_multiple_transactions_are_handled_correctly(
-        self, mock_send_sms, mock_send_email
-    ):
+    def test_withdrawal_insufficient_funds(self):
+        """Test that a withdrawal fails if funds are insufficient."""
+        transaction, error = process_transaction(
+            user=self.user, amount=Decimal("90.00"), transaction_type="withdrawal"
+        )
+        self.assertIsNone(transaction)
+        self.assertIsNotNone(error)
+        self.assertIn("Insufficient withdrawable balance", error)
+        # Check that the balance has not changed
+        self.wallet.refresh_from_db()
+        self.assertEqual(self.wallet.total_balance, Decimal("100.00"))
+
+    def test_multiple_transactions_are_handled_correctly(self):
         """Test a sequence of transactions to ensure the final balance is correct."""
         # 1. Deposit 100
-        Transaction.objects.create(
-            wallet=self.wallet, amount=Decimal("100.00"), transaction_type="deposit"
+        process_transaction(
+            user=self.user, amount=Decimal("100.00"), transaction_type="deposit"
         )
         # 2. Pay entry fee of 25
-        Transaction.objects.create(
-            wallet=self.wallet, amount=Decimal("25.00"), transaction_type="entry_fee"
+        process_transaction(
+            user=self.user, amount=Decimal("25.00"), transaction_type="entry_fee"
         )
         # 3. Win prize of 50
-        Transaction.objects.create(
-            wallet=self.wallet, amount=Decimal("50.00"), transaction_type="prize"
+        process_transaction(
+            user=self.user, amount=Decimal("50.00"), transaction_type="prize"
         )
         # 4. Withdraw 120
-        Transaction.objects.create(
-            wallet=self.wallet, amount=Decimal("120.00"), transaction_type="withdrawal"
+        process_transaction(
+            user=self.user, amount=Decimal("120.00"), transaction_type="withdrawal"
         )
 
         self.wallet.refresh_from_db()
@@ -118,8 +129,6 @@ class TransactionSignalTests(TestCase):
         # 4. Withdraw 120 -> Total 105, Withdrawable 85
         self.assertEqual(self.wallet.total_balance, Decimal("105.00"))
         self.assertEqual(self.wallet.withdrawable_balance, Decimal("85.00"))
-        self.assertEqual(mock_send_sms.call_count, 4)
-        self.assertEqual(mock_send_email.call_count, 4)
 
 
 class WalletViewSetTests(APITestCase):
