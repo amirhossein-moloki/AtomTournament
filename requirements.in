@@ -10,7 +10,10 @@ django-ratelimit
 django-redis
 django-sslserver
 django_celery_results
-djoser
+# Security Fixes for transitive dependencies are blocked by `zarinpal==1.0.0`
+# which pins vulnerable versions of certifi, idna, requests, and urllib3.
+# We can only update direct dependencies.
+djoser>=2.3.0
 drf-nested-routers
 drf-spectacular
 
