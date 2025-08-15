@@ -4,6 +4,20 @@ networks:
   main_network:
     driver: bridge
 
+x-app-service: &app-service
+  build: .
+  entrypoint: /app/entrypoint.sh
+  env_file:
+    - .env
+  volumes:
+    - static_volume:/app/staticfiles
+    - media_volume:/app/media
+  depends_on:
+    - db
+    - redis
+  networks:
+    - main_network
+
 services:
   db:
     image: postgres:13
@@ -26,67 +40,29 @@ services:
       - main_network
 
   web:
-    build: .
-    entrypoint: /app/entrypoint.sh
+    <<: *app-service
     command: web gunicorn tournament_project.wsgi:application --bind 0.0.0.0:8000
-    volumes:
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
     expose:
       - 8000
-    env_file:
-      - .env
-    depends_on:
-      - db
-      - redis
-    networks:
-      - main_network
 
   daphne:
-    build: .
-    entrypoint: /app/entrypoint.sh
+    <<: *app-service
     command: daphne daphne -b 0.0.0.0 -p 8001 tournament_project.asgi:application
-    volumes:
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
     expose:
       - 8001
-    env_file:
-      - .env
-    depends_on:
-      - db
-      - redis
     healthcheck:
       test: ["CMD-SHELL", "exec 6<>/dev/tcp/127.0.0.1/8001; echo -e 'GET / HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n' >&6; grep -q 'HTTP/1.1 200 OK' <&6"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - main_network
 
   celery_worker:
-    build: .
-    entrypoint: /app/entrypoint.sh
+    <<: *app-service
     command: worker celery -A tournament_project worker -l info
-    env_file:
-      - .env
-    depends_on:
-      - db
-      - redis
-    networks:
-      - main_network
 
   celery_beat:
-    build: .
-    entrypoint: /app/entrypoint.sh
+    <<: *app-service
     command: beat celery -A tournament_project beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    env_file:
-      - .env
-    depends_on:
-      - db
-      - redis
-    networks:
-      - main_network
 
   nginx:
     image: nginx:1.25
