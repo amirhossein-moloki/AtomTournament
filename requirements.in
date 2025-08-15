@@ -46,5 +46,6 @@ zarinpal
 
 # Other
 twilio
+aiohttp<3.11  # Pin to support Python < 3.9
 smsir-python
 pillow
