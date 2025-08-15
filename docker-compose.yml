@@ -45,7 +45,7 @@ services:
   daphne:
     build: .
     entrypoint: /app/entrypoint.sh
-    command: daphne -b 0.0.0.0 -p 8001 tournament_project.asgi:application
+    command: daphne daphne -b 0.0.0.0 -p 8001 tournament_project.asgi:application
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
