@@ -1,5 +1,9 @@
 version: "3.8"
 
+networks:
+  main_network:
+    driver: bridge
+
 services:
   db:
     image: postgres:13
@@ -11,11 +15,15 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
+    networks:
+      - main_network
 
   redis:
     image: redis:7
     ports:
       - "6379:6379"
+    networks:
+      - main_network
 
   web:
     build: .
@@ -31,11 +39,13 @@ services:
     depends_on:
       - db
       - redis
+    networks:
+      - main_network
 
   daphne:
     build: .
     entrypoint: /app/entrypoint.sh
-    command: daphne daphne -b 0.0.0.0 -p 8001 tournament_project.asgi:application
+    command: daphne -b 0.0.0.0 -p 8001 tournament_project.asgi:application
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
@@ -46,6 +56,13 @@ services:
     depends_on:
       - db
       - redis
+    healthcheck:
+      test: ["CMD-SHELL", "exec 6<>/dev/tcp/127.0.0.1/8001; echo -e 'GET / HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n' >&6; grep -q 'HTTP/1.1 200 OK' <&6"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - main_network
 
   celery_worker:
     build: .
@@ -56,6 +73,8 @@ services:
     depends_on:
       - db
       - redis
+    networks:
+      - main_network
 
   celery_beat:
     build: .
@@ -66,6 +85,8 @@ services:
     depends_on:
       - db
       - redis
+    networks:
+      - main_network
 
   nginx:
     image: nginx:1.25
@@ -79,8 +100,12 @@ services:
       - "80:80"
       - "443:443"
     depends_on:
-      - web
-      - daphne
+      web:
+        condition: service_started
+      daphne:
+        condition: service_healthy
+    networks:
+      - main_network
 
 volumes:
   postgres_data:
