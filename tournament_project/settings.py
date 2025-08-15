@@ -32,7 +32,12 @@ SECRET_KEY = os.environ.get("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "t")
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "").split(",")
+# Site configuration
+DOMAIN = os.environ.get("DOMAIN", "localhost")
+SITE_NAME = os.environ.get("SITE_NAME", "Tournament Platform")
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", f"localhost,127.0.0.1,{DOMAIN}").split(",")
 
 
 # Application definition
@@ -106,16 +111,24 @@ ASGI_APPLICATION = "tournament_project.asgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
-if DATABASE_URL:
-    DATABASES = {"default": dj_database_url.config(default=DATABASE_URL)}
-else:
+if "test" in sys.argv:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
+            "NAME": ":memory:",
         }
     }
+else:
+    DATABASE_URL = os.environ.get("DATABASE_URL")
+    if DATABASE_URL:
+        DATABASES = {"default": dj_database_url.config(default=DATABASE_URL)}
+    else:
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.sqlite3",
+                "NAME": BASE_DIR / "db.sqlite3",
+            }
+        }
 
 
 # Password validation
@@ -219,7 +232,7 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Tournament Platform API",
+    "TITLE": f"{SITE_NAME} API",
     "DESCRIPTION": "API for managing tournaments, users, wallets, and more.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,  # Optional: hides the schema endpoint from the UI
@@ -227,9 +240,9 @@ SPECTACULAR_SETTINGS = {
 }
 
 DJOSER = {
-    "PASSWORD_RESET_CONFIRM_URL": "#/password/reset/confirm/{uid}/{token}",
-    "USERNAME_RESET_CONFIRM_URL": "#/username/reset/confirm/{uid}/{token}",
-    "ACTIVATION_URL": "#/activate/{uid}/{token}",
+    "PASSWORD_RESET_CONFIRM_URL": f"{FRONTEND_URL}/#/password/reset/confirm/{{uid}}/{{token}}",
+    "USERNAME_RESET_CONFIRM_URL": f"{FRONTEND_URL}/#/username/reset/confirm/{{uid}}/{{token}}",
+    "ACTIVATION_URL": f"{FRONTEND_URL}/#/activate/{{uid}}/{{token}}",
     "SEND_ACTIVATION_EMAIL": True,
     "USER_CREATE_PASSWORD_RETYPE": True,
     "PASSWORD_CHANGED_EMAIL_CONFIRMATION": True,
@@ -238,6 +251,7 @@ DJOSER = {
     "SET_USERNAME_RETYPE": True,
     "SET_PASSWORD_RETYPE": True,
     "SERIALIZERS": {},
+    "SITE_NAME": SITE_NAME,
 }
 
 
@@ -267,9 +281,7 @@ SECURE_SSL_REDIRECT = not DEBUG and not is_testing
 SESSION_COOKIE_SECURE = not DEBUG and not is_testing
 CSRF_COOKIE_SECURE = not DEBUG and not is_testing
 
-CORS_ALLOWED_ORIGINS = os.environ.get(
-    "CORS_ALLOWED_ORIGINS", "http://localhost:3000"
-).split(",")
+CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
 CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "False").lower() in (
     "true",
     "1",
@@ -302,6 +314,17 @@ if "test" in sys.argv:
 # SMS.ir Configuration
 SMSIR_API_KEY = os.environ.get("SMSIR_API_KEY")
 SMSIR_LINE_NUMBER = os.environ.get("SMSIR_LINE_NUMBER")
+
+# Email Configuration
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend"
+)
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", 587))
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True").lower() in ("true", "1", "t")
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "webmaster@localhost")
 
 
 CACHES = {
