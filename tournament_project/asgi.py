@@ -13,8 +13,8 @@ from channels.auth import AuthMiddlewareStack
 from channels.routing import ProtocolTypeRouter, URLRouter
 from django.core.asgi import get_asgi_application
 
-import tournament_project.chat.routing
-import tournament_project.notifications.routing
+import chat.routing
+import notifications.routing
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tournament_project.settings")
 
@@ -23,8 +23,8 @@ application = ProtocolTypeRouter(
         "http": get_asgi_application(),
         "websocket": AuthMiddlewareStack(
             URLRouter(
-                tournament_project.chat.routing.websocket_urlpatterns
-                + tournament_project.notifications.routing.websocket_urlpatterns
+                chat.routing.websocket_urlpatterns
+                + notifications.routing.websocket_urlpatterns
             )
         ),
     }
