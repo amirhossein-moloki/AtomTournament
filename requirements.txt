@@ -6,7 +6,7 @@
 #
 aiohappyeyeballs==2.6.1
     # via aiohttp
-aiohttp==3.10.11
+aiohttp==3.12.15
     # via
     #   -r requirements.in
     #   aiohttp-retry
@@ -110,7 +110,7 @@ django==5.2.5
     #   django-filter
     #   django-phonenumber-field
     #   django-redis
-    #   django-sslserver
+    #   django-sslserver-v2
     #   django-storages
     #   djangorestframework
     #   djangorestframework-simplejwt
@@ -132,7 +132,7 @@ django-ratelimit==4.1.0
     # via -r requirements.in
 django-redis==6.0.0
     # via -r requirements.in
-django-sslserver==0.22
+django-sslserver-v2==1.0
     # via -r requirements.in
 django-storages==1.14.6
     # via -r requirements.in
@@ -151,7 +151,7 @@ drf-nested-routers==0.94.2
     # via -r requirements.in
 drf-spectacular==0.28.0
     # via -r requirements.in
-fakeredis==2.31.0
+fakeredis==2.30.3
     # via -r requirements.in
 flake8==7.3.0
     # via -r requirements.in
@@ -206,7 +206,7 @@ packaging==25.0
     #   kombu
 pathspec==0.12.1
     # via black
-phonenumbers==9.0.11
+phonenumbers==9.0.12
     # via -r requirements.in
 pillow==11.3.0
     # via -r requirements.in
@@ -217,7 +217,9 @@ platformdirs==4.3.8
 prompt-toolkit==3.0.51
     # via click-repl
 propcache==0.3.2
-    # via yarl
+    # via
+    #   aiohttp
+    #   yarl
 psycopg2-binary==2.9.10
     # via -r requirements.in
 pyasn1==0.6.1

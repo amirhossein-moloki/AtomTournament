@@ -1,52 +1,52 @@
 # Framework
-Django
-djangorestframework
-django-cors-headers
-django-filter
-django-phonenumber-field
-phonenumbers
-django-axes
-django-ratelimit
-django-redis
-django-sslserver
-django_celery_results
+Django==5.2.5
+djangorestframework==3.16.1
+django-cors-headers==4.7.0
+django-filter==25.1
+django-phonenumber-field==8.1.0
+phonenumbers==9.0.12
+django-axes==8.0.0
+django-ratelimit==4.1.0
+django-redis==6.0.0
+django-sslserver-v2==1.0
+django_celery_results==2.6.0
 # Security Fixes for transitive dependencies are blocked by `zarinpal==1.0.0`
 # which pins vulnerable versions of certifi, idna, requests, and urllib3.
 # We can only update direct dependencies.
-djoser>=2.3.0
-drf-nested-routers
-drf-spectacular
+djoser==2.3.3
+drf-nested-routers==0.94.2
+drf-spectacular==0.28.0
 
 # Async & Real-time
-celery
-channels
-daphne
-redis
+celery==5.5.3
+channels==4.3.1
+daphne==4.2.1
+redis==6.4.0
 
 # Database & Environment
-dj-database-url
-python-dotenv
-psycopg2-binary
-gunicorn
+dj-database-url==3.0.1
+python-dotenv==1.1.1
+psycopg2-binary==2.9.10
+gunicorn==23.0.0
 
 # Storage
-django-storages
-boto3
+django-storages==1.14.6
+boto3==1.40.10
 
 # Testing
-fakeredis
-coverage
+fakeredis==2.30.3
+coverage==7.10.3
 
 # Code Quality
-black
-flake8
-pip-tools
+black==25.1.0
+flake8==7.3.0
+pip-tools==7.5.0
 
 # Payments
 zarinpal
 
 # Other
-twilio
-aiohttp<3.11  # Pin to support Python < 3.9
-smsir-python
-pillow
+twilio==9.7.0
+aiohttp==3.12.15
+smsir-python==1.0.8
+pillow==11.3.0
