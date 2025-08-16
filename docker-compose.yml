@@ -61,9 +61,9 @@ services:
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
-      - certbot_conf:/etc/letsencrypt
-      - certbot_www:/var/www/certbot
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      - /etc/letsencrypt:/etc/letsencrypt:ro    # مسیر واقعی SSL
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /var/www/certbot:/var/www/certbot       # برای Certbot challenge
     ports:
       - "80:80"
       - "443:443"
@@ -73,12 +73,10 @@ services:
   certbot:
     image: certbot/certbot
     volumes:
-      - certbot_conf:/etc/letsencrypt
-      - certbot_www:/var/www/certbot
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /var/www/certbot:/var/www/certbot
 
 volumes:
   postgres_data:
   static_volume:
   media_volume:
-  certbot_conf:
-  certbot_www:
