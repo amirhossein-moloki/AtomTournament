@@ -15,6 +15,9 @@ class Game(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField()
 
+    def __str__(self):
+        return self.name
+
 
 class GameManager(models.Model):
     user = models.ForeignKey(
@@ -127,14 +130,15 @@ class Tournament(models.Model):
             raise ValidationError("End date must be after start date.")
         if not self.is_free and self.entry_fee is None:
             raise ValidationError("Entry fee must be set for paid tournaments.")
-        if self.type == "individual" and self.teams.exists():
-            raise ValidationError(
-                "Individual tournaments cannot have team participants."
-            )
-        if self.type == "team" and self.participants.exists():
-            raise ValidationError(
-                "Team tournaments cannot have individual participants."
-            )
+        if self.pk is not None:
+            if self.type == "individual" and self.teams.exists():
+                raise ValidationError(
+                    "Individual tournaments cannot have team participants."
+                )
+            if self.type == "team" and self.participants.exists():
+                raise ValidationError(
+                    "Team tournaments cannot have individual participants."
+                )
         if self.type == "individual" and self.team_size != 1:
             raise ValidationError("Individual tournaments must have a team size of 1.")
         if self.type == "team" and self.team_size <= 1:
