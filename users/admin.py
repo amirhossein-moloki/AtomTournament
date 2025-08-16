@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.utils.html import format_html
 
 from .models import (OTP, InGameID, Role, Team, TeamInvitation, TeamMembership,
                      User)
@@ -19,7 +20,18 @@ class TeamMembershipInline(admin.TabularInline):
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     fieldsets = BaseUserAdmin.fieldsets + (
-        (None, {"fields": ("phone_number", "profile_picture", "score", "rank")}),
+        (
+            None,
+            {
+                "fields": (
+                    "phone_number",
+                    "profile_picture",
+                    "profile_picture_preview",
+                    "score",
+                    "rank",
+                )
+            },
+        ),
     )
     add_fieldsets = BaseUserAdmin.add_fieldsets + (
         (None, {"fields": ("phone_number", "profile_picture", "score", "rank")}),
@@ -30,12 +42,41 @@ class UserAdmin(BaseUserAdmin):
         "first_name",
         "last_name",
         "is_staff",
+        "is_active",
         "score",
         "rank",
+        "team_count",
+        "profile_picture_preview",
     )
     list_filter = ("is_staff", "is_superuser", "is_active", "groups", "rank")
     search_fields = ("username", "first_name", "last_name", "email", "phone_number")
     inlines = [InGameIDInline, TeamMembershipInline]
+    readonly_fields = ("profile_picture_preview",)
+    actions = ["make_active", "make_inactive"]
+
+    def profile_picture_preview(self, obj):
+        if obj.profile_picture:
+            return format_html(
+                '<img src="{}" width="50" height="50" />', obj.profile_picture.url
+            )
+        return "No Image"
+
+    profile_picture_preview.short_description = "Profile Picture Preview"
+
+    def team_count(self, obj):
+        return obj.teams.count()
+
+    team_count.short_description = "Teams"
+
+    def make_active(self, request, queryset):
+        queryset.update(is_active=True)
+
+    make_active.short_description = "Mark selected users as active"
+
+    def make_inactive(self, request, queryset):
+        queryset.update(is_active=False)
+
+    make_inactive.short_description = "Mark selected users as inactive"
 
 
 @admin.register(Role)
@@ -47,9 +88,14 @@ class RoleAdmin(admin.ModelAdmin):
 
 @admin.register(Team)
 class TeamAdmin(admin.ModelAdmin):
-    list_display = ("name", "captain")
+    list_display = ("name", "captain", "member_count")
     search_fields = ("name", "captain__username")
     inlines = [TeamMembershipInline]
+
+    def member_count(self, obj):
+        return obj.members.count()
+
+    member_count.short_description = "Members"
 
 
 @admin.register(TeamInvitation)
