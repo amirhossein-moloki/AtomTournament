@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils import timezone
 
 from .models import (Game, GameImage, GameManager, Match, Participant, Rank,
                      Report, Scoring, Tournament, WinnerSubmission)
@@ -38,12 +39,58 @@ class MatchInline(admin.TabularInline):
     extra = 1
 
 
+class TournamentStatusFilter(admin.SimpleListFilter):
+    title = "status"
+    parameter_name = "status"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("upcoming", "Upcoming"),
+            ("ongoing", "Ongoing"),
+            ("finished", "Finished"),
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == "upcoming":
+            return queryset.filter(start_date__gt=timezone.now())
+        if self.value() == "ongoing":
+            return queryset.filter(
+                start_date__lte=timezone.now(), end_date__gte=timezone.now()
+            )
+        if self.value() == "finished":
+            return queryset.filter(end_date__lt=timezone.now())
+
+
 @admin.register(Tournament)
 class TournamentAdmin(admin.ModelAdmin):
-    list_display = ("name", "game", "type", "start_date", "end_date", "is_free")
-    list_filter = ("game", "type", "is_free", "start_date")
+    list_display = (
+        "name",
+        "game",
+        "type",
+        "start_date",
+        "end_date",
+        "is_free",
+        "participant_count",
+    )
+    list_filter = ("game", "type", "is_free", TournamentStatusFilter)
     search_fields = ("name", "game__name")
     inlines = [ParticipantInline, MatchInline]
+    actions = ["start_tournaments", "end_tournaments"]
+
+    def participant_count(self, obj):
+        return obj.participants.count()
+
+    participant_count.short_description = "Participants"
+
+    def start_tournaments(self, request, queryset):
+        queryset.update(start_date=timezone.now())
+
+    start_tournaments.short_description = "Start selected tournaments"
+
+    def end_tournaments(self, request, queryset):
+        queryset.update(end_date=timezone.now())
+
+    end_tournaments.short_description = "End selected tournaments"
 
 
 @admin.register(Participant)
@@ -84,6 +131,17 @@ class WinnerSubmissionAdmin(admin.ModelAdmin):
     list_display = ("winner", "tournament", "status", "created_at")
     list_filter = ("status", "created_at")
     search_fields = ("winner__username", "tournament__name")
+    actions = ["approve_submissions", "reject_submissions"]
+
+    def approve_submissions(self, request, queryset):
+        queryset.update(status="approved")
+
+    approve_submissions.short_description = "Approve selected submissions"
+
+    def reject_submissions(self, request, queryset):
+        queryset.update(status="rejected")
+
+    reject_submissions.short_description = "Reject selected submissions"
 
 
 @admin.register(Scoring)
