@@ -1,9 +1,10 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .views import (DashboardView, RoleViewSet, TeamMatchHistoryView,
-                    TeamViewSet, TopPlayersView, TopTeamsView,
-                    TotalPlayersView, UserMatchHistoryView, UserViewSet)
+from .views import (AdminLoginView, DashboardView, RoleViewSet,
+                    TeamMatchHistoryView, TeamViewSet, TopPlayersView,
+                    TopTeamsView, TotalPlayersView, UserMatchHistoryView,
+                    UserViewSet)
 
 router = DefaultRouter()
 router.register(r"users", UserViewSet)
@@ -26,4 +27,5 @@ urlpatterns = [
     path("top-players/", TopPlayersView.as_view(), name="top-players"),
     path("top-teams/", TopTeamsView.as_view(), name="top-teams"),
     path("total-players/", TotalPlayersView.as_view(), name="total-players"),
+    path("auth/admin-login/", AdminLoginView.as_view(), name="admin-login"),
 ]

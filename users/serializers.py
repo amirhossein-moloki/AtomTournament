@@ -116,3 +116,10 @@ class TopTeamSerializer(serializers.ModelSerializer):
     class Meta:
         model = Team
         fields = ("id", "name", "total_winnings")
+
+
+class AdminLoginSerializer(serializers.Serializer):
+    """Serializer for admin login."""
+
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True)

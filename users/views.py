@@ -16,9 +16,13 @@ from wallet.serializers import TransactionSerializer
 from .models import Role, Team, TeamInvitation, User
 from .permissions import (IsAdminUser, IsCaptain, IsCaptainOrReadOnly,
                           IsOwnerOrReadOnly)
-from .serializers import (RoleSerializer, TeamInvitationSerializer,
-                          TeamSerializer, TopPlayerSerializer,
-                          TopTeamSerializer, UserSerializer)
+from django.contrib.auth import authenticate
+from rest_framework_simplejwt.tokens import RefreshToken
+
+from .serializers import (AdminLoginSerializer, RoleSerializer,
+                          TeamInvitationSerializer, TeamSerializer,
+                          TopPlayerSerializer, TopTeamSerializer,
+                          UserSerializer)
 from .services import (ApplicationError, invite_member_service,
                        leave_team_service, remove_member_service,
                        respond_to_invitation_service, send_otp_service,
@@ -330,3 +334,37 @@ class TeamMatchHistoryView(generics.ListAPIView):
         return Match.objects.filter(
             Q(participant1_team__id=team_id) | Q(participant2_team__id=team_id)
         ).distinct()
+
+
+class AdminLoginView(APIView):
+    """
+    API view for admin login.
+    """
+
+    permission_classes = [AllowAny]
+    serializer_class = AdminLoginSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        username = serializer.validated_data["username"]
+        password = serializer.validated_data["password"]
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            if user.is_staff:
+                refresh = RefreshToken.for_user(user)
+                return Response(
+                    {
+                        "refresh": str(refresh),
+                        "access": str(refresh.access_token),
+                    }
+                )
+            else:
+                return Response(
+                    {"error": "You are not authorized to login from here."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        else:
+            return Response(
+                {"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED
+            )
