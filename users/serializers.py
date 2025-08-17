@@ -13,11 +13,62 @@ class InGameIDSerializer(serializers.ModelSerializer):
         fields = ("game", "player_id")
 
 
+class UserReadOnlySerializer(serializers.ModelSerializer):
+    """Serializer for public User profiles (read-only)."""
+
+    in_game_ids = InGameIDSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = User
+        fields = (
+            "id",
+            "username",
+            "first_name",
+            "last_name",
+            "profile_picture",
+            "score",
+            "rank",
+            "role",
+            "in_game_ids",
+        )
+        read_only_fields = fields
+
+
+class UserCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating a new User."""
+
+    email = serializers.EmailField(required=True)
+
+    class Meta:
+        model = User
+        fields = (
+            "username",
+            "email",
+            "phone_number",
+            "password",
+            "first_name",
+            "last_name",
+        )
+        extra_kwargs = {
+            "password": {"write_only": True},
+        }
+
+    def create(self, validated_data):
+        # We don't handle in_game_ids at creation
+        validated_data.pop("in_game_ids", None)
+        password = validated_data.pop("password")
+        user = User(**validated_data)
+        user.set_password(password)
+        user.save()
+        return user
+
+
 class UserSerializer(serializers.ModelSerializer):
-    """Serializer for the User model."""
+    """Serializer for the User model (full view for owner)."""
 
     in_game_ids = InGameIDSerializer(many=True, required=False)
     verification = VerificationSerializer(read_only=True)
+    role = serializers.ListField(child=serializers.CharField(), read_only=True)
 
     class Meta:
         model = User
@@ -36,20 +87,17 @@ class UserSerializer(serializers.ModelSerializer):
             "password",
             "verification",
         )
-        read_only_fields = ("id",)
-        extra_kwargs = {"password": {"write_only": True}, "role": {"read_only": True}}
-
-    def create(self, validated_data):
-        in_game_ids_data = validated_data.pop("in_game_ids", [])
-        password = validated_data.pop("password")
-        user = User(**validated_data)
-        user.set_password(password)
-        user.save()
-        for in_game_id_data in in_game_ids_data:
-            InGameID.objects.create(user=user, **in_game_id_data)
-        return user
+        read_only_fields = ("id", "score", "rank", "role", "verification")
+        extra_kwargs = {
+            "password": {"write_only": True, "required": False},
+        }
 
     def update(self, instance, validated_data):
+        # Handle password update separately
+        password = validated_data.pop("password", None)
+        if password:
+            instance.set_password(password)
+
         in_game_ids_data = validated_data.pop("in_game_ids", None)
         instance = super().update(instance, validated_data)
 

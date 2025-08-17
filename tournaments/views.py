@@ -21,9 +21,12 @@ from .filters import TournamentFilter
 from .models import (Game, Match, Participant, Report, Scoring, Tournament,
                      WinnerSubmission)
 from .permissions import IsGameManagerOrAdmin
-from .serializers import (GameSerializer, MatchSerializer,
-                          ParticipantSerializer, ReportSerializer,
-                          ScoringSerializer, TournamentSerializer,
+from .serializers import (GameCreateUpdateSerializer, GameReadOnlySerializer,
+                          MatchCreateSerializer, MatchReadOnlySerializer,
+                          MatchUpdateSerializer, ParticipantSerializer,
+                          ReportSerializer, ScoringSerializer,
+                          TournamentCreateUpdateSerializer,
+                          TournamentReadOnlySerializer,
                           WinnerSubmissionSerializer)
 from .services import (approve_winner_submission_service, confirm_match_result,
                        create_report_service, create_winner_submission_service,
@@ -53,25 +56,25 @@ class TournamentViewSet(viewsets.ModelViewSet):
     """
 
     queryset = Tournament.objects.all()
-    serializer_class = TournamentSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = TournamentFilter
+
+    def get_serializer_class(self):
+        if self.action in ["create", "update", "partial_update"]:
+            return TournamentCreateUpdateSerializer
+        return TournamentReadOnlySerializer
 
     def get_queryset(self):
         """
         Prefetch related data to optimize performance and avoid N+1 queries.
-        - `participant_set` is needed by the serializer to get user-specific rank and prize.
-        - `teams` and `game` are also serialized.
         """
         participant_queryset = Participant.objects.select_related("user")
         return Tournament.objects.prefetch_related(
             Prefetch("participant_set", queryset=participant_queryset), "teams", "game"
         ).all()
 
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = TournamentFilter
-
     def get_permissions(self):
-        # Use our custom permission for actions that modify tournaments
         if self.action in [
             "create",
             "update",
@@ -81,13 +84,9 @@ class TournamentViewSet(viewsets.ModelViewSet):
             "start_countdown",
         ]:
             return [IsGameManagerOrAdmin()]
-        # For other actions, just require authentication
         return [IsAuthenticated()]
 
     def perform_create(self, serializer):
-        # Automatically set the tournament creator to the current user.
-        # The permission class has already verified they are allowed to create
-        # a tournament for the game specified in serializer.validated_data.
         serializer.save(creator=self.request.user)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
@@ -156,8 +155,14 @@ class MatchViewSet(viewsets.ModelViewSet):
         "winner_user",
         "winner_team",
     )
-    serializer_class = MatchSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return MatchCreateSerializer
+        if self.action in ["update", "partial_update"]:
+            return MatchUpdateSerializer
+        return MatchReadOnlySerializer
 
     def get_permissions(self):
         if self.action in ["create", "destroy"]:
@@ -211,12 +216,16 @@ class GameViewSet(viewsets.ModelViewSet):
     """
 
     queryset = Game.objects.all().prefetch_related("images")
-    serializer_class = GameSerializer
+
+    def get_serializer_class(self):
+        if self.action in ["create", "update", "partial_update"]:
+            return GameCreateUpdateSerializer
+        return GameReadOnlySerializer
 
     def get_permissions(self):
         if self.action in ["create", "update", "partial_update", "destroy"]:
             return [IsAdminUser()]
-        return super().get_permissions()
+        return [IsAuthenticated()]
 
 
 @api_view(["GET"])
@@ -396,8 +405,12 @@ class TopTournamentsView(APIView):
             start_date__gte=timezone.now()
         ).order_by("-entry_fee")
 
-        past_serializer = TournamentSerializer(past_tournaments, many=True)
-        future_serializer = TournamentSerializer(future_tournaments, many=True)
+        past_serializer = TournamentReadOnlySerializer(
+            past_tournaments, many=True, context={"request": request}
+        )
+        future_serializer = TournamentReadOnlySerializer(
+            future_tournaments, many=True, context={"request": request}
+        )
 
         return Response(
             {
@@ -437,7 +450,7 @@ class UserTournamentHistoryView(generics.ListAPIView):
     API view to list tournaments a user has participated in.
     """
 
-    serializer_class = TournamentSerializer
+    serializer_class = TournamentReadOnlySerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):

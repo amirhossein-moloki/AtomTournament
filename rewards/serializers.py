@@ -6,7 +6,8 @@ from .models import Prize, Spin, Wheel
 class PrizeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Prize
-        fields = "__all__"
+        fields = ("id", "wheel", "name", "image", "chance")
+        read_only_fields = fields
 
 
 class WheelSerializer(serializers.ModelSerializer):
@@ -14,10 +15,12 @@ class WheelSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Wheel
-        fields = "__all__"
+        fields = ("id", "name", "required_rank", "prizes")
+        read_only_fields = fields
 
 
 class SpinSerializer(serializers.ModelSerializer):
     class Meta:
         model = Spin
-        fields = "__all__"
+        fields = ("id", "user", "wheel", "prize", "timestamp")
+        read_only_fields = fields
