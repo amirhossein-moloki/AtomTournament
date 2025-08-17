@@ -22,4 +22,4 @@ class TicketSerializer(serializers.ModelSerializer):
 class SupportAssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = SupportAssignment
-        fields = "__all__"
+        fields = ("id", "support_person", "game", "head_support")

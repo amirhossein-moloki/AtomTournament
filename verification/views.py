@@ -4,12 +4,19 @@ from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Verification
-from .serializers import VerificationSerializer
+from .serializers import (VerificationLevel2Serializer,
+                          VerificationLevel3Serializer, VerificationSerializer)
 
 
 class VerificationViewSet(viewsets.GenericViewSet):
-    serializer_class = VerificationSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action == "submit_level2":
+            return VerificationLevel2Serializer
+        if self.action == "submit_level3":
+            return VerificationLevel3Serializer
+        return VerificationSerializer
 
     def get_queryset(self):
         return Verification.objects.filter(user=self.request.user)
@@ -31,17 +38,8 @@ class VerificationViewSet(viewsets.GenericViewSet):
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        id_card_image = serializer.validated_data.get("id_card_image")
-        selfie_image = serializer.validated_data.get("selfie_image")
-
-        if not id_card_image or not selfie_image:
-            return Response(
-                {"detail": "Both ID card image and selfie image are required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        verification.id_card_image = id_card_image
-        verification.selfie_image = selfie_image
+        verification.id_card_image = serializer.validated_data["id_card_image"]
+        verification.selfie_image = serializer.validated_data["selfie_image"]
         verification.level = 2
         verification.is_verified = False
         verification.save()
@@ -70,14 +68,7 @@ class VerificationViewSet(viewsets.GenericViewSet):
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        video = serializer.validated_data.get("video")
-
-        if not video:
-            return Response(
-                {"detail": "Video is required."}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        verification.video = video
+        verification.video = serializer.validated_data["video"]
         verification.level = 3
         verification.is_verified = False
         verification.save()

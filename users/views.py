@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from tournaments.models import Participant, Tournament
-from tournaments.serializers import TournamentSerializer
+from tournaments.serializers import TournamentReadOnlySerializer
 from wallet.models import Transaction
 from wallet.serializers import TransactionSerializer
 
@@ -22,7 +22,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import (AdminLoginSerializer, RoleSerializer,
                           TeamInvitationSerializer, TeamSerializer,
                           TopPlayerSerializer, TopTeamSerializer,
-                          UserSerializer)
+                          UserSerializer, UserCreateSerializer, UserReadOnlySerializer)
 from .services import (ApplicationError, invite_member_service,
                        leave_team_service, remove_member_service,
                        respond_to_invitation_service, send_otp_service,
@@ -49,10 +49,19 @@ class UserViewSet(viewsets.ModelViewSet):
         .prefetch_related("in_game_ids")
         .select_related("verification", "rank")
     )
-    serializer_class = UserSerializer
     permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["username", "email"]
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return UserCreateSerializer
+        if self.action in ("list", "retrieve"):
+            # Use read-only serializer for lists or for retrieving other users
+            if self.action == "retrieve" and self.request.user.is_authenticated and self.get_object() == self.request.user:
+                return UserSerializer  # The user is viewing their own profile
+            return UserReadOnlySerializer
+        return UserSerializer  # For update, partial_update, etc.
 
     def get_permissions(self):
         if self.action in ["create", "send_otp", "verify_otp"]:
@@ -66,7 +75,9 @@ class UserViewSet(viewsets.ModelViewSet):
         tournaments = Tournament.objects.filter(participants=user).prefetch_related(
             Prefetch("participant_set", queryset=participant_queryset), "teams", "game"
         )
-        serializer = TournamentSerializer(tournaments, many=True)
+        serializer = TournamentReadOnlySerializer(
+            tournaments, many=True, context={"request": request}
+        )
         return Response(serializer.data)
 
     @action(detail=False, methods=["post"])
@@ -239,7 +250,7 @@ class DashboardView(APIView):
         latest_transactions = user.wallet.transaction_set.all()
 
         data = {
-            "upcoming_tournaments": TournamentSerializer(
+            "upcoming_tournaments": TournamentReadOnlySerializer(
                 upcoming_tournaments, many=True, context={"request": request}
             ).data,
             "sent_invitations": TeamInvitationSerializer(
@@ -290,7 +301,7 @@ class TopTeamsView(APIView):
 from django.db.models import Q
 from rest_framework import generics
 from tournaments.models import Match
-from tournaments.serializers import MatchSerializer
+from tournaments.serializers import MatchReadOnlySerializer
 
 
 class TotalPlayersView(APIView):
@@ -308,7 +319,7 @@ class UserMatchHistoryView(generics.ListAPIView):
     API view to list match history for a specific user.
     """
 
-    serializer_class = MatchSerializer
+    serializer_class = MatchReadOnlySerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -326,7 +337,7 @@ class TeamMatchHistoryView(generics.ListAPIView):
     API view to list match history for a specific team.
     """
 
-    serializer_class = MatchSerializer
+    serializer_class = MatchReadOnlySerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):

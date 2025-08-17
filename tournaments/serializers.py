@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from users.serializers import TeamSerializer, UserSerializer
+from users.serializers import TeamSerializer, UserReadOnlySerializer
 
 from .models import (Game, GameImage, GameManager, Match, Participant, Rank,
                      Report, Scoring, Tournament, WinnerSubmission)
@@ -15,23 +15,55 @@ class GameImageSerializer(serializers.ModelSerializer):
         fields = ("game", "image_type", "image")
 
 
-class GameSerializer(serializers.ModelSerializer):
-    """Serializer for the Game model."""
+class GameCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for creating and updating games."""
+
+    class Meta:
+        model = Game
+        fields = ("name", "description")
+
+
+class GameReadOnlySerializer(serializers.ModelSerializer):
+    """Serializer for the Game model (read-only)."""
 
     images = GameImageSerializer(many=True, read_only=True)
 
     class Meta:
         model = Game
         fields = ("id", "name", "description", "images")
+        read_only_fields = fields
 
 
-class TournamentSerializer(serializers.ModelSerializer):
-    """Serializer for the Tournament model."""
+class TournamentCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for creating and updating tournaments."""
 
-    participants = UserSerializer(many=True, read_only=True)
+    class Meta:
+        model = Tournament
+        fields = (
+            "name",
+            "game",
+            "start_date",
+            "end_date",
+            "is_free",
+            "entry_fee",
+            "rules",
+            "type",
+            "required_verification_level",
+            "min_rank",
+            "max_rank",
+            "max_participants",
+            "team_size",
+            "mode",
+        )
+
+
+class TournamentReadOnlySerializer(serializers.ModelSerializer):
+    """Serializer for reading tournament data."""
+
+    participants = UserReadOnlySerializer(many=True, read_only=True)
     teams = TeamSerializer(many=True, read_only=True)
-    game = serializers.PrimaryKeyRelatedField(queryset=Game.objects.all())
-    creator = UserSerializer(read_only=True)
+    game = GameReadOnlySerializer(read_only=True)
+    creator = UserReadOnlySerializer(read_only=True)
 
     final_rank = serializers.SerializerMethodField()
     prize_won = serializers.SerializerMethodField()
@@ -65,53 +97,82 @@ class TournamentSerializer(serializers.ModelSerializer):
             "mode",
             "spots_left",
         )
-        read_only_fields = ("id", "participants", "teams", "creator")
+        read_only_fields = fields
 
     def get_spots_left(self, obj):
+        if obj.max_participants is None:
+            return None
         if obj.type == "individual":
             return obj.max_participants - obj.participants.count()
         else:
             return obj.max_participants - obj.teams.count()
 
     def get_final_rank(self, obj):
-        user = self.context["request"].user
-        if not user.is_authenticated:
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
             return None
 
-        # Access the prefetched participants to avoid N+1 queries
         for p in obj.participant_set.all():
-            if p.user_id == user.id:
+            if p.user_id == request.user.id:
                 return p.rank
         return None
 
     def get_prize_won(self, obj):
-        user = self.context["request"].user
-        if not user.is_authenticated:
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
             return None
 
-        # Access the prefetched participants to avoid N+1 queries
         for p in obj.participant_set.all():
-            if p.user_id == user.id:
+            if p.user_id == request.user.id:
                 return p.prize
         return None
 
 
-class MatchSerializer(serializers.ModelSerializer):
-    """Serializer for the Match model."""
+class MatchCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating matches (admin only)."""
 
-    participant1_user = UserSerializer(read_only=True)
-    participant2_user = UserSerializer(read_only=True)
-    participant1_team = TeamSerializer(read_only=True)
-    participant2_team = TeamSerializer(read_only=True)
-    winner_user = UserSerializer(read_only=True)
-    winner_team = TeamSerializer(read_only=True)
+    class Meta:
+        model = Match
+        fields = (
+            "tournament",
+            "round",
+            "match_type",
+            "participant1_user",
+            "participant2_user",
+            "participant1_team",
+            "participant2_team",
+            "room_id",
+            "password",
+        )
+        extra_kwargs = {"password": {"write_only": True}}
+
+
+class MatchUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating a match with a result proof."""
+
     result_proof = serializers.ImageField(
+        required=True,
         validators=[
             FileValidator(
                 max_size=1024 * 1024 * 2, content_types=("image/jpeg", "image/png")
             )
-        ]
+        ],
     )
+
+    class Meta:
+        model = Match
+        fields = ("result_proof",)
+
+
+class MatchReadOnlySerializer(serializers.ModelSerializer):
+    """Serializer for reading match data."""
+
+    participant1_user = UserReadOnlySerializer(read_only=True)
+    participant2_user = UserReadOnlySerializer(read_only=True)
+    participant1_team = TeamSerializer(read_only=True)
+    participant2_team = TeamSerializer(read_only=True)
+    winner_user = UserReadOnlySerializer(read_only=True)
+    winner_team = TeamSerializer(read_only=True)
 
     class Meta:
         model = Match
@@ -131,20 +192,8 @@ class MatchSerializer(serializers.ModelSerializer):
             "is_disputed",
             "dispute_reason",
             "room_id",
-            "password",
         )
-        extra_kwargs = {"password": {"write_only": True}}
-        read_only_fields = (
-            "id",
-            "participant1_user",
-            "participant2_user",
-            "participant1_team",
-            "participant2_team",
-            "winner_user",
-            "winner_team",
-            "is_confirmed",
-            "is_disputed",
-        )
+        read_only_fields = fields
 
 
 class ParticipantSerializer(serializers.ModelSerializer):

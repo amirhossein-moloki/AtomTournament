@@ -4,8 +4,9 @@ from rest_framework.permissions import IsAuthenticated
 
 from .models import Attachment, Conversation, Message
 from .permissions import IsParticipantInConversation, IsSenderOrReadOnly
-from .serializers import (AttachmentSerializer, ConversationSerializer,
-                          MessageSerializer)
+from .serializers import (AttachmentCreateSerializer, AttachmentSerializer,
+                          ConversationCreateSerializer, ConversationSerializer,
+                          MessageCreateSerializer, MessageSerializer)
 
 
 class ConversationViewSet(viewsets.ModelViewSet):
@@ -14,8 +15,12 @@ class ConversationViewSet(viewsets.ModelViewSet):
     """
 
     queryset = Conversation.objects.all()
-    serializer_class = ConversationSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return ConversationCreateSerializer
+        return ConversationSerializer
 
     def get_queryset(self):
         return self.request.user.conversations.prefetch_related(
@@ -29,8 +34,12 @@ class MessageViewSet(viewsets.ModelViewSet):
     """
 
     queryset = Message.objects.all()
-    serializer_class = MessageSerializer
     permission_classes = [IsAuthenticated, IsSenderOrReadOnly]
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return MessageCreateSerializer
+        return MessageSerializer
 
     def get_queryset(self):
         return (
@@ -54,8 +63,12 @@ class AttachmentViewSet(viewsets.ModelViewSet):
     """
 
     queryset = Attachment.objects.all()
-    serializer_class = AttachmentSerializer
     permission_classes = [IsAuthenticated, IsParticipantInConversation]
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return AttachmentCreateSerializer
+        return AttachmentSerializer
 
     def get_queryset(self):
         return Attachment.objects.filter(message__pk=self.kwargs["message_pk"])
