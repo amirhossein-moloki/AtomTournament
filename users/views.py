@@ -239,7 +239,7 @@ class DashboardView(APIView):
                 queryset=TeamInvitation.objects.filter(status="pending"),
             ),
             Prefetch(
-                "wallet__transaction_set",
+                "wallet__transactions",
                 queryset=Transaction.objects.order_by("-timestamp")[:5],
             ),
         ).get(pk=request.user.pk)
@@ -248,7 +248,7 @@ class DashboardView(APIView):
         upcoming_tournaments = user.tournaments.all()
         sent_invitations = user.sent_invitations.all()
         received_invitations = user.received_invitations.all()
-        latest_transactions = user.wallet.transaction_set.all()
+        latest_transactions = user.wallet.transactions.all()
 
         data = {
             "upcoming_tournaments": TournamentReadOnlySerializer(
@@ -275,8 +275,8 @@ class TopPlayersView(APIView):
     def get(self, request):
         users = User.objects.annotate(
             total_winnings=models.Sum(
-                "wallet__transaction__amount",
-                filter=models.Q(wallet__transaction__transaction_type="prize"),
+                "wallet__transactions__amount",
+                filter=models.Q(wallet__transactions__transaction_type="prize"),
             )
         ).order_by("-total_winnings")
         serializer = TopPlayerSerializer(users, many=True)
@@ -294,8 +294,8 @@ class TopPlayersByRankView(APIView):
         users = (
             User.objects.annotate(
                 total_winnings=Sum(
-                    "wallet__transaction__amount",
-                    filter=Q(wallet__transaction__transaction_type="prize"),
+                    "wallet__transactions__amount",
+                    filter=Q(wallet__transactions__transaction_type="prize"),
                     default=0,
                 ),
                 wins=Count("won_matches", distinct=True),
@@ -314,8 +314,8 @@ class TopTeamsView(APIView):
     def get(self, request):
         teams = Team.objects.annotate(
             total_winnings=models.Sum(
-                "members__wallet__transaction__amount",
-                filter=models.Q(members__wallet__transaction__transaction_type="prize"),
+                "members__wallet__transactions__amount",
+                filter=models.Q(members__wallet__transactions__transaction_type="prize"),
             )
         ).order_by("-total_winnings")
         serializer = TopTeamSerializer(teams, many=True)
