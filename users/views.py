@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models import Prefetch
+from django.db.models import Count, F, Prefetch, Q, Sum
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
@@ -21,8 +21,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .serializers import (AdminLoginSerializer, RoleSerializer,
                           TeamInvitationSerializer, TeamSerializer,
-                          TopPlayerSerializer, TopTeamSerializer,
-                          UserSerializer, UserCreateSerializer, UserReadOnlySerializer)
+                          TopPlayerByRankSerializer, TopPlayerSerializer,
+                          TopTeamSerializer, UserCreateSerializer,
+                          UserReadOnlySerializer, UserSerializer)
 from .services import (ApplicationError, invite_member_service,
                        leave_team_service, remove_member_service,
                        respond_to_invitation_service, send_otp_service,
@@ -279,6 +280,29 @@ class TopPlayersView(APIView):
             )
         ).order_by("-total_winnings")
         serializer = TopPlayerSerializer(users, many=True)
+        return Response(serializer.data)
+
+
+class TopPlayersByRankView(APIView):
+    """
+    API view for getting top players by rank.
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        users = (
+            User.objects.annotate(
+                total_winnings=Sum(
+                    "wallet__transaction__amount",
+                    filter=Q(wallet__transaction__transaction_type="prize"),
+                    default=0,
+                ),
+                wins=Count("won_matches", distinct=True),
+            )
+            .order_by(F("rank__required_score").desc(nulls_last=True), "-score")
+        )
+        serializer = TopPlayerByRankSerializer(users, many=True)
         return Response(serializer.data)
 
 
