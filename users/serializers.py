@@ -177,7 +177,15 @@ class TopPlayerByRankSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("id", "username", "score", "rank", "total_winnings", "wins")
+        fields = (
+            "id",
+            "username",
+            "score",
+            "rank",
+            "total_winnings",
+            "wins",
+            "profile_picture",
+        )
 
 
 class AdminLoginSerializer(serializers.Serializer):
