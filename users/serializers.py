@@ -166,6 +166,20 @@ class TopTeamSerializer(serializers.ModelSerializer):
         fields = ("id", "name", "total_winnings")
 
 
+class TopPlayerByRankSerializer(serializers.ModelSerializer):
+    """Serializer for top players by rank."""
+
+    rank = serializers.StringRelatedField()
+    total_winnings = serializers.DecimalField(
+        max_digits=10, decimal_places=2, read_only=True
+    )
+    wins = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = User
+        fields = ("id", "username", "score", "rank", "total_winnings", "wins")
+
+
 class AdminLoginSerializer(serializers.Serializer):
     """Serializer for admin login."""
 
