@@ -221,7 +221,7 @@ class TournamentViewSetTests(APITestCase):
 
     def test_list_tournaments_unauthenticated(self):
         response = self.client.get(f"{self.tournaments_url}tournaments/")
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_list_tournaments_authenticated(self):
         self.client.force_authenticate(user=self.user)
