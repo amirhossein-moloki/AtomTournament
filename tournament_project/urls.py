@@ -10,6 +10,7 @@ from tournaments.views import private_media_view
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("select2/", include("django_select2.urls")),
     # Add drf-spectacular URLs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
@@ -36,4 +37,5 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
+    urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

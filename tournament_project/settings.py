@@ -43,6 +43,9 @@ ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", f"localhost,127.0.0.1,{DOMAIN}")
 # Application definition
 
 INSTALLED_APPS = [
+    "unfold",
+    "unfold.contrib.filters",
+    "unfold.contrib.forms",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -68,20 +71,30 @@ INSTALLED_APPS = [
     "sslserver",
     "verification",
     "rewards",
+    "guardian",
+    "simple_history",
+    "import_export",
+    "silk",
+    "django_select2",
+    "tempus_dominus",
+    "formtools",
 ]
 
 AUTHENTICATION_BACKENDS = [
     "axes.backends.AxesStandaloneBackend",
     "django.contrib.auth.backends.ModelBackend",
+    "guardian.backends.ObjectPermissionBackend",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
+    "silk.middleware.SilkyMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "simple_history.middleware.HistoryRequestMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "axes.middleware.AxesMiddleware",
@@ -92,7 +105,7 @@ ROOT_URLCONF = "tournament_project.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -221,6 +234,18 @@ else:
         },
     }
 
+
+UNFOLD = {
+    "SITE_HEADER": "Tournament Platform",
+    "SITE_TITLE": "Tournament Platform Admin",
+    "SITE_URL": "/",
+    "THEME": "dark",
+    "SIDEBAR": {
+        "show_search": True,
+        "show_all_applications": True,
+    },
+}
+
 # Django REST Framework Settings
 REST_FRAMEWORK = {
     # This line is required for drf-spectacular
@@ -313,6 +338,8 @@ CELERY_TIMEZONE = "UTC"
 if "test" in sys.argv:
     CELERY_TASK_ALWAYS_EAGER = True
     RATELIMIT_ENABLED = False
+    # Disable guardian's anonymous user during tests to prevent test failures
+    ANONYMOUS_USER_NAME = None
 
 # SMS.ir Configuration
 SMSIR_API_KEY = os.environ.get("SMSIR_API_KEY")
