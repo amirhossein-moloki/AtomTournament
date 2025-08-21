@@ -36,6 +36,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.handle_edit_message(data)
         elif message_type == "delete_message":
             await self.handle_delete_message(data)
+        elif message_type == "typing":
+            await self.handle_typing(data)
+
+    async def handle_typing(self, data):
+        await self.channel_layer.group_send(
+            self.conversation_group_name,
+            {
+                "type": "user.typing",
+                "user": self.user.username,
+                "is_typing": data.get("is_typing", False),
+            },
+        )
 
     async def handle_chat_message(self, data):
         message_content = data["message"]
@@ -100,6 +112,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps(event))
 
     async def message_deleted(self, event):
+        await self.send(text_data=json.dumps(event))
+
+    async def user_typing(self, event):
         await self.send(text_data=json.dumps(event))
 
     @database_sync_to_async
