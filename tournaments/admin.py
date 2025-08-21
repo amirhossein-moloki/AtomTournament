@@ -130,7 +130,7 @@ class TournamentAdmin(
     ModelAdmin,
 ):
     resource_class = TournamentResource
-    list_display = ("name", "game", "type", "mode", "start_date", "is_free")
+    list_display = ("name", "image", "game", "type", "mode", "start_date", "is_free")
     list_display_links = ("name",)
     list_filter = ("type", "mode", "is_free", "game")
     search_fields = ("name", "game__name")
@@ -153,7 +153,7 @@ class TournamentAdmin(
     }
 
     fieldsets = (
-        ("Tournament Info", {"fields": ("name", "game", "creator", "rules"), "classes": ("tab",)}),
+        ("Tournament Info", {"fields": ("name", "image", "game", "creator", "rules"), "classes": ("tab",)}),
         ("Configuration", {"fields": ("type", "mode", "max_participants", "team_size", "is_free", "entry_fee"), "classes": ("tab",)}),
         ("Schedule", {"fields": ("start_date", "end_date", "countdown_start_time"), "classes": ("tab",)}),
         ("Restrictions & Participants", {"fields": ("required_verification_level", "min_rank", "max_rank", "top_players", "top_teams"), "classes": ("tab",)}),

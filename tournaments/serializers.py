@@ -41,6 +41,7 @@ class TournamentCreateUpdateSerializer(serializers.ModelSerializer):
         model = Tournament
         fields = (
             "name",
+            "image",
             "game",
             "start_date",
             "end_date",
@@ -74,6 +75,7 @@ class TournamentReadOnlySerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "name",
+            "image",
             "game",
             "start_date",
             "end_date",

@@ -82,6 +82,7 @@ class Tournament(models.Model):
     max_participants = models.PositiveIntegerField(default=100)
     team_size = models.PositiveIntegerField(default=1)
     name = models.CharField(max_length=100)
+    image = models.ImageField(upload_to="tournament_images/", null=True, blank=True)
     game = models.ForeignKey(Game, on_delete=models.CASCADE)
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
