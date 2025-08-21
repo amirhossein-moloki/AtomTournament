@@ -43,7 +43,7 @@ class UserAdmin(BaseUserAdmin):
         "last_name",
         "is_staff",
         "is_active",
-        "score",
+        "get_score",
         "rank",
         "team_count",
         "profile_picture_preview",
@@ -53,6 +53,11 @@ class UserAdmin(BaseUserAdmin):
     inlines = [InGameIDInline, TeamMembershipInline]
     readonly_fields = ("profile_picture_preview",)
     actions = ["make_active", "make_inactive"]
+
+    def get_score(self, obj):
+        return obj.score
+
+    get_score.short_description = "امتیاز"  # This is 'Score' in Persian
 
     def profile_picture_preview(self, obj):
         if obj.profile_picture:
