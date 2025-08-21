@@ -23,6 +23,7 @@ from .models import (
     Report,
     Scoring,
     Tournament,
+    TournamentImage,
     WinnerSubmission,
 )
 from .mixins import AdminAlertsMixin
@@ -121,6 +122,12 @@ class GameImageAdmin(ModelAdmin):
     autocomplete_fields = ("game",)
 
 
+@admin.register(TournamentImage)
+class TournamentImageAdmin(ModelAdmin):
+    list_display = ("name", "image")
+    search_fields = ("name",)
+
+
 @admin.register(Tournament)
 class TournamentAdmin(
     AdminAlertsMixin,
@@ -134,11 +141,12 @@ class TournamentAdmin(
     list_display_links = ("name",)
     list_filter = ("type", "mode", "is_free", "game")
     search_fields = ("name", "game__name")
+    autocomplete_fields = ("image", "game", "creator")
     history_list_display = ["history_type", "history_user", "history_date"]
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
-        return queryset.select_related("game", "creator").prefetch_related(
+        return queryset.select_related("image", "game", "creator").prefetch_related(
             "participants", "teams"
         )
 

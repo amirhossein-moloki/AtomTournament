@@ -3,7 +3,8 @@ from rest_framework import serializers
 from users.serializers import TeamSerializer, UserReadOnlySerializer
 
 from .models import (Game, GameImage, GameManager, Match, Participant, Rank,
-                     Report, Scoring, Tournament, WinnerSubmission)
+                     Report, Scoring, Tournament, TournamentImage,
+                     WinnerSubmission)
 from .validators import FileValidator
 
 
@@ -13,6 +14,14 @@ class GameImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = GameImage
         fields = ("game", "image_type", "image")
+
+
+class TournamentImageSerializer(serializers.ModelSerializer):
+    """Serializer for the TournamentImage model."""
+
+    class Meta:
+        model = TournamentImage
+        fields = ("id", "name", "image")
 
 
 class GameCreateUpdateSerializer(serializers.ModelSerializer):
@@ -61,6 +70,7 @@ class TournamentCreateUpdateSerializer(serializers.ModelSerializer):
 class TournamentReadOnlySerializer(serializers.ModelSerializer):
     """Serializer for reading tournament data."""
 
+    image = TournamentImageSerializer(read_only=True)
     participants = UserReadOnlySerializer(many=True, read_only=True)
     teams = TeamSerializer(many=True, read_only=True)
     game = GameReadOnlySerializer(read_only=True)

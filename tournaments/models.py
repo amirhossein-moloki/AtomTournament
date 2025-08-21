@@ -62,6 +62,14 @@ class GameImage(models.Model):
         return f"{self.game.name} - {self.get_image_type_display()}"
 
 
+class TournamentImage(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    image = models.ImageField(upload_to="tournament_images/")
+
+    def __str__(self):
+        return self.name
+
+
 class Tournament(models.Model):
     TOURNAMENT_TYPE_CHOICES = (
         ("individual", "Individual"),
@@ -82,7 +90,13 @@ class Tournament(models.Model):
     max_participants = models.PositiveIntegerField(default=100)
     team_size = models.PositiveIntegerField(default=1)
     name = models.CharField(max_length=100)
-    image = models.ImageField(upload_to="tournament_images/", null=True, blank=True)
+    image = models.ForeignKey(
+        TournamentImage,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="tournaments",
+    )
     game = models.ForeignKey(Game, on_delete=models.CASCADE)
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
