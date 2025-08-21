@@ -51,3 +51,13 @@ aiohttp==3.12.15
 smsir-python==1.0.8
 pillow==11.3.0
 pyopenssl
+
+# Admin Enhancements
+django-unfold
+django-guardian
+django-import-export
+django-simple-history
+django-silk
+django-select2
+django-tempus-dominus
+django-formtools

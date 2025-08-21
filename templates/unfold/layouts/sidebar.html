@@ -1,0 +1,29 @@
+{% extends "unfold/layouts/sidebar.html" %}
+
+{% block sidebar %}
+    {# Custom block to display messages/alerts at the top of the sidebar #}
+    {% if messages %}
+        <div class="p-4 space-y-2">
+            {% for message in messages %}
+                {# Unfold uses specific CSS classes for alerts based on tags #}
+                <div class="text-sm alert alert-{{ message.tags }} text-{{ message.tags }}-800 bg-{{ message.tags }}-100 border-{{ message.tags }}-200 dark:text-{{ message.tags }}-200 dark:bg-{{ message.tags }}-900 dark:border-{{ message.tags }}-800">
+                    <span class="font-bold">
+                        {% if message.level == DEFAULT_MESSAGE_LEVELS.WARNING %}
+                            هشدار:
+                        {% elif message.level == DEFAULT_MESSAGE_LEVELS.ERROR %}
+                            خطا:
+                        {% elif message.level == DEFAULT_MESSAGE_LEVELS.INFO %}
+                            توجه:
+                        {% elif message.level == DEFAULT_MESSAGE_LEVELS.SUCCESS %}
+                            موفقیت:
+                        {% endif %}
+                    </span>
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {# Render the original sidebar content below the alerts #}
+    {{ block.super }}
+{% endblock %}

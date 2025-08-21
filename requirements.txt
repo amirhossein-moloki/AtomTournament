@@ -97,6 +97,8 @@ defusedxml==0.7.1
     # via
     #   python3-openid
     #   social-auth-core
+diff-match-patch==20241021
+    # via django-import-export
 dj-database-url==3.0.1
     # via -r requirements.in
 django==5.2.5
@@ -104,20 +106,31 @@ django==5.2.5
     #   -r requirements.in
     #   channels
     #   dj-database-url
+    #   django-appconf
     #   django-axes
     #   django-celery-results
     #   django-cors-headers
     #   django-filter
+    #   django-formtools
+    #   django-guardian
+    #   django-import-export
     #   django-phonenumber-field
     #   django-redis
+    #   django-select2
+    #   django-silk
+    #   django-simple-history
     #   django-sslserver-v2
     #   django-storages
+    #   django-tempus-dominus
+    #   django-unfold
     #   djangorestframework
     #   djangorestframework-simplejwt
     #   djoser
     #   drf-nested-routers
     #   drf-spectacular
     #   social-auth-app-django
+django-appconf==1.1.0
+    # via django-select2
 django-axes==8.0.0
     # via -r requirements.in
 django-celery-results==2.6.0
@@ -126,15 +139,31 @@ django-cors-headers==4.7.0
     # via -r requirements.in
 django-filter==25.1
     # via -r requirements.in
+django-formtools==2.5.1
+    # via -r requirements.in
+django-guardian==3.0.3
+    # via -r requirements.in
+django-import-export==4.3.9
+    # via -r requirements.in
 django-phonenumber-field==8.1.0
     # via -r requirements.in
 django-ratelimit==4.1.0
     # via -r requirements.in
 django-redis==6.0.0
     # via -r requirements.in
+django-select2==8.4.1
+    # via -r requirements.in
+django-silk==5.4.1
+    # via -r requirements.in
+django-simple-history==3.10.1
+    # via -r requirements.in
 django-sslserver-v2==1.0
     # via -r requirements.in
 django-storages==1.14.6
+    # via -r requirements.in
+django-tempus-dominus==5.1.2.17
+    # via -r requirements.in
+django-unfold==0.64.2
     # via -r requirements.in
 djangorestframework==3.16.1
     # via
@@ -159,6 +188,8 @@ frozenlist==1.7.0
     # via
     #   aiohttp
     #   aiosignal
+gprof2dot==2025.4.14
+    # via django-silk
 gunicorn==23.0.0
     # via -r requirements.in
 hyperlink==21.0.0
@@ -299,7 +330,11 @@ social-auth-core==4.7.0
 sortedcontainers==2.4.0
     # via fakeredis
 sqlparse==0.5.3
-    # via django
+    # via
+    #   django
+    #   django-silk
+tablib==3.8.0
+    # via django-import-export
 twilio==9.7.0
     # via -r requirements.in
 twisted[tls]==25.5.0
