@@ -43,7 +43,6 @@ ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", f"localhost,127.0.0.1,{DOMAIN}")
 # Application definition
 
 INSTALLED_APPS = [
-    "jazzmin",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
