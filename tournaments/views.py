@@ -8,7 +8,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -41,7 +41,7 @@ class TournamentParticipantListView(generics.ListAPIView):
     """
 
     serializer_class = ParticipantSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get_queryset(self):
         tournament_id = self.kwargs["pk"]
@@ -56,7 +56,6 @@ class TournamentViewSet(viewsets.ModelViewSet):
     """
 
     queryset = Tournament.objects.all()
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = TournamentFilter
 
@@ -75,6 +74,8 @@ class TournamentViewSet(viewsets.ModelViewSet):
         ).all()
 
     def get_permissions(self):
+        if self.action in ["list", "retrieve"]:
+            return [AllowAny()]
         if self.action in [
             "create",
             "update",
@@ -155,7 +156,6 @@ class MatchViewSet(viewsets.ModelViewSet):
         "winner_user",
         "winner_team",
     )
-    permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -165,9 +165,11 @@ class MatchViewSet(viewsets.ModelViewSet):
         return MatchReadOnlySerializer
 
     def get_permissions(self):
+        if self.action in ["list", "retrieve"]:
+            return [AllowAny()]
         if self.action in ["create", "destroy"]:
             return [IsAdminUser()]
-        return super().get_permissions()
+        return [IsAuthenticated()]
 
     @action(detail=True, methods=["post"])
     def confirm_result(self, request, pk=None):
@@ -223,6 +225,8 @@ class GameViewSet(viewsets.ModelViewSet):
         return GameReadOnlySerializer
 
     def get_permissions(self):
+        if self.action in ["list", "retrieve"]:
+            return [AllowAny()]
         if self.action in ["create", "update", "partial_update", "destroy"]:
             return [IsAdminUser()]
         return [IsAuthenticated()]
@@ -387,6 +391,8 @@ class ScoringViewSet(viewsets.ModelViewSet):
     ViewSet for managing scores.
     """
 
+
+
     queryset = Scoring.objects.all().select_related("tournament", "user")
     serializer_class = ScoringSerializer
     permission_classes = [IsAdminUser]
@@ -396,6 +402,8 @@ class TopTournamentsView(APIView):
     """
     API view for getting top tournaments by prize pool.
     """
+
+    permission_classes = [AllowAny]
 
     def get(self, request):
         past_tournaments = Tournament.objects.filter(
@@ -425,6 +433,8 @@ class TotalPrizeMoneyView(APIView):
     API view for getting the total prize money paid out.
     """
 
+    permission_classes = [AllowAny]
+
     def get(self, request):
         total_prize_money = (
             Transaction.objects.filter(transaction_type="prize").aggregate(
@@ -439,6 +449,8 @@ class TotalTournamentsView(APIView):
     """
     API view for getting the total number of tournaments held.
     """
+
+    permission_classes = [AllowAny]
 
     def get(self, request):
         total_tournaments = Tournament.objects.count()

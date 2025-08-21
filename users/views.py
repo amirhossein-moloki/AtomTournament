@@ -50,7 +50,7 @@ class UserViewSet(viewsets.ModelViewSet):
         .prefetch_related("in_game_ids")
         .select_related("verification", "rank")
     )
-    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
+    permission_classes = [IsOwnerOrReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["username", "email"]
 
@@ -65,7 +65,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return UserSerializer  # For update, partial_update, etc.
 
     def get_permissions(self):
-        if self.action in ["create", "send_otp", "verify_otp"]:
+        if self.action in ["create", "send_otp", "verify_otp", "list", "retrieve"]:
             return [AllowAny()]
         return super().get_permissions()
 
@@ -120,9 +120,14 @@ class TeamViewSet(viewsets.ModelViewSet):
 
     queryset = Team.objects.all().select_related("captain").prefetch_related("members")
     serializer_class = TeamSerializer
-    permission_classes = [IsAuthenticated, IsCaptainOrReadOnly]
+    permission_classes = [IsCaptainOrReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["name", "captain"]
+
+    def get_permissions(self):
+        if self.action in ["list", "retrieve"]:
+            return [AllowAny()]
+        return super().get_permissions()
 
     def perform_create(self, serializer):
         serializer.save(captain=self.request.user)
@@ -271,6 +276,7 @@ class TopPlayersView(APIView):
     """
     API view for getting top players by prize money.
     """
+    permission_classes = [AllowAny]
 
     def get(self, request):
         users = User.objects.annotate(
@@ -310,6 +316,7 @@ class TopTeamsView(APIView):
     """
     API view for getting top teams by prize money.
     """
+    permission_classes = [AllowAny]
 
     def get(self, request):
         teams = Team.objects.annotate(
@@ -332,6 +339,7 @@ class TotalPlayersView(APIView):
     """
     API view for getting the total number of players.
     """
+    permission_classes = [AllowAny]
 
     def get(self, request):
         total_players = User.objects.count()
