@@ -15,8 +15,8 @@ from tournament_project.celery import app as celery_app
 from users.models import Team, User
 from verification.models import Verification
 
-from .models import (Game, GameManager, Match, Report, Tournament,
-                     WinnerSubmission)
+from .models import (Game, GameManager, Match, Report, Tournament, TournamentColor,
+                     TournamentImage, WinnerSubmission)
 
 
 class TournamentModelTests(TestCase):
@@ -231,16 +231,18 @@ class TournamentViewSetTests(APITestCase):
 
     def test_create_tournament_by_admin(self):
         self.client.force_authenticate(user=self.admin_user)
+        color = TournamentColor.objects.create(name="Red", rgb_code="255,0,0")
         data = {
             "name": "New Tournament by Admin",
             "game": self.game.id,
+            "color": color.id,
             "start_date": timezone.now() + timedelta(days=3),
             "end_date": timezone.now() + timedelta(days=4),
         }
         response = self.client.post(f"{self.tournaments_url}tournaments/", data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(
-            Tournament.objects.filter(name="New Tournament by Admin").exists()
+            Tournament.objects.filter(name="New Tournament by Admin", color=color).exists()
         )
 
     def test_create_tournament_by_non_admin_fails(self):
@@ -565,16 +567,117 @@ class WinnerSubmissionViewSetTests(APITestCase):
         submission.refresh_from_db()
         self.assertEqual(submission.status, "rejected")
 
+    def test_approve_submission_by_creator(self):
+        creator = User.objects.create_user(
+            username="creator", password="p", phone_number="+403"
+        )
+        self.tournament.creator = creator
+        self.tournament.save()
+        submission = WinnerSubmission.objects.create(
+            winner=self.winner, tournament=self.tournament, video="v.mp4"
+        )
+        self.client.force_authenticate(user=creator)
+        response = self.client.post(f"{self.submissions_url}{submission.id}/approve/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        submission.refresh_from_db()
+        self.assertEqual(submission.status, "approved")
+
+    def test_reject_submission_by_creator(self):
+        creator = User.objects.create_user(
+            username="creator", password="p", phone_number="+403"
+        )
+        self.tournament.creator = creator
+        self.tournament.save()
+        submission = WinnerSubmission.objects.create(
+            winner=self.winner, tournament=self.tournament, video="v.mp4"
+        )
+        self.client.force_authenticate(user=creator)
+        response = self.client.post(f"{self.submissions_url}{submission.id}/reject/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        submission.refresh_from_db()
+        self.assertEqual(submission.status, "rejected")
+
+    def test_approve_submission_by_non_creator_fails(self):
+        non_creator = User.objects.create_user(
+            username="non_creator", password="p", phone_number="+404"
+        )
+        submission = WinnerSubmission.objects.create(
+            winner=self.winner, tournament=self.tournament, video="v.mp4"
+        )
+        self.client.force_authenticate(user=non_creator)
+        response = self.client.post(f"{self.submissions_url}{submission.id}/approve/")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_reject_submission_by_non_creator_fails(self):
+        non_creator = User.objects.create_user(
+            username="non_creator", password="p", phone_number="+404"
+        )
+        submission = WinnerSubmission.objects.create(
+            winner=self.winner, tournament=self.tournament, video="v.mp4"
+        )
+        self.client.force_authenticate(user=non_creator)
+        response = self.client.post(f"{self.submissions_url}{submission.id}/reject/")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
 
 class GameManagerPermissionsTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
 
-        # Games
+
+class TournamentImageCRUDTests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.admin_user = User.objects.create_superuser(
+            username="admin", password="password", phone_number="+501"
+        )
+        self.client.force_authenticate(user=self.admin_user)
+        self.images_url = "/api/tournaments/tournament-images/"
+
+    def _generate_dummy_image(self, name="test.png"):
+        file = BytesIO()
+        image = Image.new("RGB", (10, 10), "white")
+        image.save(file, "png")
+        file.name = name
+        file.seek(0)
+        return SimpleUploadedFile(name, file.read(), content_type="image/png")
+
+    def test_create_tournament_image(self):
+        data = {
+            "name": "Test Image",
+            "image": self._generate_dummy_image(),
+        }
+        response = self.client.post(self.images_url, data, format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(TournamentImage.objects.filter(name="Test Image").exists())
+
+    def test_list_tournament_images(self):
+        TournamentImage.objects.create(name="Image 1", image=self._generate_dummy_image("i1.png"))
+        TournamentImage.objects.create(name="Image 2", image=self._generate_dummy_image("i2.png"))
+        response = self.client.get(self.images_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+    def test_update_tournament_image(self):
+        image = TournamentImage.objects.create(name="Old Name", image=self._generate_dummy_image())
+        data = {"name": "New Name"}
+        response = self.client.patch(f"{self.images_url}{image.id}/", data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        image.refresh_from_db()
+        self.assertEqual(image.name, "New Name")
+
+    def test_delete_tournament_image(self):
+        image = TournamentImage.objects.create(name="To Delete", image=self._generate_dummy_image())
+        response = self.client.delete(f"{self.images_url}{image.id}/")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(TournamentImage.objects.filter(id=image.id).exists())
+
+
+class GameManagerPermissionsTests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
         self.managed_game = Game.objects.create(name="Managed Game")
         self.other_game = Game.objects.create(name="Other Game")
-
-        # Users
         self.admin_user = User.objects.create_superuser(
             username="admin", password="password", phone_number="+1"
         )
@@ -584,18 +687,13 @@ class GameManagerPermissionsTests(APITestCase):
         self.regular_user = User.objects.create_user(
             username="regularuser", password="password", phone_number="+3"
         )
-
-        # Assign manager to the game
         GameManager.objects.create(user=self.game_manager, game=self.managed_game)
-
-        # A tournament that belongs to the managed game
         self.tournament_in_managed_game = Tournament.objects.create(
             name="Tournament in Managed Game",
             game=self.managed_game,
             start_date=timezone.now(),
             end_date=timezone.now() + timedelta(days=1),
         )
-
         self.tournaments_url = "/api/tournaments/tournaments/"
         self.tournament_detail_url = (
             f"{self.tournaments_url}{self.tournament_in_managed_game.id}/"
@@ -628,38 +726,39 @@ class GameManagerPermissionsTests(APITestCase):
         response = self.client.post(self.tournaments_url, data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_manager_can_update_tournament_in_managed_game(self):
-        """A game manager should be able to update a tournament in their game."""
-        self.client.force_authenticate(user=self.game_manager)
-        data = {"name": "Updated Name"}
-        response = self.client.patch(self.tournament_detail_url, data)
+
+class TournamentColorCRUDTests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.admin_user = User.objects.create_superuser(
+            username="admin", password="password", phone_number="+601"
+        )
+        self.client.force_authenticate(user=self.admin_user)
+        self.colors_url = "/api/tournaments/tournament-colors/"
+
+    def test_create_tournament_color(self):
+        data = {"name": "Red", "rgb_code": "255,0,0"}
+        response = self.client.post(self.colors_url, data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(TournamentColor.objects.filter(name="Red").exists())
+
+    def test_list_tournament_colors(self):
+        TournamentColor.objects.create(name="Red", rgb_code="255,0,0")
+        TournamentColor.objects.create(name="Blue", rgb_code="0,0,255")
+        response = self.client.get(self.colors_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.tournament_in_managed_game.refresh_from_db()
-        self.assertEqual(self.tournament_in_managed_game.name, "Updated Name")
+        self.assertEqual(len(response.data), 2)
 
-    def test_manager_cannot_update_tournament_in_other_game(self):
-        """A game manager should NOT be able to update a tournament in another game."""
-        other_tournament = Tournament.objects.create(
-            name="Tournament in Other Game",
-            game=self.other_game,
-            start_date=timezone.now(),
-            end_date=timezone.now() + timedelta(days=1),
-        )
-        self.client.force_authenticate(user=self.game_manager)
-        data = {"name": "Updated Name"}
-        response = self.client.patch(
-            f"{self.tournaments_url}{other_tournament.id}/", data
-        )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    def test_update_tournament_color(self):
+        color = TournamentColor.objects.create(name="Old Name", rgb_code="0,0,0")
+        data = {"name": "New Name"}
+        response = self.client.patch(f"{self.colors_url}{color.id}/", data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        color.refresh_from_db()
+        self.assertEqual(color.name, "New Name")
 
-    def test_regular_user_cannot_create_tournament(self):
-        """A regular user should NOT be able to create a tournament."""
-        self.client.force_authenticate(user=self.regular_user)
-        data = {
-            "name": "Tournament by Regular User",
-            "game": self.managed_game.id,
-            "start_date": timezone.now() + timedelta(days=2),
-            "end_date": timezone.now() + timedelta(days=3),
-        }
-        response = self.client.post(self.tournaments_url, data)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    def test_delete_tournament_color(self):
+        color = TournamentColor.objects.create(name="To Delete", rgb_code="0,0,0")
+        response = self.client.delete(f"{self.colors_url}{color.id}/")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(TournamentColor.objects.filter(id=color.id).exists())

@@ -44,3 +44,17 @@ class IsGameManagerOrAdmin(permissions.BasePermission):
 
         # 'obj' is the tournament instance. Check if the user manages its game.
         return GameManager.objects.filter(user=request.user, game=obj.game).exists()
+
+
+class IsTournamentCreatorOrAdmin(permissions.BasePermission):
+    """
+    Custom permission to only allow the creator of a tournament or admins to edit it.
+    """
+
+    def has_object_permission(self, request, view, obj):
+        # Admin users have unrestricted access.
+        if request.user.is_staff:
+            return True
+
+        # The creator of the tournament is allowed to perform the action.
+        return obj.tournament.creator == request.user

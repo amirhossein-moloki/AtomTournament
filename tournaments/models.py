@@ -70,6 +70,14 @@ class TournamentImage(models.Model):
         return self.name
 
 
+class TournamentColor(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    rgb_code = models.CharField(max_length=11)  # e.g., "255,0,0"
+
+    def __str__(self):
+        return self.name
+
+
 class Tournament(models.Model):
     TOURNAMENT_TYPE_CHOICES = (
         ("individual", "Individual"),
@@ -92,6 +100,13 @@ class Tournament(models.Model):
     name = models.CharField(max_length=100)
     image = models.ForeignKey(
         TournamentImage,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="tournaments",
+    )
+    color = models.ForeignKey(
+        TournamentColor,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

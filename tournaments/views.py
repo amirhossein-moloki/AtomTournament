@@ -19,13 +19,15 @@ from wallet.models import Transaction
 from .exceptions import ApplicationError
 from .filters import TournamentFilter
 from .models import (Game, Match, Participant, Report, Scoring, Tournament,
-                     WinnerSubmission)
-from .permissions import IsGameManagerOrAdmin
+                     TournamentColor, TournamentImage, WinnerSubmission)
+from .permissions import IsGameManagerOrAdmin, IsTournamentCreatorOrAdmin
 from .serializers import (GameCreateUpdateSerializer, GameReadOnlySerializer,
                           MatchCreateSerializer, MatchReadOnlySerializer,
                           MatchUpdateSerializer, ParticipantSerializer,
                           ReportSerializer, ScoringSerializer,
+                          TournamentColorSerializer,
                           TournamentCreateUpdateSerializer,
+                          TournamentImageSerializer,
                           TournamentReadOnlySerializer,
                           WinnerSubmissionSerializer)
 from .services import (approve_winner_submission_service, confirm_match_result,
@@ -232,6 +234,26 @@ class GameViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
 
+class TournamentImageViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing tournament images.
+    """
+
+    queryset = TournamentImage.objects.all()
+    serializer_class = TournamentImageSerializer
+    permission_classes = [IsAdminUser]
+
+
+class TournamentColorViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing tournament colors.
+    """
+
+    queryset = TournamentColor.objects.all()
+    serializer_class = TournamentColorSerializer
+    permission_classes = [IsAdminUser]
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def private_media_view(request, path):
@@ -328,9 +350,21 @@ class WinnerSubmissionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return WinnerSubmission.objects.none()
+
         queryset = WinnerSubmission.objects.all().select_related("winner", "tournament")
-        if not self.request.user.is_staff:
-            queryset = queryset.filter(winner=self.request.user)
+
+        if user.is_staff:
+            return queryset
+
+        # Allow winner to see their own submissions
+        # Allow tournament creator to see submissions for their tournament
+        queryset = queryset.filter(
+            models.Q(winner=user) | models.Q(tournament__creator=user)
+        ).distinct()
+
         return queryset
 
     def perform_create(self, serializer):
@@ -347,7 +381,7 @@ class WinnerSubmissionViewSet(viewsets.ModelViewSet):
             # DRF's exception handler will turn this into a 400 response
             raise ValidationError(str(e))
 
-    @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
+    @action(detail=True, methods=["post"], permission_classes=[IsTournamentCreatorOrAdmin])
     def approve(self, request, pk=None):
         """
         Approve a winner submission and pay the prize.
@@ -356,7 +390,7 @@ class WinnerSubmissionViewSet(viewsets.ModelViewSet):
         approve_winner_submission_service(submission)
         return Response({"message": "Submission approved and prize paid."})
 
-    @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
+    @action(detail=True, methods=["post"], permission_classes=[IsTournamentCreatorOrAdmin])
     def reject(self, request, pk=None):
         """
         Reject a winner submission.
