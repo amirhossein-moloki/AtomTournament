@@ -3,8 +3,8 @@ from rest_framework import serializers
 from users.serializers import TeamSerializer, UserReadOnlySerializer
 
 from .models import (Game, GameImage, GameManager, Match, Participant, Rank,
-                     Report, Scoring, Tournament, TournamentImage,
-                     WinnerSubmission)
+                     Report, Scoring, Tournament, TournamentColor,
+                     TournamentImage, WinnerSubmission)
 from .validators import FileValidator
 
 
@@ -22,6 +22,14 @@ class TournamentImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = TournamentImage
         fields = ("id", "name", "image")
+
+
+class TournamentColorSerializer(serializers.ModelSerializer):
+    """Serializer for the TournamentColor model."""
+
+    class Meta:
+        model = TournamentColor
+        fields = "__all__"
 
 
 class GameCreateUpdateSerializer(serializers.ModelSerializer):
@@ -51,6 +59,7 @@ class TournamentCreateUpdateSerializer(serializers.ModelSerializer):
         fields = (
             "name",
             "image",
+            "color",
             "game",
             "start_date",
             "end_date",
@@ -71,6 +80,7 @@ class TournamentReadOnlySerializer(serializers.ModelSerializer):
     """Serializer for reading tournament data."""
 
     image = TournamentImageSerializer(read_only=True)
+    color = TournamentColorSerializer(read_only=True)
     participants = UserReadOnlySerializer(many=True, read_only=True)
     teams = TeamSerializer(many=True, read_only=True)
     game = GameReadOnlySerializer(read_only=True)
@@ -86,6 +96,7 @@ class TournamentReadOnlySerializer(serializers.ModelSerializer):
             "id",
             "name",
             "image",
+            "color",
             "game",
             "start_date",
             "end_date",
