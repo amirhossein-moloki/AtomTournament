@@ -727,6 +727,108 @@ class GameManagerPermissionsTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
+class TournamentFilterTests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.game = Game.objects.create(name="Filter Game")
+        self.tournaments_url = "/api/tournaments/tournaments/"
+
+        now = timezone.now()
+        Tournament.objects.create(
+            name="Alpha Tournament",
+            game=self.game,
+            start_date=now + timedelta(days=10),
+            end_date=now + timedelta(days=11),
+            entry_fee=10,
+        )
+        Tournament.objects.create(
+            name="Beta Tournament",
+            game=self.game,
+            start_date=now - timedelta(days=1),
+            end_date=now + timedelta(days=1),
+            entry_fee=20,
+        )
+        Tournament.objects.create(
+            name="Gamma Tournament",
+            game=self.game,
+            start_date=now - timedelta(days=11),
+            end_date=now - timedelta(days=10),
+            entry_fee=0,
+        )
+
+    def test_filter_by_name(self):
+        response = self.client.get(self.tournaments_url, {"name": "Alpha"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["name"], "Alpha Tournament")
+
+    def test_filter_by_status_upcoming(self):
+        response = self.client.get(self.tournaments_url, {"status": "upcoming"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["name"], "Alpha Tournament")
+
+    def test_filter_by_status_ongoing(self):
+        response = self.client.get(self.tournaments_url, {"status": "ongoing"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["name"], "Beta Tournament")
+
+    def test_filter_by_status_finished(self):
+        response = self.client.get(self.tournaments_url, {"status": "finished"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["name"], "Gamma Tournament")
+
+    def test_ordering_by_name_asc(self):
+        response = self.client.get(self.tournaments_url, {"ordering": "name"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 3)
+        self.assertEqual(response.data[0]["name"], "Alpha Tournament")
+        self.assertEqual(response.data[1]["name"], "Beta Tournament")
+        self.assertEqual(response.data[2]["name"], "Gamma Tournament")
+
+    def test_ordering_by_name_desc(self):
+        response = self.client.get(self.tournaments_url, {"ordering": "-name"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 3)
+        self.assertEqual(response.data[0]["name"], "Gamma Tournament")
+        self.assertEqual(response.data[1]["name"], "Beta Tournament")
+        self.assertEqual(response.data[2]["name"], "Alpha Tournament")
+
+    def test_ordering_by_start_date_asc(self):
+        response = self.client.get(self.tournaments_url, {"ordering": "start_date"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 3)
+        self.assertEqual(response.data[0]["name"], "Gamma Tournament")
+        self.assertEqual(response.data[1]["name"], "Beta Tournament")
+        self.assertEqual(response.data[2]["name"], "Alpha Tournament")
+
+    def test_ordering_by_start_date_desc(self):
+        response = self.client.get(self.tournaments_url, {"ordering": "-start_date"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 3)
+        self.assertEqual(response.data[0]["name"], "Alpha Tournament")
+        self.assertEqual(response.data[1]["name"], "Beta Tournament")
+        self.assertEqual(response.data[2]["name"], "Gamma Tournament")
+
+    def test_ordering_by_entry_fee_asc(self):
+        response = self.client.get(self.tournaments_url, {"ordering": "entry_fee"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 3)
+        self.assertEqual(response.data[0]["name"], "Gamma Tournament")
+        self.assertEqual(response.data[1]["name"], "Alpha Tournament")
+        self.assertEqual(response.data[2]["name"], "Beta Tournament")
+
+    def test_ordering_by_entry_fee_desc(self):
+        response = self.client.get(self.tournaments_url, {"ordering": "-entry_fee"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 3)
+        self.assertEqual(response.data[0]["name"], "Beta Tournament")
+        self.assertEqual(response.data[1]["name"], "Alpha Tournament")
+        self.assertEqual(response.data[2]["name"], "Gamma Tournament")
+
+
 class TournamentColorCRUDTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
