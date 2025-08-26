@@ -23,6 +23,7 @@ from .models import (
     Report,
     Scoring,
     Tournament,
+    TournamentColor,
     TournamentImage,
     WinnerSubmission,
 )
@@ -128,6 +129,12 @@ class TournamentImageAdmin(ModelAdmin):
     search_fields = ("name",)
 
 
+@admin.register(TournamentColor)
+class TournamentColorAdmin(ModelAdmin):
+    list_display = ("name", "rgb_code")
+    search_fields = ("name",)
+
+
 @admin.register(Tournament)
 class TournamentAdmin(
     ModelAdminJalaliMixin,
@@ -138,11 +145,11 @@ class TournamentAdmin(
     ModelAdmin,
 ):
     resource_class = TournamentResource
-    list_display = ("name", "image", "game", "type", "mode", "start_date", "is_free")
+    list_display = ("name", "image", "color", "game", "type", "mode", "start_date", "is_free")
     list_display_links = ("name",)
     list_filter = ("type", "mode", "is_free", "game")
     search_fields = ("name", "game__name")
-    autocomplete_fields = ("image", "game", "creator")
+    autocomplete_fields = ("image", "color", "game", "creator")
     history_list_display = ["history_type", "history_user", "history_date"]
 
     def get_queryset(self, request):
@@ -156,7 +163,7 @@ class TournamentAdmin(
     }
 
     fieldsets = (
-        ("Tournament Info", {"fields": ("name", "image", "game", "creator", "rules"), "classes": ("tab",)}),
+        ("Tournament Info", {"fields": ("name", "image", "color", "game", "creator", "rules"), "classes": ("tab",)}),
         ("Configuration", {"fields": ("type", "mode", "max_participants", "team_size", "is_free", "entry_fee"), "classes": ("tab",)}),
         ("Schedule", {"fields": ("start_date", "end_date", "countdown_start_time"), "classes": ("tab",)}),
         ("Restrictions & Participants", {"fields": ("required_verification_level", "min_rank", "max_rank", "top_players", "top_teams"), "classes": ("tab",)}),
