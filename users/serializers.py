@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from verification.serializers import VerificationSerializer
 
-from .models import InGameID, Role, Team, TeamInvitation, User
+from .models import InGameID, Role, Team, TeamInvitation, User, Referral
 
 
 class InGameIDSerializer(serializers.ModelSerializer):
@@ -38,6 +38,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating a new User."""
 
     email = serializers.EmailField(required=True)
+    referral_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = User
@@ -48,18 +49,28 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "password",
             "first_name",
             "last_name",
+            "referral_code",
         )
         extra_kwargs = {
             "password": {"write_only": True},
         }
 
     def create(self, validated_data):
-        # We don't handle in_game_ids at creation
-        validated_data.pop("in_game_ids", None)
+        referral_code = validated_data.pop('referral_code', None)
         password = validated_data.pop("password")
         user = User(**validated_data)
         user.set_password(password)
         user.save()
+
+        if referral_code:
+            try:
+                referrer = User.objects.get(referral_code=referral_code)
+                Referral.objects.create(referrer=referrer, referred=user)
+            except User.DoesNotExist:
+                # If the referral code is invalid, we can either raise an error
+                # or just ignore it. For a better user experience, we'll ignore it.
+                pass
+
         return user
 
 

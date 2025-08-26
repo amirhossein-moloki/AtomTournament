@@ -20,10 +20,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-if sys.platform.startswith("win32"):
-    locale.setlocale(locale.LC_ALL, "Persian_Iran.UTF-8")
-else:
-    locale.setlocale(locale.LC_ALL, "fa_IR.UTF-8")
+# if sys.platform.startswith("win32"):
+#     locale.setlocale(locale.LC_ALL, "Persian_Iran.UTF-8")
+# else:
+#     locale.setlocale(locale.LC_ALL, "fa_IR.UTF-8")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     "sslserver",
     "verification",
     "rewards",
+    "reporting",
     "guardian",
     "simple_history",
     "import_export",
@@ -251,6 +252,7 @@ UNFOLD = {
         "show_search": True,
         "show_all_applications": True,
     },
+    "DASHBOARD_CALLBACK": "reporting.views.dashboard_callback",
 }
 
 # Django REST Framework Settings
