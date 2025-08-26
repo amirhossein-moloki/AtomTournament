@@ -1,3 +1,4 @@
+import shortuuid
 from django.contrib.auth.models import AbstractUser, Group
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -14,6 +15,7 @@ class User(AbstractUser):
     rank = models.ForeignKey(
         "tournaments.Rank", on_delete=models.SET_NULL, null=True, blank=True
     )
+    referral_code = models.CharField(max_length=22, unique=True, blank=True)
 
     def __str__(self):
         return self.username
@@ -52,14 +54,35 @@ class Role(models.Model):
         return Role.objects.filter(is_default=True).first()
 
 
-def assign_default_role(sender, instance, created, **kwargs):
+def assign_default_role_and_referral_code(sender, instance, created, **kwargs):
+    """
+    Assigns a default role and generates a referral code for new users.
+    """
     if created:
+        # Assign default role
         default_role = Role.get_default_role()
         if default_role:
             instance.groups.add(default_role.group)
 
+        # Generate referral code
+        if not instance.referral_code:
+            instance.referral_code = shortuuid.uuid()
+            instance.save()
 
-post_save.connect(assign_default_role, sender=User)
+
+post_save.connect(assign_default_role_and_referral_code, sender=User)
+
+
+class Referral(models.Model):
+    """
+    Stores the relationship between a referrer and a referred user.
+    """
+    referrer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='referrals_made')
+    referred = models.OneToOneField(User, on_delete=models.CASCADE, related_name='referred_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.referrer.username} referred {self.referred.username}"
 
 
 class InGameID(models.Model):

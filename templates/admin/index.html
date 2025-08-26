@@ -1,0 +1,200 @@
+{% extends 'unfold/layouts/base.html' %}
+{% load i18n static %}
+
+{% block title %}{% trans "Dashboard" %} | {{ site.site_title }}{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <h1 class="text-2xl font-semibold mb-6">{% trans "Platform Analytics Dashboard" %}</h1>
+
+    <!-- Key Metrics Summary -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+            <h2 class="text-lg font-medium text-gray-500 dark:text-gray-400">{% trans "Total Revenue" %}</h2>
+            <p class="text-3xl font-bold mt-2">{{ revenue_report.summary.total_revenue|floatformat:2 }} {% trans "IRR" %}</p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+            <h2 class="text-lg font-medium text-gray-500 dark:text-gray-400">{% trans "Platform Share (30%)" %}</h2>
+            <p class="text-3xl font-bold mt-2">{{ revenue_report.summary.platform_share|floatformat:2 }} {% trans "IRR" %}</p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+            <h2 class="text-lg font-medium text-gray-500 dark:text-gray-400">{% trans "Active Players (30d)" %}</h2>
+            <p class="text-3xl font-bold mt-2">{{ players_report.summary.active_players }}</p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+            <h2 class="text-lg font-medium text-gray-500 dark:text-gray-400">{% trans "Total Users" %}</h2>
+            <p class="text-3xl font-bold mt-2">{{ players_report.summary.total_users }}</p>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+            <h2 class="text-xl font-semibold mb-4">{% trans "Daily Revenue (Last 30 Days)" %}</h2>
+            <canvas id="revenueChart"></canvas>
+        </div>
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+            <h2 class="text-xl font-semibold mb-4">{% trans "Player Distribution by Game" %}</h2>
+            <canvas id="playerDistributionChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Financial Chart -->
+    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-8">
+        <h2 class="text-xl font-semibold mb-4">{% trans "Monthly Cash Flow" %}</h2>
+        <canvas id="cashFlowChart"></canvas>
+    </div>
+
+    <!-- Marketing and Tournament Tables -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+            <h2 class="text-xl font-semibold mb-4">{% trans "Top Referrers" %}</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b dark:border-gray-700">
+                            <th class="p-2">{% trans "Referrer" %}</th>
+                            <th class="p-2">{% trans "New Users" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in marketing_report.by_referrer|slice:":10" %}
+                        <tr class="border-b dark:border-gray-700">
+                            <td class="p-2">{{ item.referrer__username }}</td>
+                            <td class="p-2">{{ item.new_users }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+            <h2 class="text-xl font-semibold mb-4">{% trans "Most Popular Tournaments" %}</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b dark:border-gray-700">
+                            <th class="p-2">{% trans "Tournament" %}</th>
+                            <th class="p-2">{% trans "Participants" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in tournament_report.most_popular %}
+                        <tr class="border-b dark:border-gray-700">
+                            <td class="p-2">{{ t.name }}</td>
+                            <td class="p-2">{{ t.participant_count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+            <h2 class="text-xl font-semibold mb-4">{% trans "Most Profitable Tournaments" %}</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b dark:border-gray-700">
+                            <th class="p-2">{% trans "Tournament" %}</th>
+                            <th class="p-2">{% trans "Revenue" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in tournament_report.most_profitable %}
+                        <tr class="border-b dark:border-gray-700">
+                            <td class="p-2">{{ t.name }}</td>
+                            <td class="p-2">{{ t.revenue|floatformat:0 }} {% trans "IRR" %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Revenue Chart
+        const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+        const revenueData = {{ revenue_report.timeline|safe }};
+        new Chart(revenueCtx, {
+            type: 'line',
+            data: {
+                labels: revenueData.map(item => new Date(item.date).toLocaleDateString('fa-IR')),
+                datasets: [{
+                    label: '{% trans "Daily Revenue" %}',
+                    data: revenueData.map(item => item.revenue),
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    fill: true,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Player Distribution Chart
+        const playerDistCtx = document.getElementById('playerDistributionChart').getContext('2d');
+        const playerDistData = {{ players_report.distribution_by_game|safe }};
+        new Chart(playerDistCtx, {
+            type: 'pie',
+            data: {
+                labels: playerDistData.map(item => item.game_name),
+                datasets: [{
+                    label: '{% trans "Players" %}',
+                    data: playerDistData.map(item => item.player_count),
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.8)',
+                        'rgba(54, 162, 235, 0.8)',
+                        'rgba(255, 206, 86, 0.8)',
+                        'rgba(75, 192, 192, 0.8)',
+                        'rgba(153, 102, 255, 0.8)',
+                        'rgba(255, 159, 64, 0.8)'
+                    ],
+                }]
+            },
+            options: {
+                responsive: true,
+            }
+        });
+
+        // Cash Flow Chart
+        const cashFlowCtx = document.getElementById('cashFlowChart').getContext('2d');
+        const cashFlowData = {{ financial_report.cash_flow|safe }};
+        new Chart(cashFlowCtx, {
+            type: 'bar',
+            data: {
+                labels: cashFlowData.map(item => item.month),
+                datasets: [
+                    {
+                        label: '{% trans "Income" %}',
+                        data: cashFlowData.map(item => item.income),
+                        backgroundColor: 'rgba(75, 192, 192, 0.8)',
+                    },
+                    {
+                        label: '{% trans "Expenses" %}',
+                        data: cashFlowData.map(item => item.expenses),
+                        backgroundColor: 'rgba(255, 99, 132, 0.8)',
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { stacked: true },
+                    y: { stacked: true }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}
