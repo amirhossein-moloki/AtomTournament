@@ -98,6 +98,7 @@ class Tournament(models.Model):
     max_participants = models.PositiveIntegerField(default=100)
     team_size = models.PositiveIntegerField(default=1)
     name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
     image = models.ForeignKey(
         TournamentImage,
         on_delete=models.SET_NULL,
