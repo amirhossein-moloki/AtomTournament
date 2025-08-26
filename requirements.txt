@@ -114,6 +114,7 @@ django==5.2.5
     #   django-formtools
     #   django-guardian
     #   django-import-export
+    #   django-jalali-date
     #   django-phonenumber-field
     #   django-redis
     #   django-select2
@@ -144,6 +145,8 @@ django-formtools==2.5.1
 django-guardian==3.0.3
     # via -r requirements.in
 django-import-export==4.3.9
+    # via -r requirements.in
+django-jalali-date==2.0.0
     # via -r requirements.in
 django-phonenumber-field==8.1.0
     # via -r requirements.in
@@ -207,6 +210,10 @@ incremental==24.7.2
     # via twisted
 inflection==0.5.1
     # via drf-spectacular
+jalali-core==1.0.0
+    # via jdatetime
+jdatetime==5.2.0
+    # via django-jalali-date
 jmespath==1.0.1
     # via
     #   boto3

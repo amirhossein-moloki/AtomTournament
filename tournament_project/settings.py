@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
+import locale
 import os
 import sys
 from pathlib import Path
@@ -18,6 +19,11 @@ import dj_database_url
 from dotenv import load_dotenv
 
 load_dotenv()
+
+if sys.platform.startswith("win32"):
+    locale.setlocale(locale.LC_ALL, "Persian_Iran.UTF-8")
+else:
+    locale.setlocale(locale.LC_ALL, "fa_IR.UTF-8")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -76,6 +82,7 @@ INSTALLED_APPS = [
     "import_export",
     "silk",
     "django_select2",
+    "jalali_date",
     "tempus_dominus",
     "formtools",
 ]
