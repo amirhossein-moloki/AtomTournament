@@ -3,6 +3,14 @@
 import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
+import shortuuid
+
+
+def generate_referral_codes(apps, schema_editor):
+    User = apps.get_model("users", "User")
+    for user in User.objects.all():
+        user.referral_code = shortuuid.uuid()
+        user.save()
 
 
 class Migration(migrations.Migration):
@@ -13,6 +21,12 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.AddField(
+            model_name="user",
+            name="referral_code",
+            field=models.CharField(blank=True, max_length=22, null=True),
+        ),
+        migrations.RunPython(generate_referral_codes, migrations.RunPython.noop),
+        migrations.AlterField(
             model_name="user",
             name="referral_code",
             field=models.CharField(blank=True, max_length=22, unique=True),
