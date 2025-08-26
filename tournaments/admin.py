@@ -10,7 +10,7 @@ from import_export import resources
 from simple_history.admin import SimpleHistoryAdmin
 from guardian.admin import GuardedModelAdmin
 from django_select2.forms import Select2Widget
-from tempus_dominus.widgets import DateTimePicker
+from jalali_date.admin import ModelAdminJalaliMixin
 
 # Local Imports
 from .models import (
@@ -130,6 +130,7 @@ class TournamentImageAdmin(ModelAdmin):
 
 @admin.register(Tournament)
 class TournamentAdmin(
+    ModelAdminJalaliMixin,
     AdminAlertsMixin,
     ImportExportModelAdmin,
     SimpleHistoryAdmin,
@@ -152,12 +153,6 @@ class TournamentAdmin(
 
     formfield_overrides = {
         models.ForeignKey: {"widget": Select2Widget},
-        models.DateTimeField: {
-            "widget": DateTimePicker(
-                options={"useCurrent": True, "collapse": False},
-                attrs={"append": "fa fa-calendar", "icon_toggle": True},
-            )
-        },
     }
 
     fieldsets = (
