@@ -120,6 +120,13 @@ class Tournament(models.Model):
     entry_fee = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True
     )
+    prize_pool = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Total prize pool in Rial.",
+    )
     rules = models.TextField(blank=True)
     participants = models.ManyToManyField(
         "users.User", through="Participant", related_name="tournaments", blank=True

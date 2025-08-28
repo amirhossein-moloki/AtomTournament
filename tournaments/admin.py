@@ -164,7 +164,7 @@ class TournamentAdmin(
 
     fieldsets = (
         ("Tournament Info", {"fields": ("name", "description", "image", "color", "game", "creator", "rules"), "classes": ("tab",)}),
-        ("Configuration", {"fields": ("type", "mode", "max_participants", "team_size", "is_free", "entry_fee"), "classes": ("tab",)}),
+        ("Configuration", {"fields": ("type", "mode", "max_participants", "team_size", "is_free", "entry_fee", "prize_pool"), "classes": ("tab",)}),
         ("Schedule", {"fields": ("start_date", "end_date", "countdown_start_time"), "classes": ("tab",)}),
         ("Restrictions & Participants", {"fields": ("required_verification_level", "min_rank", "max_rank", "top_players", "top_teams"), "classes": ("tab",)}),
     )
