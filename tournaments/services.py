@@ -313,9 +313,10 @@ def pay_prize(tournament: Tournament, winner):
     """
     # This is a simplified logic. In a real application, you would
     # probably have a more complex prize distribution system.
-    prize_amount = (
-        tournament.entry_fee * tournament.participants.count() * Decimal("0.8")
-    )  # 80% of the pot
+    if tournament.is_free:
+        return
+
+    prize_amount = tournament.prize_pool or 0
 
     if prize_amount > 0:
         _, error = process_transaction(
