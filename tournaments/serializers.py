@@ -81,6 +81,17 @@ class TournamentCreateUpdateSerializer(serializers.ModelSerializer):
 class TournamentReadOnlySerializer(serializers.ModelSerializer):
     """Serializer for reading tournament data."""
 
+    def __init__(self, *args, **kwargs):
+        fields = kwargs.pop("fields", None)
+
+        super().__init__(*args, **kwargs)
+
+        if fields:
+            allowed = set(fields)
+            existing = set(self.fields)
+            for field_name in existing - allowed:
+                self.fields.pop(field_name)
+
     image = TournamentImageSerializer(read_only=True)
     color = TournamentColorSerializer(read_only=True)
     participants = UserReadOnlySerializer(many=True, read_only=True)
@@ -153,6 +164,26 @@ class TournamentReadOnlySerializer(serializers.ModelSerializer):
             if p.user_id == request.user.id:
                 return p.prize
         return None
+
+
+class TournamentListSerializer(TournamentReadOnlySerializer):
+    """
+    A lightweight serializer for listing tournaments, showing only essential fields.
+    """
+
+    class Meta(TournamentReadOnlySerializer.Meta):
+        fields = (
+            "id",
+            "name",
+            "image",
+            "game",
+            "start_date",
+            "is_free",
+            "entry_fee",
+            "prize_pool",
+            "type",
+            "spots_left",
+        )
 
 
 class MatchCreateSerializer(serializers.ModelSerializer):

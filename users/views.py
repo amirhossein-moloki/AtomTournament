@@ -9,7 +9,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from tournaments.models import Participant, Tournament
-from tournaments.serializers import TournamentReadOnlySerializer
+from tournaments.serializers import (TournamentListSerializer,
+                                     TournamentReadOnlySerializer)
 from wallet.models import Transaction
 from wallet.serializers import TransactionSerializer
 
@@ -76,7 +77,7 @@ class UserViewSet(viewsets.ModelViewSet):
         tournaments = Tournament.objects.filter(participants=user).prefetch_related(
             Prefetch("participant_set", queryset=participant_queryset), "teams", "game"
         )
-        serializer = TournamentReadOnlySerializer(
+        serializer = TournamentListSerializer(
             tournaments, many=True, context={"request": request}
         )
         return Response(serializer.data)
@@ -256,7 +257,7 @@ class DashboardView(APIView):
         latest_transactions = user.wallet.transactions.all()
 
         data = {
-            "upcoming_tournaments": TournamentReadOnlySerializer(
+            "upcoming_tournaments": TournamentListSerializer(
                 upcoming_tournaments, many=True, context={"request": request}
             ).data,
             "sent_invitations": TeamInvitationSerializer(

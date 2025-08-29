@@ -17,6 +17,7 @@ from users.serializers import TeamSerializer
 from wallet.models import Transaction
 
 from .exceptions import ApplicationError
+from .api_mixins import DynamicFieldsMixin
 from .filters import TournamentFilter
 from .models import (Game, Match, Participant, Report, Scoring, Tournament,
                      TournamentColor, TournamentImage, WinnerSubmission)
@@ -28,7 +29,7 @@ from .serializers import (GameCreateUpdateSerializer, GameReadOnlySerializer,
                           TournamentColorSerializer,
                           TournamentCreateUpdateSerializer,
                           TournamentImageSerializer,
-                          TournamentReadOnlySerializer,
+                          TournamentListSerializer, TournamentReadOnlySerializer,
                           WinnerSubmissionSerializer)
 from .services import (approve_winner_submission_service, confirm_match_result,
                        create_report_service, create_winner_submission_service,
@@ -52,7 +53,7 @@ class TournamentParticipantListView(generics.ListAPIView):
         )
 
 
-class TournamentViewSet(viewsets.ModelViewSet):
+class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing tournaments.
     """
@@ -62,6 +63,8 @@ class TournamentViewSet(viewsets.ModelViewSet):
     filterset_class = TournamentFilter
 
     def get_serializer_class(self):
+        if self.action == "list":
+            return TournamentListSerializer
         if self.action in ["create", "update", "partial_update"]:
             return TournamentCreateUpdateSerializer
         return TournamentReadOnlySerializer
@@ -447,10 +450,10 @@ class TopTournamentsView(APIView):
             start_date__gte=timezone.now()
         ).order_by("-entry_fee")
 
-        past_serializer = TournamentReadOnlySerializer(
+        past_serializer = TournamentListSerializer(
             past_tournaments, many=True, context={"request": request}
         )
-        future_serializer = TournamentReadOnlySerializer(
+        future_serializer = TournamentListSerializer(
             future_tournaments, many=True, context={"request": request}
         )
 
@@ -496,7 +499,7 @@ class UserTournamentHistoryView(generics.ListAPIView):
     API view to list tournaments a user has participated in.
     """
 
-    serializer_class = TournamentReadOnlySerializer
+    serializer_class = TournamentListSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
