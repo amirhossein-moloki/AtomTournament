@@ -171,6 +171,10 @@ class TournamentListSerializer(TournamentReadOnlySerializer):
     A lightweight serializer for listing tournaments, showing only essential fields.
     """
 
+    start_countdown = serializers.DateTimeField(
+        source="countdown_start_time", read_only=True
+    )
+
     class Meta(TournamentReadOnlySerializer.Meta):
         fields = (
             "id",
@@ -178,6 +182,8 @@ class TournamentListSerializer(TournamentReadOnlySerializer):
             "image",
             "game",
             "start_date",
+            "end_date",
+            "start_countdown",
             "is_free",
             "entry_fee",
             "prize_pool",
