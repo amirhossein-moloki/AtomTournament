@@ -8,6 +8,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -38,6 +39,12 @@ from .services import (approve_winner_submission_service, confirm_match_result,
                        resolve_report_service)
 
 
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
 class TournamentParticipantListView(generics.ListAPIView):
     """
     API view to list participants of a tournament.
@@ -61,6 +68,7 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
     queryset = Tournament.objects.all()
     filter_backends = [DjangoFilterBackend]
     filterset_class = TournamentFilter
+    pagination_class = StandardResultsSetPagination
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -76,7 +84,7 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
         participant_queryset = Participant.objects.select_related("user")
         return Tournament.objects.prefetch_related(
             Prefetch("participant_set", queryset=participant_queryset), "teams", "game"
-        ).all()
+        ).order_by("start_date")
 
     def get_permissions(self):
         if self.action in ["list", "retrieve"]:
