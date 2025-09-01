@@ -227,7 +227,8 @@ class TournamentViewSetTests(APITestCase):
         self.client.force_authenticate(user=self.user)
         response = self.client.get(f"{self.tournaments_url}tournaments/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(len(response.data["results"]), 1)
 
     def test_create_tournament_by_admin(self):
         self.client.force_authenticate(user=self.admin_user)
@@ -384,6 +385,31 @@ class TournamentViewSetTests(APITestCase):
         self.tournament.refresh_from_db()
         self.assertIsNotNone(self.tournament.countdown_start_time)
         mock_apply_async.assert_called_once()
+
+    def test_default_ordering(self):
+        # Create tournaments with different start dates
+        now = timezone.now()
+        Tournament.objects.create(
+            name="Future Tournament",
+            game=self.game,
+            start_date=now + timedelta(days=10),
+            end_date=now + timedelta(days=11),
+        )
+        Tournament.objects.create(
+            name="Past Tournament",
+            game=self.game,
+            start_date=now - timedelta(days=10),
+            end_date=now - timedelta(days=9),
+        )
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(f"{self.tournaments_url}tournaments/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 3)  # 1 from setup, 2 from this test
+        self.assertEqual(len(response.data["results"]), 3)
+        # Check the order
+        self.assertEqual(response.data["results"][0]["name"], "Past Tournament")
+        self.assertEqual(response.data["results"][1]["name"], "Test Tournament")
+        self.assertEqual(response.data["results"][2]["name"], "Future Tournament")
 
 
 class MatchViewSetTests(APITestCase):
@@ -759,74 +785,84 @@ class TournamentFilterTests(APITestCase):
     def test_filter_by_name(self):
         response = self.client.get(self.tournaments_url, {"name": "Alpha"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["name"], "Alpha Tournament")
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(response.data["results"][0]["name"], "Alpha Tournament")
 
     def test_filter_by_status_upcoming(self):
         response = self.client.get(self.tournaments_url, {"status": "upcoming"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["name"], "Alpha Tournament")
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(response.data["results"][0]["name"], "Alpha Tournament")
 
     def test_filter_by_status_ongoing(self):
         response = self.client.get(self.tournaments_url, {"status": "ongoing"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["name"], "Beta Tournament")
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(response.data["results"][0]["name"], "Beta Tournament")
 
     def test_filter_by_status_finished(self):
         response = self.client.get(self.tournaments_url, {"status": "finished"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["name"], "Gamma Tournament")
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(response.data["results"][0]["name"], "Gamma Tournament")
 
     def test_ordering_by_name_asc(self):
         response = self.client.get(self.tournaments_url, {"ordering": "name"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 3)
-        self.assertEqual(response.data[0]["name"], "Alpha Tournament")
-        self.assertEqual(response.data[1]["name"], "Beta Tournament")
-        self.assertEqual(response.data[2]["name"], "Gamma Tournament")
+        self.assertEqual(response.data["count"], 3)
+        self.assertEqual(len(response.data["results"]), 3)
+        self.assertEqual(response.data["results"][0]["name"], "Alpha Tournament")
+        self.assertEqual(response.data["results"][1]["name"], "Beta Tournament")
+        self.assertEqual(response.data["results"][2]["name"], "Gamma Tournament")
 
     def test_ordering_by_name_desc(self):
         response = self.client.get(self.tournaments_url, {"ordering": "-name"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 3)
-        self.assertEqual(response.data[0]["name"], "Gamma Tournament")
-        self.assertEqual(response.data[1]["name"], "Beta Tournament")
-        self.assertEqual(response.data[2]["name"], "Alpha Tournament")
+        self.assertEqual(response.data["count"], 3)
+        self.assertEqual(len(response.data["results"]), 3)
+        self.assertEqual(response.data["results"][0]["name"], "Gamma Tournament")
+        self.assertEqual(response.data["results"][1]["name"], "Beta Tournament")
+        self.assertEqual(response.data["results"][2]["name"], "Alpha Tournament")
 
     def test_ordering_by_start_date_asc(self):
         response = self.client.get(self.tournaments_url, {"ordering": "start_date"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 3)
-        self.assertEqual(response.data[0]["name"], "Gamma Tournament")
-        self.assertEqual(response.data[1]["name"], "Beta Tournament")
-        self.assertEqual(response.data[2]["name"], "Alpha Tournament")
+        self.assertEqual(response.data["count"], 3)
+        self.assertEqual(len(response.data["results"]), 3)
+        self.assertEqual(response.data["results"][0]["name"], "Gamma Tournament")
+        self.assertEqual(response.data["results"][1]["name"], "Beta Tournament")
+        self.assertEqual(response.data["results"][2]["name"], "Alpha Tournament")
 
     def test_ordering_by_start_date_desc(self):
         response = self.client.get(self.tournaments_url, {"ordering": "-start_date"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 3)
-        self.assertEqual(response.data[0]["name"], "Alpha Tournament")
-        self.assertEqual(response.data[1]["name"], "Beta Tournament")
-        self.assertEqual(response.data[2]["name"], "Gamma Tournament")
+        self.assertEqual(response.data["count"], 3)
+        self.assertEqual(len(response.data["results"]), 3)
+        self.assertEqual(response.data["results"][0]["name"], "Alpha Tournament")
+        self.assertEqual(response.data["results"][1]["name"], "Beta Tournament")
+        self.assertEqual(response.data["results"][2]["name"], "Gamma Tournament")
 
     def test_ordering_by_entry_fee_asc(self):
         response = self.client.get(self.tournaments_url, {"ordering": "entry_fee"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 3)
-        self.assertEqual(response.data[0]["name"], "Gamma Tournament")
-        self.assertEqual(response.data[1]["name"], "Alpha Tournament")
-        self.assertEqual(response.data[2]["name"], "Beta Tournament")
+        self.assertEqual(response.data["count"], 3)
+        self.assertEqual(len(response.data["results"]), 3)
+        self.assertEqual(response.data["results"][0]["name"], "Gamma Tournament")
+        self.assertEqual(response.data["results"][1]["name"], "Alpha Tournament")
+        self.assertEqual(response.data["results"][2]["name"], "Beta Tournament")
 
     def test_ordering_by_entry_fee_desc(self):
         response = self.client.get(self.tournaments_url, {"ordering": "-entry_fee"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 3)
-        self.assertEqual(response.data[0]["name"], "Beta Tournament")
-        self.assertEqual(response.data[1]["name"], "Alpha Tournament")
-        self.assertEqual(response.data[2]["name"], "Gamma Tournament")
+        self.assertEqual(response.data["count"], 3)
+        self.assertEqual(len(response.data["results"]), 3)
+        self.assertEqual(response.data["results"][0]["name"], "Beta Tournament")
+        self.assertEqual(response.data["results"][1]["name"], "Alpha Tournament")
+        self.assertEqual(response.data["results"][2]["name"], "Gamma Tournament")
 
 
 class TournamentColorCRUDTests(APITestCase):
