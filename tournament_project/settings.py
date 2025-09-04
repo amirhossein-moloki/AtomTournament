@@ -86,6 +86,7 @@ INSTALLED_APPS = [
     "jalali_date",
     "tempus_dominus",
     "formtools",
+    "management_dashboard",
 ]
 
 AUTHENTICATION_BACKENDS = [
