@@ -97,7 +97,8 @@ class RankAdmin(ModelAdmin):
 
 @admin.register(Game)
 class GameAdmin(ModelAdmin):
-    list_display = ("name",)
+    list_display = ("name", "status")
+    list_filter = ("status",)
     search_fields = ("name",)
     inlines = [GameManagerInline, GameImageInline]
 
