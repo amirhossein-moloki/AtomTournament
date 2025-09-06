@@ -12,8 +12,16 @@ class Rank(models.Model):
 
 
 class Game(models.Model):
+    STATUS_CHOICES = (
+        ("active", "Active"),
+        ("inactive", "Inactive"),
+        ("coming_soon", "Coming Soon"),
+    )
     name = models.CharField(max_length=100)
     description = models.TextField()
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="active"
+    )
 
     def __str__(self):
         return self.name
