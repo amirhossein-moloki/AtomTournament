@@ -37,7 +37,7 @@ class GameCreateUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Game
-        fields = ("name", "description")
+        fields = ("name", "description", "status")
 
 
 class GameReadOnlySerializer(serializers.ModelSerializer):
@@ -47,7 +47,7 @@ class GameReadOnlySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Game
-        fields = ("id", "name", "description", "images")
+        fields = ("id", "name", "description", "images", "status")
         read_only_fields = fields
 
 
