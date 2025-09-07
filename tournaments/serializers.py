@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import serializers
 
 from users.serializers import TeamSerializer, UserReadOnlySerializer
@@ -44,11 +45,22 @@ class GameReadOnlySerializer(serializers.ModelSerializer):
     """Serializer for the Game model (read-only)."""
 
     images = GameImageSerializer(many=True, read_only=True)
+    tournaments_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Game
-        fields = ("id", "name", "description", "images", "status")
+        fields = ("id", "name", "description", "images", "status", "tournaments_count")
         read_only_fields = fields
+
+    def get_tournaments_count(self, obj):
+        now = timezone.now()
+        held_tournaments = obj.tournament_set.filter(end_date__lt=now).count()
+        active_tournaments = obj.tournament_set.filter(end_date__gte=now).count()
+
+        return {
+            "held": held_tournaments,
+            "active": active_tournaments,
+        }
 
 
 class TournamentCreateUpdateSerializer(serializers.ModelSerializer):
