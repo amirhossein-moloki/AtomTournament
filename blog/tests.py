@@ -3,7 +3,9 @@ from rest_framework import status
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from users.models import User
-from .models import Post, Tag, Category, Comment, CommentReaction
+from datetime import timedelta
+from django.utils import timezone
+from .models import Post, Tag, Category, Comment, CommentReaction, CommentReport
 from PIL import Image
 import io
 
@@ -180,6 +182,118 @@ class BlogAPITests(APITestCase):
         data = {"reaction_type": "invalid"}
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_delete_comment_by_author(self):
+        self.client.force_authenticate(user=self.user)
+        comment = Comment.objects.create(
+            post=self.published_post, author=self.user, content="A comment to delete"
+        )
+        url = reverse("post-comments-detail", kwargs={"post_slug": self.published_post.slug, "pk": comment.pk})
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(Comment.objects.count(), 0)
+
+    def test_delete_comment_by_other_user(self):
+        self.client.force_authenticate(user=self.other_user)
+        comment = Comment.objects.create(
+            post=self.published_post, author=self.user, content="A comment to delete"
+        )
+        url = reverse("post-comments-detail", kwargs={"post_slug": self.published_post.slug, "pk": comment.pk})
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_edit_comment_by_author_within_time_limit(self):
+        self.client.force_authenticate(user=self.user)
+        comment = Comment.objects.create(
+            post=self.published_post, author=self.user, content="Original content"
+        )
+        url = reverse("post-comments-detail", kwargs={"post_slug": self.published_post.slug, "pk": comment.pk})
+        data = {"content": "Updated content"}
+        response = self.client.patch(url, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["content"], "Updated content")
+
+    def test_edit_comment_by_author_outside_time_limit(self):
+        self.client.force_authenticate(user=self.user)
+        comment = Comment.objects.create(
+            post=self.published_post, author=self.user, content="Original content"
+        )
+        # Manually set the creation time to be in the past
+        comment.created_at = timezone.now() - timedelta(minutes=15)
+        comment.save()
+        url = reverse("post-comments-detail", kwargs={"post_slug": self.published_post.slug, "pk": comment.pk})
+        data = {"content": "Updated content"}
+        response = self.client.patch(url, data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_report_comment(self):
+        self.client.force_authenticate(user=self.user)
+        comment = Comment.objects.create(
+            post=self.published_post, author=self.other_user, content="Inappropriate content"
+        )
+        url = reverse("post-comments-report", kwargs={"post_slug": self.published_post.slug, "pk": comment.pk})
+        data = {"reason": "This is spam."}
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(CommentReport.objects.count(), 1)
+        self.assertEqual(CommentReport.objects.first().reason, "This is spam.")
+
+    def test_report_own_comment(self):
+        self.client.force_authenticate(user=self.user)
+        comment = Comment.objects.create(
+            post=self.published_post, author=self.user, content="My own comment"
+        )
+        url = reverse("post-comments-report", kwargs={"post_slug": self.published_post.slug, "pk": comment.pk})
+        data = {"reason": "I want to report myself."}
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_duplicate_report_comment(self):
+        self.client.force_authenticate(user=self.user)
+        comment = Comment.objects.create(
+            post=self.published_post, author=self.other_user, content="Inappropriate content"
+        )
+        # First report
+        CommentReport.objects.create(comment=comment, reporter=self.user, reason="First report")
+        # Second report
+        url = reverse("post-comments-report", kwargs={"post_slug": self.published_post.slug, "pk": comment.pk})
+        data = {"reason": "Second report"}
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_sort_comments_by_newest(self):
+        comment1 = Comment.objects.create(
+            post=self.published_post, author=self.user, content="First comment"
+        )
+        comment1.created_at = timezone.now() - timedelta(days=1)
+        comment1.save()
+        comment2 = Comment.objects.create(
+            post=self.published_post, author=self.user, content="Second comment"
+        )
+        url = reverse("post-comments-list", kwargs={"post_slug": self.published_post.slug})
+        response = self.client.get(url, {"ordering": "-created_at"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data[0]["id"], comment2.id)
+        self.assertEqual(response.data[1]["id"], comment1.id)
+
+    def test_sort_comments_by_most_popular(self):
+        comment1 = Comment.objects.create(
+            post=self.published_post, author=self.user, content="Less popular"
+        )
+        comment2 = Comment.objects.create(
+            post=self.published_post, author=self.user, content="Most popular"
+        )
+        # React to comment 2 to make it more popular
+        CommentReaction.objects.create(comment=comment2, user=self.user, reaction_type="like")
+        CommentReaction.objects.create(comment=comment2, user=self.other_user, reaction_type="love")
+        # React to comment 1
+        CommentReaction.objects.create(comment=comment1, user=self.other_user, reaction_type="like")
+
+        url = reverse("post-comments-list", kwargs={"post_slug": self.published_post.slug})
+        response = self.client.get(url, {"ordering": "-reactions_count"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data[0]["id"], comment2.id)
+        self.assertEqual(response.data[1]["id"], comment1.id)
 
     def test_create_post_with_image(self):
         self.client.force_authenticate(user=self.user)
