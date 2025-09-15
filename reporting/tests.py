@@ -64,7 +64,7 @@ class ReportingServiceTests(TestCase):
 
     def test_generate_players_report(self):
         report = generate_players_report()
-        self.assertEqual(report['summary']['total_users'], 3) # admin, user1, user2
+        self.assertEqual(report['summary']['total_users'], 4) # admin, user1, user2 + bot
         self.assertEqual(report['summary']['active_players'], 2)
 
     def test_generate_financial_report(self):
@@ -92,7 +92,7 @@ class ReportingServiceTests(TestCase):
 
 class ReportingAPITests(TestCase):
     def setUp(self):
-        self.admin_user = User.objects.create_superuser(username="admin", password="password", email="admin@test.com", phone_number="+989000000000")
+        self.admin_user = User.objects.create_superuser(username="api_admin", password="password", email="api_admin@test.com", phone_number="+989000000002")
         self.normal_user = User.objects.create_user(username="user", password="password", phone_number="+989123456789")
         self.client = APIClient()
 
