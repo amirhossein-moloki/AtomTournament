@@ -81,11 +81,33 @@ class Post(models.Model):
 
 
 class Comment(models.Model):
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments")
-    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    post = models.ForeignKey(
+        Post, on_delete=models.CASCADE, related_name="comments", verbose_name=_("Post")
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="comments",
+        verbose_name=_("Author"),
+    )
     content = models.TextField(verbose_name=_("Content"))
-    created_at = models.DateTimeField(auto_now_add=True)
-    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created at"))
+    parent = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="replies",
+        verbose_name=_("Parent"),
+    )
+    reactions = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        through="CommentReaction",
+        related_name="reacted_comments",
+        blank=True,
+        verbose_name=_("Reactions"),
+    )
+    active = models.BooleanField(default=True, verbose_name=_("Active"))
 
     class Meta:
         ordering = ("created_at",)
@@ -94,3 +116,39 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"Comment by {self.author} on {self.post}"
+
+
+class CommentReaction(models.Model):
+    class ReactionType(models.TextChoices):
+        LIKE = "like", _("Like")
+        LOVE = "love", _("Love")
+        HAHA = "haha", _("Haha")
+        WOW = "wow", _("Wow")
+        SAD = "sad", _("Sad")
+        ANGRY = "angry", _("Angry")
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name=_("User")
+    )
+    comment = models.ForeignKey(
+        Comment, on_delete=models.CASCADE, verbose_name=_("Comment")
+    )
+    reaction_type = models.CharField(
+        max_length=10,
+        choices=ReactionType.choices,
+        default=ReactionType.LIKE,
+        verbose_name=_("Reaction Type"),
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created at"))
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "comment"], name="unique_user_comment_reaction"
+            )
+        ]
+        verbose_name = _("Comment Reaction")
+        verbose_name_plural = _("Comment Reactions")
+
+    def __str__(self):
+        return f"{self.user} reacted to {self.comment} with {self.get_reaction_type_display()}"
