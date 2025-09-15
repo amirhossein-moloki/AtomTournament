@@ -53,6 +53,9 @@ class Post(models.Model):
         verbose_name=_("Author"),
     )
     content = models.TextField(verbose_name=_("Content"))
+    featured_image = models.ImageField(
+        upload_to="blog/featured_images/", null=True, blank=True, verbose_name=_("Featured Image")
+    )
     status = models.CharField(
         max_length=10, choices=STATUS_CHOICES, default="draft", verbose_name=_("Status")
     )
