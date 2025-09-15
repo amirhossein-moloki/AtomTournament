@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Post, Tag, Category, Comment, CommentReaction
+from .models import Post, Tag, Category, Comment, CommentReaction, CommentReport
 from users.serializers import UserSerializer
 
 
@@ -130,3 +130,10 @@ class PostDetailSerializer(serializers.ModelSerializer):
             .order_by("-same_tags", "-created_at")[:4]
         )
         return PostListSerializer(similar_posts, many=True).data
+
+
+class CommentReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CommentReport
+        fields = ["id", "reason", "comment", "reporter", "status", "created_at"]
+        read_only_fields = ["comment", "reporter", "status", "created_at"]

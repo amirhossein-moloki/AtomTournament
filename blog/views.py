@@ -1,15 +1,21 @@
-from django.db.models import Q
+from datetime import timedelta
+from django.db.models import Q, Count
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.utils.text import slugify
 from rest_framework import viewsets, permissions, status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import MultiPartParser, FormParser
-from .models import Post, Tag, Category, Comment, CommentReaction
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import OrderingFilter
+from .models import Post, Tag, Category, Comment, CommentReaction, CommentReport
 from .serializers import (
     PostListSerializer,
     PostDetailSerializer,
     TagSerializer,
     CategorySerializer,
     CommentSerializer,
+    CommentReportSerializer,
 )
 from .permissions import IsAuthorOrReadOnly
 
@@ -54,13 +60,26 @@ from rest_framework.response import Response
 
 
 class CommentViewSet(viewsets.ModelViewSet):
-    queryset = Comment.objects.filter(active=True)
     serializer_class = CommentSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
+    filter_backends = [OrderingFilter, DjangoFilterBackend]
+    ordering_fields = ['created_at', 'reactions_count']
+    filterset_fields = ['parent']
+
+    def get_queryset(self):
+        return Comment.objects.filter(active=True, post__slug=self.kwargs.get('post_slug')).annotate(
+            reactions_count=Count('reactions')
+        )
 
     def perform_create(self, serializer):
         post = get_object_or_404(Post, slug=self.kwargs['post_slug'])
         serializer.save(author=self.request.user, post=post)
+
+    def update(self, request, *args, **kwargs):
+        comment = self.get_object()
+        if timezone.now() > comment.created_at + timedelta(minutes=10):
+            raise PermissionDenied("You can only edit comments within 10 minutes of posting.")
+        return super().update(request, *args, **kwargs)
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def react(self, request, pk=None, post_slug=None):
@@ -99,3 +118,25 @@ class CommentViewSet(viewsets.ModelViewSet):
             )
             serializer = self.get_serializer(comment)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated], serializer_class=CommentReportSerializer)
+    def report(self, request, pk=None, post_slug=None):
+        comment = self.get_object()
+        reporter = request.user
+
+        if comment.author == reporter:
+            return Response(
+                {"error": "You cannot report your own comment."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            serializer.save(comment=comment, reporter=reporter)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response(
+                {"error": "You have already reported this comment."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )

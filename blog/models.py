@@ -152,3 +152,44 @@ class CommentReaction(models.Model):
 
     def __str__(self):
         return f"{self.user} reacted to {self.comment} with {self.get_reaction_type_display()}"
+
+
+class CommentReport(models.Model):
+    class ReportStatus(models.TextChoices):
+        PENDING = "pending", _("Pending")
+        RESOLVED = "resolved", _("Resolved")
+        DISMISSED = "dismissed", _("Dismissed")
+
+    comment = models.ForeignKey(
+        Comment,
+        on_delete=models.CASCADE,
+        related_name="reports",
+        verbose_name=_("Comment"),
+    )
+    reporter = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="comment_reports",
+        verbose_name=_("Reporter"),
+    )
+    reason = models.TextField(verbose_name=_("Reason"))
+    status = models.CharField(
+        max_length=10,
+        choices=ReportStatus.choices,
+        default=ReportStatus.PENDING,
+        verbose_name=_("Status"),
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created at"))
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["comment", "reporter"], name="unique_comment_reporter"
+            )
+        ]
+        verbose_name = _("Comment Report")
+        verbose_name_plural = _("Comment Reports")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Report by {self.reporter} on comment {self.comment.id}"
