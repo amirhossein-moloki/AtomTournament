@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Post, Tag, Category, Comment
+from .models import Post, Tag, Category, Comment, CommentReaction
 from users.serializers import UserSerializer
 
 
@@ -15,13 +15,56 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ("id", "name", "slug")
 
 
+from django.db.models import Count
+
+
 class CommentSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
+    replies = serializers.SerializerMethodField()
+    reactions = serializers.SerializerMethodField()
+    user_reaction = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
-        fields = ("id", "post", "author", "content", "created_at")
-        read_only_fields = ("post", "author")
+        fields = (
+            "id",
+            "post",
+            "author",
+            "content",
+            "created_at",
+            "parent",
+            "replies",
+            "reactions",
+            "user_reaction",
+        )
+        read_only_fields = ("post", "author", "replies", "reactions", "user_reaction")
+
+    def get_replies(self, obj):
+        # Only serialize top-level replies to avoid excessive nesting
+        if obj.replies.exists():
+            # Pass context to the nested serializer
+            return CommentSerializer(obj.replies.filter(parent=obj), many=True, context=self.context).data
+        return []
+
+    def get_reactions(self, obj):
+        #  Returns a dictionary of reaction counts, e.g., {"like": 10, "love": 5}
+        return (
+            CommentReaction.objects.filter(comment=obj)
+            .values("reaction_type")
+            .annotate(count=Count("reaction_type"))
+            .order_by("-count")
+        )
+
+    def get_user_reaction(self, obj):
+        # Returns the reaction type the current user has given, or None
+        user = self.context["request"].user
+        if user.is_authenticated:
+            try:
+                reaction = CommentReaction.objects.get(comment=obj, user=user)
+                return reaction.reaction_type
+            except CommentReaction.DoesNotExist:
+                return None
+        return None
 
 
 class PostListSerializer(serializers.ModelSerializer):
@@ -48,7 +91,7 @@ class PostListSerializer(serializers.ModelSerializer):
 
 class PostDetailSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
-    comments = CommentSerializer(many=True, read_only=True)
+    comments = serializers.SerializerMethodField()
     category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), required=False)
     tags = serializers.PrimaryKeyRelatedField(queryset=Tag.objects.all(), many=True, required=False)
     related_posts = serializers.SerializerMethodField()
@@ -70,6 +113,10 @@ class PostDetailSerializer(serializers.ModelSerializer):
             "related_posts",
         )
         read_only_fields = ("author", "created_at", "updated_at", "comments")
+
+    def get_comments(self, obj):
+        top_level_comments = obj.comments.filter(parent__isnull=True)
+        return CommentSerializer(top_level_comments, many=True, context=self.context).data
 
     def get_related_posts(self, obj):
         from .models import Post

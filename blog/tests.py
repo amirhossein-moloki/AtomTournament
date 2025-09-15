@@ -3,7 +3,7 @@ from rest_framework import status
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from users.models import User
-from .models import Post, Tag, Category, Comment
+from .models import Post, Tag, Category, Comment, CommentReaction
 from PIL import Image
 import io
 
@@ -118,6 +118,68 @@ class BlogAPITests(APITestCase):
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Comment.objects.count(), 1)
+
+    def test_create_reply_to_comment(self):
+        self.client.force_authenticate(user=self.user)
+        comment = Comment.objects.create(
+            post=self.published_post, author=self.user, content="Original comment"
+        )
+        url = reverse("post-comments-list", kwargs={"post_slug": self.published_post.slug})
+        data = {"content": "A reply", "parent": comment.id}
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Comment.objects.count(), 2)
+        reply = Comment.objects.get(id=response.data["id"])
+        self.assertEqual(reply.parent, comment)
+
+    def test_react_to_comment_add(self):
+        self.client.force_authenticate(user=self.user)
+        comment = Comment.objects.create(
+            post=self.published_post, author=self.other_user, content="A comment to react to"
+        )
+        url = reverse("post-comments-react", kwargs={"post_slug": self.published_post.slug, "pk": comment.pk})
+        data = {"reaction_type": "like"}
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(comment.reactions.count(), 1)
+        self.assertEqual(response.data["user_reaction"], "like")
+
+    def test_react_to_comment_remove(self):
+        self.client.force_authenticate(user=self.user)
+        comment = Comment.objects.create(
+            post=self.published_post, author=self.other_user, content="A comment to un-react to"
+        )
+        CommentReaction.objects.create(comment=comment, user=self.user, reaction_type="like")
+        self.assertEqual(comment.reactions.count(), 1)
+        url = reverse("post-comments-react", kwargs={"post_slug": self.published_post.slug, "pk": comment.pk})
+        data = {"reaction_type": "like"}
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(comment.reactions.count(), 0)
+
+    def test_react_to_comment_change(self):
+        self.client.force_authenticate(user=self.user)
+        comment = Comment.objects.create(
+            post=self.published_post, author=self.other_user, content="A comment to change reaction"
+        )
+        CommentReaction.objects.create(comment=comment, user=self.user, reaction_type="like")
+        self.assertEqual(comment.reactions.count(), 1)
+        url = reverse("post-comments-react", kwargs={"post_slug": self.published_post.slug, "pk": comment.pk})
+        data = {"reaction_type": "love"}
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(comment.reactions.count(), 1)
+        self.assertEqual(response.data["user_reaction"], "love")
+
+    def test_react_to_comment_invalid_type(self):
+        self.client.force_authenticate(user=self.user)
+        comment = Comment.objects.create(
+            post=self.published_post, author=self.other_user, content="A comment"
+        )
+        url = reverse("post-comments-react", kwargs={"post_slug": self.published_post.slug, "pk": comment.pk})
+        data = {"reaction_type": "invalid"}
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_create_post_with_image(self):
         self.client.force_authenticate(user=self.user)
