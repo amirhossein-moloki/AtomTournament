@@ -87,6 +87,7 @@ INSTALLED_APPS = [
     "tempus_dominus",
     "formtools",
     "management_dashboard",
+    "atomgamebot",
     "blog",
 ]
 
