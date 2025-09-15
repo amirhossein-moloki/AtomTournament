@@ -2,6 +2,7 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils.text import slugify
 from rest_framework import viewsets, permissions
+from rest_framework.parsers import MultiPartParser, FormParser
 from .models import Post, Tag, Category, Comment
 from .serializers import (
     PostListSerializer,
@@ -15,6 +16,7 @@ from .permissions import IsAuthorOrReadOnly
 
 class PostViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
+    parser_classes = [MultiPartParser, FormParser]
     lookup_field = "slug"
 
     def get_serializer_class(self):
