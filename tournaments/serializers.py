@@ -191,6 +191,7 @@ class TournamentListSerializer(TournamentReadOnlySerializer):
         fields = (
             "id",
             "name",
+            "description",
             "image",
             "game",
             "start_date",
