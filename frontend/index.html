@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>داشبورد کاربر</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'custom-dark-blue': '#1a202c',
+                        'custom-dark-blue-light': '#2d3748',
+                        'custom-cyan': '#00f5d4',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #1a202c;
+            color: #e2e8f0;
+        }
+    </style>
+</head>
+<body class="font-sans">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-custom-dark-blue-light p-6 flex flex-col justify-between">
+            <div>
+                <div class="text-center mb-10">
+                    <h1 class="text-3xl font-bold text-white">ATOM</h1>
+                    <p class="text-sm text-gray-400">YOUR GAME YOUR RULES</p>
+                </div>
+                <nav>
+                    <ul>
+                        <li class="mb-4">
+                            <a href="#" class="flex items-center p-3 rounded-lg bg-custom-cyan text-black font-bold">
+                                <i class="fas fa-tachometer-alt ml-3"></i>
+                                داشبورد
+                            </a>
+                        </li>
+                        <li class="mb-4">
+                            <a href="#" class="flex items-center p-3 rounded-lg hover:bg-gray-700">
+                                <i class="fas fa-users ml-3"></i>
+                                تیم ها
+                            </a>
+                        </li>
+                        <li class="mb-4">
+                            <a href="#" class="flex items-center p-3 rounded-lg hover:bg-gray-700">
+                                <i class="fas fa-trophy ml-3"></i>
+                                تورنومنت ها
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            <div>
+                <a href="#" id="logout-button" class="flex items-center p-3 rounded-lg text-red-500 hover:bg-gray-700">
+                    <i class="fas fa-sign-out-alt ml-3"></i>
+                    خروج از حساب
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-8 overflow-y-auto">
+            <!-- Header -->
+            <header class="flex justify-between items-center mb-8">
+                <div class="flex items-center">
+                     <div class="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center mr-4 user-avatar">
+                        <i class="fas fa-user text-2xl text-gray-400"></i>
+                    </div>
+                    <div>
+                        <span class="text-lg font-semibold user-name">...</span>
+                    </div>
+                </div>
+                <button class="bg-custom-cyan text-black font-bold py-2 px-6 rounded-lg flex items-center">
+                    <i class="fas fa-plus mr-2"></i>
+                    ایجاد تیم
+                </button>
+            </header>
+
+            <!-- Dashboard Content -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                <!-- Left Column -->
+                <div class="lg:col-span-2 space-y-8">
+                    <!-- Profile Card -->
+                    <div class="bg-custom-dark-blue-light p-6 rounded-2xl relative">
+                        <button class="absolute top-6 left-6 text-gray-400 hover:text-white">
+                            <i class="fas fa-edit text-xl"></i>
+                        </button>
+                        <div class="flex flex-col items-center text-center">
+                            <div class="w-24 h-24 mb-4 rounded-full bg-cover bg-center user-avatar" style="background-image: url('')"></div>
+                            <h2 class="text-2xl font-bold user-name">...</h2>
+                            <p id="user-email" class="text-gray-400">...</p>
+                            <p id="user-rank" class="text-sm text-gray-500 mt-1"></p>
+                        </div>
+                        <div class="flex justify-around mt-6 text-center border-t border-gray-700 pt-4">
+                            <div>
+                                <p id="stats-points" class="text-2xl font-bold">...</p>
+                                <p class="text-gray-400">امتیاز شما</p>
+                            </div>
+                            <div>
+                                <p id="stats-tournaments" class="text-2xl font-bold">...</p>
+                                <p class="text-gray-400">تورنومنت ها</p>
+                            </div>
+                            <div>
+                                <p id="stats-teams" class="text-2xl font-bold">...</p>
+                                <p class="text-gray-400">تعداد تیم ها</p>
+                            </div>
+                            <div>
+                                <p id="stats-date" class="text-2xl font-bold">... <span class="text-base"></span> ...</p>
+                                <p class="text-gray-400">تاریخ عضویت</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Your Teams -->
+                    <div class="bg-custom-dark-blue-light p-6 rounded-2xl">
+                        <h3 class="text-xl font-bold mb-4">تیم های شما</h3>
+                        <div id="teams-container" class="space-y-4">
+                            <!-- Team items will be injected here by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="lg:col-span-1">
+                     <!-- Tournament History -->
+                    <div class="bg-custom-dark-blue-light p-6 rounded-2xl h-full">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold">تاریخچه تورنومنت ها</h3>
+                            <div class="flex space-x-2">
+                                <button class="text-gray-400 hover:text-white px-3 py-1 rounded-lg">نمایش همه</button>
+                                <button class="bg-gray-700 px-3 py-1 rounded-lg">فیلتر</button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-right">
+                                <thead>
+                                    <tr class="text-gray-400 border-b border-gray-700">
+                                        <th class="py-2 px-2">تورنومنت</th>
+                                        <th class="py-2 px-2">بازی</th>
+                                        <th class="py-2 px-2">تیم</th>
+                                        <th class="py-2 px-2">تاریخ</th>
+                                        <th class="py-2 px-2">رتبه</th>
+                                        <th class="py-2 px-2">امتیاز</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tournament-history-body">
+                                    <!-- Tournament rows will be injected here by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

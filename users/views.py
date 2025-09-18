@@ -224,51 +224,48 @@ class TeamViewSet(viewsets.ModelViewSet):
 class DashboardView(APIView):
     """
     API view for user dashboard.
+    Provides all necessary data for the main dashboard UI.
     """
-
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user = User.objects.prefetch_related(
-            Prefetch(
-                "tournaments",
-                queryset=Tournament.objects.filter(
-                    start_date__gte=timezone.now()
-                ).order_by("start_date"),
-            ),
-            Prefetch(
-                "sent_invitations",
-                queryset=TeamInvitation.objects.filter(status="pending"),
-            ),
-            Prefetch(
-                "received_invitations",
-                queryset=TeamInvitation.objects.filter(status="pending"),
-            ),
-            Prefetch(
-                "wallet__transactions",
-                queryset=Transaction.objects.order_by("-timestamp")[:5],
-            ),
-        ).get(pk=request.user.pk)
+        user = request.user
 
-        # The data is now pre-fetched, so accessing it doesn't cause new queries.
-        upcoming_tournaments = user.tournaments.all()
-        sent_invitations = user.sent_invitations.all()
-        received_invitations = user.received_invitations.all()
-        latest_transactions = user.wallet.transactions.all()
+        # Serialize user profile data
+        user_profile_data = UserSerializer(user, context={'request': request}).data
+
+        # Get user's teams
+        teams = Team.objects.filter(members=user).prefetch_related('members')
+        teams_data = []
+        for team in teams:
+            teams_data.append({
+                'id': team.id,
+                'name': team.name,
+                'team_picture': request.build_absolute_uri(team.team_picture.url) if team.team_picture else None,
+                'members_count': team.members.count(),
+                'is_captain': team.captain == user,
+            })
+
+        # Get user's tournament history
+        user_participations = Participant.objects.filter(user=user).select_related('tournament', 'tournament__game', 'team').order_by('-tournament__start_date')
+        tournament_history_data = []
+        for p in user_participations:
+            tournament_history_data.append({
+                'id': p.id,
+                'final_rank': p.final_rank,
+                'team': {'name': p.team.name} if p.team else None,
+                'tournament': {
+                    'title': p.tournament.title,
+                    'game': {'name': p.tournament.game.name},
+                    'start_date': p.tournament.start_date,
+                    'prize_pool': p.tournament.prize_pool,
+                }
+            })
 
         data = {
-            "upcoming_tournaments": TournamentListSerializer(
-                upcoming_tournaments, many=True, context={"request": request}
-            ).data,
-            "sent_invitations": TeamInvitationSerializer(
-                sent_invitations, many=True
-            ).data,
-            "received_invitations": TeamInvitationSerializer(
-                received_invitations, many=True
-            ).data,
-            "latest_transactions": TransactionSerializer(
-                latest_transactions, many=True
-            ).data,
+            'user_profile': user_profile_data,
+            'teams': teams_data,
+            'tournament_history': tournament_history_data,
         }
         return Response(data)
 
