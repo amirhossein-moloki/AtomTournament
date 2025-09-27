@@ -31,16 +31,14 @@ def send_sms_notification(phone_number, context):
 
 
 @shared_task
-def send_email_notification(email, subject, context):
+def send_email_notification(email, subject, template_name, context):
     """
-    Sends an email notification.
+    Sends an email notification using a specified template.
     """
-    html_message = render_to_string(
-        "notifications/email/tournament_joined.html", context
-    )
+    html_message = render_to_string(template_name, context)
     send_mail(
         subject,
-        None,
+        None,  # Plain text message, can be empty if HTML message is provided
         settings.EMAIL_HOST_USER,
         [email],
         fail_silently=False,
@@ -77,7 +75,10 @@ def send_tournament_credentials(tournament_id):
 
                 if p.email:
                     send_email_notification.delay(
-                        p.email, "Your Tournament Match Credentials", context
+                        p.email,
+                        "Your Tournament Match Credentials",
+                        "notifications/email/tournament_joined.html",
+                        context,
                     )
                 if p.phone_number:
                     send_sms_notification.delay(str(p.phone_number), context)

@@ -74,14 +74,17 @@ class NotificationTaskTests(TestCase):
         """Test sending an email notification."""
         context = {"test": "data"}
         send_email_notification(
-            self.user1.email, "Test Subject", context
+            self.user1.email,
+            "Test Subject",
+            "notifications/email/tournament_joined.html",
+            context,
         )
         mock_send_mail.assert_called_once()
         args, kwargs = mock_send_mail.call_args
-        self.assertEqual(args[0], "Test Subject")  # subject
-        self.assertEqual(args[2], settings.EMAIL_HOST_USER)  # from_email
-        self.assertEqual(args[3], [self.user1.email])  # recipient_list
-        self.assertIn("<html>", kwargs["html_message"])  # html_message
+        self.assertEqual(args[0], "Test Subject")
+        self.assertEqual(args[2], settings.EMAIL_HOST_USER)
+        self.assertEqual(args[3], [self.user1.email])
+        self.assertIn("<html>", kwargs["html_message"])
 
     @patch("notifications.tasks.send_email_notification.delay")
     @patch("notifications.tasks.send_sms_notification.delay")
@@ -125,14 +128,14 @@ class NotificationTaskTests(TestCase):
         )
 
         # Assertions for user1's notification
-        context_user1 = email_call_for_user1[0][2]
+        context_user1 = email_call_for_user1[0][3]
         self.assertEqual(context_user1["tournament_name"], "T1")
         self.assertEqual(context_user1["room_id"], "room1")
         self.assertEqual(context_user1["password"], "pass")
         self.assertEqual(context_user1["opponent_name"], self.user2.username)
-        self.assertEqual(sms_call_for_user1[0][1], context_user1) # Check context is the same for SMS
+        self.assertEqual(sms_call_for_user1[0][1], context_user1)
 
         # Assertions for user2's notification
-        context_user2 = email_call_for_user2[0][2]
+        context_user2 = email_call_for_user2[0][3]
         self.assertEqual(context_user2["opponent_name"], self.user1.username)
         self.assertEqual(sms_call_for_user2[0][1], context_user2)

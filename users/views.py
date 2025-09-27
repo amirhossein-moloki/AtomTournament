@@ -85,12 +85,11 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["post"])
     def send_otp(self, request):
         """
-        Send OTP to user.
+        Send OTP to user based on email or phone number.
         """
-        phone_number = request.data.get("phone_number")
-        email = request.data.get("email")
+        identifier = request.data.get("identifier")
         try:
-            send_otp_service(phone_number=phone_number, email=email)
+            send_otp_service(identifier=identifier)
             return Response(
                 {"message": "OTP sent successfully."}, status=status.HTTP_200_OK
             )
@@ -102,13 +101,10 @@ class UserViewSet(viewsets.ModelViewSet):
         """
         Verify OTP and login user.
         """
-        phone_number = request.data.get("phone_number")
-        email = request.data.get("email")
+        identifier = request.data.get("identifier")
         code = request.data.get("code")
         try:
-            tokens = verify_otp_service(
-                phone_number=phone_number, email=email, code=code
-            )
+            tokens = verify_otp_service(identifier=identifier, code=code)
             return Response(tokens, status=status.HTTP_200_OK)
         except ApplicationError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
