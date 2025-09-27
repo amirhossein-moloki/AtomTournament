@@ -180,7 +180,7 @@ class UserViewSetTests(APITestCase):
         """
         Test that OTP is sent successfully.
         """
-        data = {"phone_number": self.user1.phone_number}
+        data = {"identifier": self.user1.phone_number}
         response = self.client.post(f"{self.users_url}send_otp/", data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(OTP.objects.filter(user=self.user1).exists())
@@ -192,7 +192,7 @@ class UserViewSetTests(APITestCase):
         Test that a valid OTP is verified successfully.
         """
         otp = OTP.objects.create(user=self.user1, code="123456")
-        data = {"phone_number": self.user1.phone_number, "code": "123456"}
+        data = {"identifier": self.user1.phone_number, "code": "123456"}
         response = self.client.post(f"{self.users_url}verify_otp/", data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("access", response.data)
@@ -205,7 +205,7 @@ class UserViewSetTests(APITestCase):
         Test that an invalid OTP fails verification.
         """
         OTP.objects.create(user=self.user1, code="123456")
-        data = {"phone_number": self.user1.phone_number, "code": "654321"}
+        data = {"identifier": self.user1.phone_number, "code": "654321"}
         response = self.client.post(f"{self.users_url}verify_otp/", data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data["error"], "Invalid OTP.")
@@ -217,7 +217,7 @@ class UserViewSetTests(APITestCase):
         otp = OTP.objects.create(user=self.user1, code="123456")
         otp.created_at = timezone.now() - timedelta(minutes=10)
         otp.save()
-        data = {"phone_number": self.user1.phone_number, "code": "123456"}
+        data = {"identifier": self.user1.phone_number, "code": "123456"}
         response = self.client.post(f"{self.users_url}verify_otp/", data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data["error"], "OTP expired.")

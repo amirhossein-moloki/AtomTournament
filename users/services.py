@@ -13,60 +13,59 @@ class ApplicationError(Exception):
     pass
 
 
-def send_otp_service(phone_number=None, email=None):
+def _get_user_by_identifier(identifier):
     """
-    Finds the user and sends an OTP code.
+    Retrieves a user by email or phone number.
     """
-    if not phone_number and not email:
-        raise ApplicationError("Phone number or email is required.")
+    if not identifier:
+        raise ApplicationError("Identifier (email or phone number) is required.")
 
-    user = None
-    if phone_number:
-        try:
-            user = User.objects.get(phone_number=phone_number)
-        except User.DoesNotExist:
-            pass
-    if email and not user:
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            raise ApplicationError("User not found.")
-    if not user:
+    # Simple check to see if it's an email or phone number.
+    # This can be improved with more robust validation if needed.
+    if "@" in identifier:
+        query = {"email": identifier}
+    else:
+        query = {"phone_number": identifier}
+
+    try:
+        return User.objects.get(**query)
+    except User.DoesNotExist:
         raise ApplicationError("User not found.")
+
+
+def send_otp_service(identifier=None):
+    """
+    Finds the user by identifier and sends an OTP code.
+    """
+    user = _get_user_by_identifier(identifier)
 
     otp_code = "".join(random.choices(string.digits, k=6))
     otp = OTP.objects.create(user=user, code=otp_code)
 
-    # Send SMS
+    # Send SMS if the identifier was a phone number (and the user has one)
     if user.phone_number:
         send_sms_notification.delay(str(user.phone_number), {"code": otp.code})
-    # Send Email
+
+    # Send Email if the identifier was an email (and the user has one)
     if user.email:
-        send_email_notification.delay(user.email, "OTP Code", {"code": otp.code})
+        send_email_notification.delay(
+            user.email,
+            "Your Verification Code",
+            "notifications/email/otp_email.html",
+            {"code": otp.code},
+        )
 
     return otp
 
 
-def verify_otp_service(phone_number=None, email=None, code=None):
+def verify_otp_service(identifier=None, code=None):
     """
     Verifies the OTP code and returns JWT tokens if valid.
     """
-    if not code or (not phone_number and not email):
-        raise ApplicationError("Phone number or email and code are required.")
+    if not code:
+        raise ApplicationError("Code is required.")
 
-    user = None
-    if phone_number:
-        try:
-            user = User.objects.get(phone_number=phone_number)
-        except User.DoesNotExist:
-            pass
-    if email and not user:
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            raise ApplicationError("User not found.")
-    if not user:
-        raise ApplicationError("User not found.")
+    user = _get_user_by_identifier(identifier)
 
     try:
         otp = OTP.objects.get(user=user, code=code, is_active=True)
