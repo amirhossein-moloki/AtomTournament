@@ -52,7 +52,7 @@ def send_otp_service(identifier=None):
         context = {
             "code": otp.code,
             "frontend_url": settings.FRONTEND_URL,
-            "backend_url": settings.BACKEND_URL,
+            "domain": settings.DOMAIN,
             "discord_url": settings.DISCORD_URL,
             "twitter_url": settings.TWITTER_URL,
         }
