@@ -51,7 +51,7 @@ def send_otp_service(identifier=None):
         send_email_notification.delay(
             user.email,
             "Your Verification Code",
-            "notifications/email/otp_email.html",
+            "notifications/email/login_verification_email.html",
             {"code": otp.code},
         )
 

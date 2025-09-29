@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>کد تأیید ورود</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Tahoma, sans-serif;
+      background: #0D1117;
+      color: #E0E0E0;
+      -webkit-font-smoothing: antialiased;
+    }
+    table { border-spacing: 0; width: 100%; }
+    td { padding: 0; }
+
+    .container {
+      max-width: 500px;
+      margin: 30px auto;
+      background: rgba(255,255,255,0.03);
+      backdrop-filter: blur(12px);
+      border-radius: 20px;
+      box-shadow: 0 0 25px rgba(0, 224, 255, 0.15);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg,#00E0FF,#00B7FF);
+      text-align: center;
+      padding: 25px 0;
+    }
+    .header img {
+      max-width: 100px;
+    }
+
+    .content {
+      text-align: center;
+      padding: 25px 20px 10px;
+    }
+    .content h1 {
+      font-size: 22px;
+      margin: 10px 0;
+      color: #00E0FF;
+    }
+    .content p {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #A0A0A0;
+    }
+
+    .otp-code {
+      display: inline-block;
+      font-size: 36px;
+      font-weight: bold;
+      letter-spacing: 6px;
+      color: #00E0FF;
+      background: rgba(0,224,255,0.08);
+      border: 1px solid rgba(0,224,255,0.5);
+      border-radius: 12px;
+      padding: 10px 25px;
+      margin: 20px 0;
+      box-shadow: 0 0 12px rgba(0,224,255,0.3);
+    }
+
+    .cta-btn {
+      display: inline-block;
+      background: linear-gradient(135deg,#00E0FF,#00B7FF);
+      color: #0D1117 !important;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 16px;
+      padding: 12px 28px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,224,255,0.6);
+      margin: 10px 0 20px;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: #666;
+      padding: 15px 10px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .social-links img {
+      width: 22px;
+      margin: 0 6px;
+      opacity: 0.8;
+    }
+
+    @media only screen and (max-width: 480px) {
+      .container { border-radius: 12px; }
+      .otp-code {
+        font-size: 28px;
+        letter-spacing: 4px;
+        padding: 8px 20px;
+      }
+      .content h1 { font-size: 20px; }
+      .content p { font-size: 14px; }
+      .cta-btn {
+        font-size: 15px;
+        padding: 10px 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <table role="presentation" width="100%">
+    <tr>
+      <td align="center">
+        <table class="container" role="presentation" width="100%">
+          <!-- هدر با لوگو -->
+          <tr>
+            <td class="header">
+              <img src="https://atom-game.ir/media/logo.png" alt="لوگو ATOM">
+            </td>
+          </tr>
+
+          <!-- محتوای اصلی -->
+          <tr>
+            <td class="content">
+              <h1>کد تأیید ورود</h1>
+              <p>برای ورود به حساب کاربری خود، کد زیر را وارد کنید.<br>این کد به مدت <b>۵ دقیقه</b> معتبر است.</p>
+              <div class="otp-code">{{ code }}</div>
+              <br>
+              <a href="http://127.0.0.1:5500/login.html?code={{ code }}" class="cta-btn">ورود به حساب</a>
+              <p style="margin-top:20px;">اگر این درخواست از طرف شما نبوده است، این ایمیل را نادیده بگیرید.</p>
+            </td>
+          </tr>
+
+          <!-- فوتر -->
+          <tr>
+            <td class="footer">
+              <div class="social-links">
+                <a href="https://discord.gg/..."><img src="https://atom-game.ir/icons/discord.png" alt="Discord"></a>
+                <a href="https://twitter.com/..."><img src="https://atom-game.ir/icons/twitter.png" alt="Twitter"></a>
+              </div>
+              <p>&copy; 2025 ATOM Tournament. All rights reserved.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
