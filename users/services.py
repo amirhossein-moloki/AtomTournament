@@ -1,6 +1,7 @@
 import random
 import string
 
+from django.conf import settings
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -48,11 +49,17 @@ def send_otp_service(identifier=None):
 
     # Send Email if the identifier was an email (and the user has one)
     if user.email:
+        context = {
+            "code": otp.code,
+            "frontend_url": settings.FRONTEND_URL,
+            "discord_url": settings.DISCORD_URL,
+            "twitter_url": settings.TWITTER_URL,
+        }
         send_email_notification.delay(
             user.email,
             "Your Verification Code",
             "notifications/email/login_verification_email.html",
-            {"code": otp.code},
+            context,
         )
 
     return otp

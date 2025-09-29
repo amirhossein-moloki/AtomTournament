@@ -114,7 +114,7 @@
           <!-- هدر با لوگو -->
           <tr>
             <td class="header">
-              <img src="https://atom-game.ir/media/logo.png" alt="لوگو ATOM">
+              <img src="{{ frontend_url }}/media/logo.png" alt="لوگو ATOM">
             </td>
           </tr>
 
@@ -125,7 +125,7 @@
               <p>برای ورود به حساب کاربری خود، کد زیر را وارد کنید.<br>این کد به مدت <b>۵ دقیقه</b> معتبر است.</p>
               <div class="otp-code">{{ code }}</div>
               <br>
-              <a href="http://127.0.0.1:5500/login.html?code={{ code }}" class="cta-btn">ورود به حساب</a>
+              <a href="{{ frontend_url }}/login.html?code={{ code }}" class="cta-btn">ورود به حساب</a>
               <p style="margin-top:20px;">اگر این درخواست از طرف شما نبوده است، این ایمیل را نادیده بگیرید.</p>
             </td>
           </tr>
@@ -134,8 +134,8 @@
           <tr>
             <td class="footer">
               <div class="social-links">
-                <a href="https://discord.gg/..."><img src="https://atom-game.ir/icons/discord.png" alt="Discord"></a>
-                <a href="https://twitter.com/..."><img src="https://atom-game.ir/icons/twitter.png" alt="Twitter"></a>
+                <a href="{{ discord_url }}"><img src="{{ frontend_url }}/icons/discord.png" alt="Discord"></a>
+                <a href="{{ twitter_url }}"><img src="{{ frontend_url }}/icons/twitter.png" alt="Twitter"></a>
               </div>
               <p>&copy; 2025 ATOM Tournament. All rights reserved.</p>
             </td>
