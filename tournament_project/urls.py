@@ -2,16 +2,24 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path, re_path
+
 # Import drf-spectacular views
-from drf_spectacular.views import (SpectacularAPIView, SpectacularRedocView,
-                                   SpectacularSwaggerView)
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularRedocView,
+    SpectacularSwaggerView,
+)
 
 from tournaments.views import private_media_view
 
 urlpatterns = [
-    path("api/admin/", admin.site.urls),
+    # --- Admin Panel ---
+    path("admin/", admin.site.urls),   # اصلاح شد (از زیر api جدا شد)
+
+    # --- Third-party integrations ---
     path("api/select2/", include("django_select2.urls")),
-    # Add drf-spectacular URLs
+
+    # --- API Documentation (drf-spectacular) ---
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
         "api/schema/swagger-ui/",
@@ -23,12 +31,18 @@ urlpatterns = [
         SpectacularRedocView.as_view(url_name="schema"),
         name="redoc",
     ),
+
+    # --- App URLs ---
     path("api/users/", include("users.urls")),
     path("api/tournaments/", include("tournaments.urls")),
     path("api/chat/", include("chat.urls")),
     path("api/wallet/", include("wallet.urls")),
     path("api/notifications/", include("notifications.urls")),
-    re_path(r"^api/private-media/(?P<path>.*)$", private_media_view, name="private_media"),
+    re_path(
+        r"^api/private-media/(?P<path>.*)$",
+        private_media_view,
+        name="private_media",
+    ),
     path("api/auth/", include("djoser.urls")),
     path("api/auth/", include("djoser.urls.jwt")),
     path("api/support/", include("support.urls")),
@@ -40,6 +54,9 @@ urlpatterns = [
     path("api/", include("blog.urls")),
 ]
 
+# --- Debug Tools & Static/Media ---
 if settings.DEBUG:
     urlpatterns += [path("api/silk/", include("silk.urls", namespace="silk"))]
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(
+        settings.MEDIA_URL, document_root=settings.MEDIA_ROOT
+    )
