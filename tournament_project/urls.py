@@ -9,8 +9,8 @@ from drf_spectacular.views import (SpectacularAPIView, SpectacularRedocView,
 from tournaments.views import private_media_view
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
-    path("select2/", include("django_select2.urls")),
+    path("api/admin/", admin.site.urls),
+    path("api/select2/", include("django_select2.urls")),
     # Add drf-spectacular URLs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
@@ -28,9 +28,9 @@ urlpatterns = [
     path("api/chat/", include("chat.urls")),
     path("api/wallet/", include("wallet.urls")),
     path("api/notifications/", include("notifications.urls")),
-    re_path(r"^private-media/(?P<path>.*)$", private_media_view, name="private_media"),
-    path("auth/", include("djoser.urls")),
-    path("auth/", include("djoser.urls.jwt")),
+    re_path(r"^api/private-media/(?P<path>.*)$", private_media_view, name="private_media"),
+    path("api/auth/", include("djoser.urls")),
+    path("api/auth/", include("djoser.urls.jwt")),
     path("api/support/", include("support.urls")),
     path("api/verification/", include("verification.urls")),
     path("api/rewards/", include("rewards.urls")),
@@ -41,5 +41,5 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
-    urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]
+    urlpatterns += [path("api/silk/", include("silk.urls", namespace="silk"))]
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
