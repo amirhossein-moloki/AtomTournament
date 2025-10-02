@@ -2,6 +2,7 @@ import random
 from decimal import Decimal
 
 from django.db import transaction
+from django.db.models import Count
 from rest_framework.exceptions import PermissionDenied
 
 from notifications.services import send_notification
@@ -289,21 +290,27 @@ def dispute_match_result(match: Match, user, reason: str):
 
 
 def get_tournament_winners(tournament: Tournament):
-    """
-    Returns the top 5 winners of a tournament.
+    """Return the tournament winners.
+
+    For standard brackets we keep the historical behaviour of returning the top
+    five finishers. For head-to-head tournaments (two entrants only) we limit
+    the result to the single champion so that only the rightful winner receives
+    the prize.
     """
     if tournament.type == "individual":
-        winners = (
-            User.objects.filter(won_matches__tournament=tournament)
-            .annotate(num_wins=models.Count("won_matches"))
-            .order_by("-num_wins")[:5]
-        )
+        entrant_count = tournament.participants.count()
+        base_queryset = User.objects.filter(won_matches__tournament=tournament)
     else:
-        winners = (
-            Team.objects.filter(won_matches__tournament=tournament)
-            .annotate(num_wins=models.Count("won_matches"))
-            .order_by("-num_wins")[:5]
-        )
+        entrant_count = tournament.teams.count()
+        base_queryset = Team.objects.filter(won_matches__tournament=tournament)
+
+    duel_limit = 1 if entrant_count <= 2 else tournament.winner_slots
+    limit = max(1, duel_limit)
+
+    winners = (
+        base_queryset.annotate(num_wins=Count("won_matches"))
+        .order_by("-num_wins", "id")[:limit]
+    )
     return winners
 
 
@@ -414,13 +421,30 @@ def reject_report_service(report: Report):
     return report
 
 
+def _is_user_in_winning_teams(user: User, teams):
+    """Return True if the user is the captain or a member of any team in ``teams``."""
+
+    for team in teams:
+        if team.captain_id == user.id:
+            return True
+        if team.members.filter(id=user.id).exists():
+            return True
+    return False
+
+
 def create_winner_submission_service(user: User, tournament: Tournament, video):
     """
-    Creates a winner submission after checking if the user is a top 5 winner.
+    Creates a winner submission after checking if the user is an eligible winner.
     """
-    winners = get_tournament_winners(tournament)
-    if user not in winners:
-        raise ApplicationError("You are not one of the top 5 winners.")
+    winners = list(get_tournament_winners(tournament))
+
+    if tournament.type == "team":
+        is_winner = _is_user_in_winning_teams(user, winners)
+    else:
+        is_winner = user in winners
+
+    if not is_winner:
+        raise ApplicationError("You are not one of the tournament winners.")
 
     submission = WinnerSubmission.objects.create(
         winner=user, tournament=tournament, video=video
