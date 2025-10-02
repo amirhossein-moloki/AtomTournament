@@ -12,11 +12,12 @@ from PIL import Image
 from rest_framework.test import APIClient, APITestCase
 
 from tournament_project.celery import app as celery_app
-from users.models import Team, User
+from users.models import Team, TeamMembership, User
 from verification.models import Verification
 
 from .models import (Game, GameManager, Match, Report, Tournament, TournamentColor,
                      TournamentImage, WinnerSubmission)
+from .services import get_tournament_winners
 
 
 class TournamentModelTests(TestCase):
@@ -529,6 +530,267 @@ class ReportViewSetTests(APITestCase):
         self.assertEqual(report.status, "rejected")
 
 
+class GetTournamentWinnersServiceTests(TestCase):
+    def setUp(self):
+        self.game = Game.objects.create(name="Winners Game")
+
+    def test_team_duel_returns_only_champion(self):
+        tournament = Tournament.objects.create(
+            name="Duel",
+            game=self.game,
+            start_date=timezone.now(),
+            end_date=timezone.now() + timedelta(days=1),
+            type="team",
+            team_size=5,
+        )
+        captain_a = User.objects.create_user(
+            username="captain_a", password="p", phone_number="+600"
+        )
+        captain_b = User.objects.create_user(
+            username="captain_b", password="p", phone_number="+601"
+        )
+        team_a = Team.objects.create(name="Alpha", captain=captain_a)
+        team_b = Team.objects.create(name="Beta", captain=captain_b)
+        tournament.teams.add(team_a, team_b)
+
+        Match.objects.create(
+            tournament=tournament,
+            match_type="team",
+            round=1,
+            participant1_team=team_a,
+            participant2_team=team_b,
+            winner_team=team_a,
+            is_confirmed=True,
+        )
+
+        winners = list(get_tournament_winners(tournament))
+
+        self.assertEqual(winners, [team_a])
+
+    def test_individual_duel_returns_only_champion(self):
+        tournament = Tournament.objects.create(
+            name="Solo Duel",
+            game=self.game,
+            start_date=timezone.now(),
+            end_date=timezone.now() + timedelta(days=1),
+            type="individual",
+        )
+        player_a = User.objects.create_user(
+            username="player_a", password="p", phone_number="+620"
+        )
+        player_b = User.objects.create_user(
+            username="player_b", password="p", phone_number="+621"
+        )
+        tournament.participants.add(player_a, player_b)
+
+        Match.objects.create(
+            tournament=tournament,
+            match_type="individual",
+            round=1,
+            participant1_user=player_a,
+            participant2_user=player_b,
+            winner_user=player_b,
+            is_confirmed=True,
+        )
+        Match.objects.create(
+            tournament=tournament,
+            match_type="individual",
+            round=2,
+            participant1_user=player_a,
+            participant2_user=player_b,
+            winner_user=player_a,
+            is_confirmed=True,
+        )
+        Match.objects.create(
+            tournament=tournament,
+            match_type="individual",
+            round=3,
+            participant1_user=player_a,
+            participant2_user=player_b,
+            winner_user=player_a,
+            is_confirmed=True,
+        )
+
+        winners = list(get_tournament_winners(tournament))
+
+        self.assertEqual(winners, [player_a])
+
+    def test_multi_team_tournament_returns_multiple_winners(self):
+        tournament = Tournament.objects.create(
+            name="League",
+            game=self.game,
+            start_date=timezone.now(),
+            end_date=timezone.now() + timedelta(days=1),
+            type="team",
+            team_size=5,
+        )
+
+        teams = []
+        for idx in range(4):
+            captain = User.objects.create_user(
+                username=f"captain_{idx}",
+                password="p",
+                phone_number=f"+610{idx}",
+            )
+            team = Team.objects.create(name=f"Team {idx}", captain=captain)
+            teams.append(team)
+
+        tournament.teams.add(*teams)
+
+        Match.objects.create(
+            tournament=tournament,
+            match_type="team",
+            round=1,
+            participant1_team=teams[0],
+            participant2_team=teams[1],
+            winner_team=teams[0],
+            is_confirmed=True,
+        )
+        Match.objects.create(
+            tournament=tournament,
+            match_type="team",
+            round=1,
+            participant1_team=teams[0],
+            participant2_team=teams[2],
+            winner_team=teams[0],
+            is_confirmed=True,
+        )
+        Match.objects.create(
+            tournament=tournament,
+            match_type="team",
+            round=1,
+            participant1_team=teams[1],
+            participant2_team=teams[2],
+            winner_team=teams[1],
+            is_confirmed=True,
+        )
+        Match.objects.create(
+            tournament=tournament,
+            match_type="team",
+            round=1,
+            participant1_team=teams[3],
+            participant2_team=teams[2],
+            winner_team=teams[3],
+            is_confirmed=True,
+        )
+
+        winners = list(get_tournament_winners(tournament))
+
+        self.assertEqual(winners, [teams[0], teams[1], teams[3]])
+
+    def test_multi_individual_tournament_returns_top_five(self):
+        tournament = Tournament.objects.create(
+            name="Solo League",
+            game=self.game,
+            start_date=timezone.now(),
+            end_date=timezone.now() + timedelta(days=1),
+            type="individual",
+        )
+
+        loser = User.objects.create_user(
+            username="loser", password="p", phone_number="+622"
+        )
+        tournament.participants.add(loser)
+
+        winners = []
+        for idx in range(6):
+            player = User.objects.create_user(
+                username=f"player_{idx}",
+                password="p",
+                phone_number=f"+623{idx}",
+            )
+            winners.append(player)
+            tournament.participants.add(player)
+            Match.objects.create(
+                tournament=tournament,
+                match_type="individual",
+                round=idx + 1,
+                participant1_user=player,
+                participant2_user=loser,
+                winner_user=player,
+                is_confirmed=True,
+            )
+
+        winners_list = list(get_tournament_winners(tournament))
+
+        expected = sorted(winners, key=lambda user: user.id)[:5]
+        self.assertEqual(winners_list, expected)
+
+    def test_custom_winner_slots_limits_output(self):
+        tournament = Tournament.objects.create(
+            name="Configured Solo League",
+            game=self.game,
+            start_date=timezone.now(),
+            end_date=timezone.now() + timedelta(days=1),
+            type="individual",
+            winner_slots=3,
+        )
+
+        anchor = User.objects.create_user(
+            username="anchor", password="p", phone_number="+630"
+        )
+        tournament.participants.add(anchor)
+
+        winners = []
+        for idx in range(5):
+            player = User.objects.create_user(
+                username=f"cfg_player_{idx}",
+                password="p",
+                phone_number=f"+631{idx}",
+            )
+            winners.append(player)
+            tournament.participants.add(player)
+            Match.objects.create(
+                tournament=tournament,
+                match_type="individual",
+                round=idx + 1,
+                participant1_user=player,
+                participant2_user=anchor,
+                winner_user=player,
+                is_confirmed=True,
+            )
+
+        winners_list = list(get_tournament_winners(tournament))
+
+        expected = sorted(winners, key=lambda user: user.id)[:3]
+        self.assertEqual(winners_list, expected)
+
+    def test_duel_respects_champion_only_even_with_custom_slots(self):
+        tournament = Tournament.objects.create(
+            name="Configured Duel",
+            game=self.game,
+            start_date=timezone.now(),
+            end_date=timezone.now() + timedelta(days=1),
+            type="team",
+            team_size=5,
+            winner_slots=4,
+        )
+
+        captain_a = User.objects.create_user(
+            username="cfg_captain_a", password="p", phone_number="+640"
+        )
+        captain_b = User.objects.create_user(
+            username="cfg_captain_b", password="p", phone_number="+641"
+        )
+        team_a = Team.objects.create(name="Cfg Alpha", captain=captain_a)
+        team_b = Team.objects.create(name="Cfg Beta", captain=captain_b)
+        tournament.teams.add(team_a, team_b)
+
+        Match.objects.create(
+            tournament=tournament,
+            match_type="team",
+            round=1,
+            participant1_team=team_a,
+            participant2_team=team_b,
+            winner_team=team_b,
+            is_confirmed=True,
+        )
+
+        winners = list(get_tournament_winners(tournament))
+
+        self.assertEqual(winners, [team_b])
+
+
 class WinnerSubmissionViewSetTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
@@ -570,6 +832,73 @@ class WinnerSubmissionViewSetTests(APITestCase):
         self.assertTrue(
             WinnerSubmission.objects.filter(
                 winner=self.winner, tournament=self.tournament
+            ).exists()
+        )
+
+    @patch("tournaments.services.get_tournament_winners")
+    def test_create_submission_team_member_allowed(self, mock_get_winners):
+        team_tournament = Tournament.objects.create(
+            name="Team Tournament",
+            game=self.game,
+            start_date=timezone.now(),
+            end_date=timezone.now() + timedelta(days=1),
+            is_free=False,
+            entry_fee=100,
+            type="team",
+            team_size=5,
+        )
+        captain = User.objects.create_user(
+            username="captain", password="p", phone_number="+410"
+        )
+        team = Team.objects.create(name="Winners", captain=captain)
+        TeamMembership.objects.create(team=team, user=self.winner)
+        mock_get_winners.return_value = [team]
+
+        self.client.force_authenticate(user=self.winner)
+        data = {
+            "tournament": team_tournament.id,
+            "video": self._generate_dummy_image("video.mp4"),
+        }
+        response = self.client.post(self.submissions_url, data, format="multipart")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(
+            WinnerSubmission.objects.filter(
+                winner=self.winner, tournament=team_tournament
+            ).exists()
+        )
+
+    @patch("tournaments.services.get_tournament_winners")
+    def test_create_submission_team_non_member_rejected(self, mock_get_winners):
+        outsider = User.objects.create_user(
+            username="outsider", password="p", phone_number="+411"
+        )
+        team_tournament = Tournament.objects.create(
+            name="Team Tournament",
+            game=self.game,
+            start_date=timezone.now(),
+            end_date=timezone.now() + timedelta(days=1),
+            is_free=False,
+            entry_fee=100,
+            type="team",
+            team_size=5,
+        )
+        captain = User.objects.create_user(
+            username="captain2", password="p", phone_number="+412"
+        )
+        team = Team.objects.create(name="Champions", captain=captain)
+        mock_get_winners.return_value = [team]
+
+        self.client.force_authenticate(user=outsider)
+        data = {
+            "tournament": team_tournament.id,
+            "video": self._generate_dummy_image("video.mp4"),
+        }
+        with self.assertRaises(ValidationError):
+            self.client.post(self.submissions_url, data, format="multipart")
+        self.assertFalse(
+            WinnerSubmission.objects.filter(
+                winner=outsider, tournament=team_tournament
             ).exists()
         )
 

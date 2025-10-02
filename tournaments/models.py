@@ -104,6 +104,13 @@ class Tournament(models.Model):
         default="team_deathmatch",
     )
     max_participants = models.PositiveIntegerField(default=100)
+    winner_slots = models.PositiveSmallIntegerField(
+        default=5,
+        help_text=(
+            "Maximum number of winners eligible for rewards. Set to 1 for"
+            " champion-only payouts."
+        ),
+    )
     team_size = models.PositiveIntegerField(default=1)
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
