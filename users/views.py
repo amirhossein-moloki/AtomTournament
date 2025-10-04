@@ -242,19 +242,31 @@ class DashboardView(APIView):
                 'is_captain': team.captain == user,
             })
 
-        # Get user's tournament history
-        user_participations = Participant.objects.filter(user=user).select_related('tournament', 'tournament__game', 'team').order_by('-tournament__start_date')
+        # Get user's tournament history (Optimized with Prefetch)
+        user_teams = user.teams.all()
+        user_participations = Participant.objects.filter(user=user).select_related(
+            'tournament', 'tournament__game'
+        ).prefetch_related(
+            Prefetch('tournament__teams', queryset=user_teams, to_attr='user_teams_in_tournament')
+        ).order_by('-tournament__start_date')
+
         tournament_history_data = []
         for p in user_participations:
+            team_name = None
+            if p.tournament.type == 'team' and hasattr(p.tournament, 'user_teams_in_tournament'):
+                user_team = next((team for team in p.tournament.user_teams_in_tournament), None)
+                if user_team:
+                    team_name = user_team.name
+
             tournament_history_data.append({
                 'id': p.id,
-                'final_rank': p.final_rank,
-                'team': {'name': p.team.name} if p.team else None,
+                'rank': p.rank,
+                'prize': p.prize,
+                'team': {'name': team_name} if team_name else None,
                 'tournament': {
-                    'title': p.tournament.title,
+                    'name': p.tournament.name,
                     'game': {'name': p.tournament.game.name},
                     'start_date': p.tournament.start_date,
-                    'prize_pool': p.tournament.prize_pool,
                 }
             })
 

@@ -10,7 +10,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
-from tournaments.models import Game, Match, Rank, Tournament
+from tournaments.models import Game, Match, Participant, Rank, Tournament
 
 from .models import OTP, Role, Team, TeamInvitation, TeamMembership
 from .services import (ApplicationError, invite_member_service,
@@ -464,3 +464,87 @@ class MatchHistoryAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["id"], self.match2.id)
+
+
+class DashboardViewTests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.dashboard_url = "/api/users/dashboard/"
+        self.user = User.objects.create_user(
+            username="dashboarduser", password="password", phone_number="+99"
+        )
+        self.team = Team.objects.create(name="Dashboard Team", captain=self.user)
+        self.team.members.add(self.user)
+
+        self.game = Game.objects.create(name="Dashboard Game")
+        self.individual_tournament = Tournament.objects.create(
+            name="Individual Tournament",
+            game=self.game,
+            type="individual",
+            start_date=timezone.now(),
+            end_date=timezone.now() + timedelta(days=1),
+        )
+        self.team_tournament = Tournament.objects.create(
+            name="Team Tournament",
+            game=self.game,
+            type="team",
+            start_date=timezone.now(),
+            end_date=timezone.now() + timedelta(days=1),
+        )
+        self.team_tournament.teams.add(self.team)
+
+        self.p1 = Participant.objects.create(
+            user=self.user,
+            tournament=self.individual_tournament,
+            rank=1,
+            prize=1000.00,
+        )
+        self.p2 = Participant.objects.create(
+            user=self.user, tournament=self.team_tournament, rank=2, prize=500.00
+        )
+
+    def test_get_dashboard_unauthenticated(self):
+        response = self.client.get(self.dashboard_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_get_dashboard_authenticated(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.dashboard_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = response.data
+
+        # Test user profile data
+        self.assertEqual(data["user_profile"]["username"], self.user.username)
+
+        # Test teams data
+        self.assertEqual(len(data["teams"]), 1)
+        self.assertEqual(data["teams"][0]["name"], self.team.name)
+        self.assertTrue(data["teams"][0]["is_captain"])
+
+        # Test tournament history data
+        self.assertEqual(len(data["tournament_history"]), 2)
+
+        # Order might not be guaranteed, so check for both
+        history_item1 = data["tournament_history"][0]
+        history_item2 = data["tournament_history"][1]
+
+        # Find the individual tournament entry
+        individual_entry = None
+        team_entry = None
+        if history_item1['tournament']['name'] == self.individual_tournament.name:
+            individual_entry = history_item1
+            team_entry = history_item2
+        else:
+            individual_entry = history_item2
+            team_entry = history_item1
+
+        self.assertEqual(individual_entry["tournament"]["name"], self.individual_tournament.name)
+        self.assertEqual(individual_entry["rank"], self.p1.rank)
+        self.assertEqual(float(individual_entry["prize"]), float(self.p1.prize))
+        self.assertIsNone(individual_entry["team"])
+
+        self.assertEqual(team_entry["tournament"]["name"], self.team_tournament.name)
+        self.assertEqual(team_entry["rank"], self.p2.rank)
+        self.assertEqual(float(team_entry["prize"]), float(self.p2.prize))
+        self.assertEqual(team_entry["team"]["name"], self.team.name)
