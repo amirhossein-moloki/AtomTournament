@@ -269,7 +269,12 @@ def join_tournament(
             "room_id": "placeholder-room-id",  # Replace with actual room ID
         }
         for member in members:
-            send_email_notification.delay(member.email, "Tournament Joined", context)
+            send_email_notification.delay(
+                member.email,
+                "Tournament Joined",
+                "notifications/email/tournament_joined.html",
+                context,
+            )
             send_sms_notification.delay(str(member.phone_number), context)
 
         return team
