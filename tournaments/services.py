@@ -9,7 +9,7 @@ from notifications.services import send_notification
 from notifications.tasks import send_email_notification, send_sms_notification
 from users.models import Team, User
 from verification.models import Verification
-from wallet.services import process_transaction
+from wallet.services import process_transaction, process_token_transaction
 from .exceptions import ApplicationError
 from .models import Match, Participant, Report, Tournament, WinnerSubmission
 
@@ -197,12 +197,20 @@ def join_tournament(
 
         # 3. Handle Entry Fee using the safe wallet service
         if not tournament.is_free:
-            _, error = process_transaction(
-                user=user,
-                amount=tournament.entry_fee,
-                transaction_type="entry_fee",
-                description=f"Entry fee for tournament: {tournament.name}",
-            )
+            if tournament.is_token_based:
+                _, error = process_token_transaction(
+                    user=user,
+                    amount=tournament.entry_fee,
+                    transaction_type="token_spent",
+                    description=f"Token entry fee for tournament: {tournament.name}",
+                )
+            else:
+                _, error = process_transaction(
+                    user=user,
+                    amount=tournament.entry_fee,
+                    transaction_type="entry_fee",
+                    description=f"Entry fee for tournament: {tournament.name}",
+                )
             if error:
                 raise ApplicationError(error)
 
@@ -242,12 +250,20 @@ def join_tournament(
         # 3. Handle Entry Fee for Team using the safe wallet service
         if not tournament.is_free:
             for member in members:
-                _, error = process_transaction(
-                    user=member,
-                    amount=tournament.entry_fee,
-                    transaction_type="entry_fee",
-                    description=f"Entry fee for tournament: {tournament.name}",
-                )
+                if tournament.is_token_based:
+                    _, error = process_token_transaction(
+                        user=member,
+                        amount=tournament.entry_fee,
+                        transaction_type="token_spent",
+                        description=f"Token entry fee for tournament: {tournament.name}",
+                    )
+                else:
+                    _, error = process_transaction(
+                        user=member,
+                        amount=tournament.entry_fee,
+                        transaction_type="entry_fee",
+                        description=f"Entry fee for tournament: {tournament.name}",
+                    )
                 if error:
                     # Note: In a real-world scenario, we would need to roll back
                     # the transactions for other team members who were already charged.

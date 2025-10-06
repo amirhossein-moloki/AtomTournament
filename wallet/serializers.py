@@ -22,5 +22,5 @@ class WalletSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Wallet
-        fields = ("id", "user", "total_balance", "withdrawable_balance", "transactions")
+        fields = ("id", "user", "total_balance", "withdrawable_balance", "token_balance", "transactions")
         read_only_fields = fields

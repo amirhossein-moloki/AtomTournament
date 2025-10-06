@@ -108,3 +108,58 @@ def process_transaction(
     except Exception as e:
         # Catch any other unexpected errors
         return None, str(e)
+
+
+def process_token_transaction(
+    user, amount: Decimal, transaction_type: str, description: str = ""
+) -> (Transaction, str):
+    """
+    Safely processes a token-based transaction by creating a Transaction object
+    and updating the user's wallet's token balance within a single atomic
+    database transaction.
+
+    Args:
+        user: The User object for the transaction.
+        amount: The amount of tokens for the transaction (should be positive).
+        transaction_type: Should be 'token_spent' or 'token_earned'.
+        description: An optional description for the transaction.
+
+    Returns:
+        A tuple of (Transaction, None) on success, or (None, "Error message") on failure.
+    """
+    if amount <= 0:
+        return None, "Transaction amount must be positive."
+
+    if transaction_type not in ["token_spent", "token_earned"]:
+        return None, f"Invalid transaction type for tokens: {transaction_type}"
+
+    try:
+        with transaction.atomic():
+            # Lock the wallet row to prevent race conditions
+            wallet = Wallet.objects.select_for_update().get(user=user)
+
+            if transaction_type == "token_spent":
+                if wallet.token_balance < amount:
+                    return None, "Insufficient token balance."
+                wallet.token_balance -= amount
+            else:  # token_earned
+                wallet.token_balance += amount
+
+            # Create the transaction record for audit purposes
+            new_transaction = Transaction.objects.create(
+                wallet=wallet,
+                amount=amount,
+                transaction_type=transaction_type,
+                description=description,
+            )
+
+            # Save the updated wallet balance
+            wallet.save()
+
+            return new_transaction, None
+
+    except Wallet.DoesNotExist:
+        return None, "User wallet not found."
+    except Exception as e:
+        # Catch any other unexpected errors
+        return None, str(e)
