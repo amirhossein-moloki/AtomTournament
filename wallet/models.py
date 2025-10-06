@@ -9,6 +9,7 @@ class Wallet(models.Model):
     withdrawable_balance = models.DecimalField(
         max_digits=10, decimal_places=2, default=0
     )
+    token_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     class Meta:
         app_label = "wallet"
@@ -23,6 +24,8 @@ class Transaction(models.Model):
         ("withdrawal", "Withdrawal"),
         ("entry_fee", "Entry Fee"),
         ("prize", "Prize"),
+        ("token_spent", "Token Spent"),
+        ("token_earned", "Token Earned"),
     )
     wallet = models.ForeignKey(
         Wallet, on_delete=models.CASCADE, related_name="transactions"

@@ -132,6 +132,7 @@ class Tournament(models.Model):
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
     is_free = models.BooleanField(default=True)
+    is_token_based = models.BooleanField(default=False)
     entry_fee = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True
     )

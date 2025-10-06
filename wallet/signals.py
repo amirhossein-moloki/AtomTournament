@@ -44,4 +44,4 @@ from .models import Transaction, Wallet
 @receiver(post_save, sender=User)
 def create_user_wallet(sender, instance, created, **kwargs):
     if created:
-        Wallet.objects.create(user=instance)
+        Wallet.objects.create(user=instance, token_balance=1000)
