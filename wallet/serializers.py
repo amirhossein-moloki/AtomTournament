@@ -24,3 +24,12 @@ class WalletSerializer(serializers.ModelSerializer):
         model = Wallet
         fields = ("id", "user", "total_balance", "withdrawable_balance", "token_balance", "transactions")
         read_only_fields = fields
+
+
+class PaymentSerializer(serializers.Serializer):
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+    def validate_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Amount must be positive.")
+        return value

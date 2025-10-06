@@ -327,6 +327,12 @@ CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "False").lower
     "1",
     "t",
 )
+ZARINPAL_PAYMENT_SUCCESS_URL = os.environ.get(
+    "ZARINPAL_PAYMENT_SUCCESS_URL", f"{FRONTEND_URL}/payment/success"
+)
+ZARINPAL_PAYMENT_FAILED_URL = os.environ.get(
+    "ZARINPAL_PAYMENT_FAILED_URL", f"{FRONTEND_URL}/payment/failed"
+)
 
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 1
