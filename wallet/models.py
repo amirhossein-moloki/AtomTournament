@@ -27,6 +27,11 @@ class Transaction(models.Model):
         ("token_spent", "Token Spent"),
         ("token_earned", "Token Earned"),
     )
+    STATUS_CHOICES = (
+        ("pending", "Pending"),
+        ("success", "Success"),
+        ("failed", "Failed"),
+    )
     wallet = models.ForeignKey(
         Wallet, on_delete=models.CASCADE, related_name="transactions"
     )
@@ -34,6 +39,10 @@ class Transaction(models.Model):
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPE_CHOICES)
     timestamp = models.DateTimeField(auto_now_add=True)
     description = models.CharField(max_length=255, blank=True)
+    authority = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    status = models.CharField(
+        max_length=10, choices=STATUS_CHOICES, null=True, blank=True
+    )
 
     def __str__(self):
         return f"{self.wallet.user.username} - {self.transaction_type} - {self.amount}"

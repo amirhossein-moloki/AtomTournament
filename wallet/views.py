@@ -1,8 +1,126 @@
-from rest_framework import viewsets
+import logging
+
+from django.conf import settings
+from django.db import transaction
+from django.shortcuts import redirect
+from rest_framework import generics, status, viewsets
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import Transaction, Wallet
-from .serializers import TransactionSerializer, WalletSerializer
+from .serializers import PaymentSerializer, TransactionSerializer, WalletSerializer
+from .services import ZarinpalService, process_transaction
+
+logger = logging.getLogger(__name__)
+
+
+class DepositAPIView(generics.GenericAPIView):
+    serializer_class = PaymentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        amount = serializer.validated_data["amount"]
+        user = request.user
+
+        try:
+            wallet = user.wallet
+        except Wallet.DoesNotExist:
+            return Response(
+                {"error": "Wallet not found for this user."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        zarinpal = ZarinpalService()
+        callback_url = request.build_absolute_uri("/api/wallet/verify-deposit/")
+        zarinpal_response = zarinpal.create_payment(
+            amount=int(amount),
+            description="Wallet deposit",
+            callback_url=callback_url,
+        )
+
+        if zarinpal_response.get("authority"):
+            Transaction.objects.create(
+                wallet=wallet,
+                amount=amount,
+                transaction_type="deposit",
+                authority=zarinpal_response["authority"],
+                status="pending",
+                description=f"Zarinpal deposit with authority {zarinpal_response['authority']}",
+            )
+            payment_url = zarinpal.generate_payment_url(zarinpal_response["authority"])
+            return Response({"payment_url": payment_url}, status=status.HTTP_200_OK)
+        else:
+            return Response(
+                {"error": "Failed to create payment."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class VerifyDepositAPIView(APIView):
+    def get(self, request, *args, **kwargs):
+        authority = request.query_params.get("Authority")
+        zarinpal_status = request.query_params.get("Status")
+
+        try:
+            tx = Transaction.objects.get(authority=authority)
+        except Transaction.DoesNotExist:
+            return redirect(settings.ZARINPAL_PAYMENT_FAILED_URL)
+
+        if zarinpal_status == "OK":
+            zarinpal = ZarinpalService()
+            verification_response = zarinpal.verify_payment(
+                amount=int(tx.amount), authority=authority
+            )
+            if verification_response.get("code") == 100:
+                try:
+                    with transaction.atomic():
+                        wallet = Wallet.objects.select_for_update().get(
+                            user=tx.wallet.user
+                        )
+                        if tx.status == "pending":
+                            wallet.total_balance += tx.amount
+                            wallet.withdrawable_balance += tx.amount
+                            wallet.save()
+                            tx.status = "success"
+                            tx.save()
+                    return redirect(settings.ZARINPAL_PAYMENT_SUCCESS_URL)
+                except Exception as e:
+                    logger.error(
+                        f"Error processing successful deposit for transaction {tx.id}: {e}"
+                    )
+
+        tx.status = "failed"
+        tx.save()
+        return redirect(settings.ZARINPAL_PAYMENT_FAILED_URL)
+
+
+class WithdrawalAPIView(generics.GenericAPIView):
+    serializer_class = PaymentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        amount = serializer.validated_data["amount"]
+        user = request.user
+
+        transaction, error = process_transaction(
+            user=user,
+            amount=amount,
+            transaction_type="withdrawal",
+            description="User withdrawal request.",
+        )
+
+        if error:
+            return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {"message": "Withdrawal successful.", "transaction_id": transaction.id},
+            status=status.HTTP_200_OK,
+        )
 
 
 class WalletViewSet(viewsets.ReadOnlyModelViewSet):
