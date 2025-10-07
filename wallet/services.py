@@ -11,7 +11,7 @@ from .models import Transaction, Wallet
 class ZarinpalService:
     def __init__(self):
         self.zarinpal = ZarinPal(
-            merchant_id=settings.ZARINPAL_MERCHANT_ID, sandbox=settings.ZARINPAL_SANDBOX
+            merchant_id=settings.ZARINPAL_MERCHANT_ID
         )
 
     def create_payment(
