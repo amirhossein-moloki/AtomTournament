@@ -339,7 +339,7 @@ AXES_COOLOFF_TIME = 1
 AXES_RESET_ON_SUCCESS = True
 
 ZARINPAL_MERCHANT_ID = os.environ.get("ZARINPAL_MERCHANT_ID", "")
-ZARINPAL_SANDBOX = os.environ.get("ZARINPAL_SANDBOX", "False").lower() in (
+ZARINPAL_SANDBOX = os.environ.get("ZARINPAL_SANDBOX", "True").lower() in (
     "true",
     "1",
     "t",

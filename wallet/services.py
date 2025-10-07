@@ -10,7 +10,9 @@ from .models import Transaction, Wallet
 
 class ZarinpalService:
     def __init__(self):
-        self.zarinpal = ZarinPal(merchant_id=settings.ZARINPAL_MERCHANT_ID)
+        self.zarinpal = ZarinPal(
+            merchant_id=settings.ZARINPAL_MERCHANT_ID, sandbox=settings.ZARINPAL_SANDBOX
+        )
 
     def create_payment(
         self, amount, description, callback_url, mobile=None, email=None
