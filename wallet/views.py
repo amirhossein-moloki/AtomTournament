@@ -41,22 +41,31 @@ class DepositAPIView(generics.GenericAPIView):
             callback_url=callback_url,
         )
 
-        if zarinpal_response.get("authority"):
+        response_data = zarinpal_response.get("data") or {}
+        authority = response_data.get("authority")
+
+        if authority:
             Transaction.objects.create(
                 wallet=wallet,
                 amount=amount,
                 transaction_type="deposit",
-                authority=zarinpal_response["authority"],
+                authority=authority,
                 status="pending",
-                description=f"Zarinpal deposit with authority {zarinpal_response['authority']}",
+                description=f"Zarinpal deposit with authority {authority}",
             )
-            payment_url = zarinpal.generate_payment_url(zarinpal_response["authority"])
+            payment_url = zarinpal.generate_payment_url(authority)
             return Response({"payment_url": payment_url}, status=status.HTTP_200_OK)
-        else:
-            return Response(
-                {"error": "Failed to create payment."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+
+        error_message = zarinpal_response.get("error") or response_data.get("message")
+        logger.error(
+            "Zarinpal deposit creation failed for user %s: %s",
+            user.id,
+            error_message or "unknown error",
+        )
+        return Response(
+            {"error": error_message or "Failed to create payment."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
 
 class VerifyDepositAPIView(APIView):
@@ -74,7 +83,8 @@ class VerifyDepositAPIView(APIView):
             verification_response = zarinpal.verify_payment(
                 amount=int(tx.amount), authority=authority
             )
-            if verification_response.get("code") == 100:
+            verification_data = verification_response.get("data") or {}
+            if verification_data.get("code") == 100:
                 try:
                     with transaction.atomic():
                         wallet = Wallet.objects.select_for_update().get(
