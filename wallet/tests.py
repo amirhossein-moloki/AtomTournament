@@ -165,3 +165,67 @@ class WalletViewSetTests(APITestCase):
         other_wallet_url = f"/api/wallet/wallets/{other_user.wallet.id}/"
         response = self.client.get(other_wallet_url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class DepositAPITests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username="testuser",
+            password="password",
+            phone_number="+98123456789",
+            email="test@example.com",
+        )
+        self.client.force_authenticate(user=self.user)
+        self.deposit_url = "/api/wallet/deposit/"
+
+    @patch("wallet.views.ZarinpalService")
+    def test_deposit_request_successful(self, MockZarinpalService):
+        """
+        Test that a deposit request is handled successfully and returns a payment URL.
+        """
+        mock_zarinpal_instance = MockZarinpalService.return_value
+        mock_zarinpal_instance.create_payment.return_value = {
+            "data": {"authority": "test-authority"},
+            "error": None,
+        }
+        mock_zarinpal_instance.generate_payment_url.return_value = (
+            "https://www.zarinpal.com/pg/StartPay/test-authority"
+        )
+
+        deposit_amount = Decimal("50000.00")
+        response = self.client.post(
+            self.deposit_url, {"amount": deposit_amount}, format="json"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("payment_url", response.data)
+        self.assertTrue(
+            Transaction.objects.filter(
+                wallet=self.user.wallet,
+                amount=deposit_amount,
+                authority="test-authority",
+                status="pending",
+            ).exists()
+        )
+
+    @patch("wallet.views.ZarinpalService")
+    def test_deposit_request_zarinpal_error(self, MockZarinpalService):
+        """
+        Test how the system handles an error from Zarinpal on payment creation.
+        """
+        mock_zarinpal_instance = MockZarinpalService.return_value
+        mock_zarinpal_instance.create_payment.return_value = {
+            "data": None,
+            "error": "Failed to connect to Zarinpal",
+        }
+
+        response = self.client.post(
+            self.deposit_url, {"amount": Decimal("50000.00")}, format="json"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.data)
+        self.assertFalse(
+            Transaction.objects.filter(wallet=self.user.wallet).exists()
+        )
