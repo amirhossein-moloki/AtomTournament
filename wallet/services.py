@@ -15,7 +15,7 @@ class ZarinpalService:
         )
 
     def create_payment(
-        self, amount, description, callback_url, mobile=None, email=None
+        self, amount, description, callback_url, mobile=None, email=None, currency="IRT"
     ):
         try:
             request_data = RequestInput(
@@ -24,6 +24,7 @@ class ZarinpalService:
                 description=description,
                 mobile=mobile,
                 email=email,
+                currency=currency,
             )
             response = self.zarinpal.request(request_data)
             return response.model_dump()
