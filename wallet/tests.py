@@ -1,15 +1,80 @@
+import json
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
 from .models import Transaction, Wallet
+from .serializers import PaymentSerializer
+from .services import ZarinpalService
+from zarinpal.models import CurrencyEnum
 
 User = get_user_model()
 
+
+class PaymentSerializerTests(SimpleTestCase):
+    def test_amount_with_ten_digits_is_valid(self):
+        serializer = PaymentSerializer(data={"amount": "1234567890"})
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+
+    def test_amount_with_decimal_digits_within_limit_is_valid(self):
+        serializer = PaymentSerializer(data={"amount": "12345.67"})
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+
+    def test_amount_exceeding_digit_limit_returns_error(self):
+        serializer = PaymentSerializer(data={"amount": "12345678901"})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn(
+            "Ensure that there are no more than 10 digits in total.",
+            serializer.errors["amount"],
+        )
+
+
+class ZarinpalServiceTests(SimpleTestCase):
+    @patch("wallet.services.RequestInput")
+    @patch("wallet.services.ZarinPal")
+    def test_create_payment_serializes_currency_enum(
+        self, mock_zarinpal_cls, mock_request_input
+    ):
+        mock_zarinpal = mock_zarinpal_cls.return_value
+        response_data = {"data": {"currency": CurrencyEnum.IRR.value}}
+        mock_response = Mock()
+        mock_response.model_dump_json.return_value = json.dumps(response_data)
+        mock_zarinpal.request.return_value = mock_response
+
+        service = ZarinpalService()
+        result = service.create_payment(
+            amount=1000,
+            description="desc",
+            callback_url="https://callback.test",
+            currency=CurrencyEnum.IRR,
+        )
+
+        mock_request_input.assert_called_once()
+        self.assertEqual(
+            mock_request_input.call_args.kwargs["currency"], CurrencyEnum.IRR.value
+        )
+        self.assertEqual(result, response_data)
+
+    @patch("wallet.services.VerifyInput")
+    @patch("wallet.services.ZarinPal")
+    def test_verify_payment_serializes_response(
+        self, mock_zarinpal_cls, mock_verify_input
+    ):
+        mock_zarinpal = mock_zarinpal_cls.return_value
+        response_data = {"data": {"currency": CurrencyEnum.IRT.value}}
+        mock_response = Mock()
+        mock_response.model_dump_json.return_value = json.dumps(response_data)
+        mock_zarinpal.verify.return_value = mock_response
+
+        service = ZarinpalService()
+        result = service.verify_payment(amount=2000, authority="auth")
+
+        mock_verify_input.assert_called_once_with(amount=2000, authority="auth")
+        self.assertEqual(result, response_data)
 
 class WalletSignalTests(TestCase):
     """Tests for wallet signal handlers."""
