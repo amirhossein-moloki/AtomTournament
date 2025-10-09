@@ -35,12 +35,16 @@ class DepositAPIView(generics.GenericAPIView):
 
         zarinpal = ZarinpalService()
         callback_url = request.build_absolute_uri("/api/wallet/verify-deposit/")
+        mobile_number = None
+        if user.phone_number:
+            mobile_number = f"0{user.phone_number.national_number}"
+
         zarinpal_response = zarinpal.create_payment(
             amount=int(amount),
             description="Wallet deposit",
             callback_url=callback_url,
             email=user.email,
-            mobile=str(user.phone_number),
+            mobile=mobile_number,
         )
 
         response_data = zarinpal_response.get("data") or {}
