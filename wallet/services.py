@@ -18,17 +18,12 @@ class ZarinpalService:
         self, amount, description, callback_url, mobile=None, email=None
     ):
         try:
-            metadata = {}
-            if mobile is not None:
-                metadata["mobile"] = mobile
-            if email is not None:
-                metadata["email"] = email
-
             request_data = RequestInput(
                 amount=amount,
                 callback_url=callback_url,
                 description=description,
-                metadata=metadata or None,
+                mobile=mobile,
+                email=email,
             )
             response = self.zarinpal.request(request_data)
             return response.model_dump()
