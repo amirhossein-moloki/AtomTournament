@@ -39,6 +39,8 @@ class DepositAPIView(generics.GenericAPIView):
             amount=int(amount),
             description="Wallet deposit",
             callback_url=callback_url,
+            email=user.email,
+            mobile=str(user.phone_number),
         )
 
         response_data = zarinpal_response.get("data") or {}
