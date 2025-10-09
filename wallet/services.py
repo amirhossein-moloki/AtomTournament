@@ -1,5 +1,6 @@
 import json
 from decimal import Decimal
+from enum import Enum
 
 from django.conf import settings
 from django.db import transaction
@@ -19,16 +20,17 @@ class ZarinpalService:
         self, amount, description, callback_url, mobile=None, email=None, currency="IRT"
     ):
         try:
+            currency_value = currency.value if isinstance(currency, Enum) else currency
             request_data = RequestInput(
                 amount=amount,
                 callback_url=callback_url,
                 description=description,
                 mobile=mobile,
                 email=email,
-                currency=currency,
+                currency=currency_value,
             )
             response = self.zarinpal.request(request_data)
-            return response.model_dump()
+            return self._serialize_response(response)
         except Exception as e:
             return {"error": str(e)}
 
@@ -36,12 +38,25 @@ class ZarinpalService:
         try:
             verify_data = VerifyInput(amount=amount, authority=authority)
             response = self.zarinpal.verify(verify_data)
-            return response.model_dump()
+            return self._serialize_response(response)
         except Exception as e:
             return {"error": str(e)}
 
     def generate_payment_url(self, authority):
         return self.zarinpal.get_payment_link(authority)
+
+    @staticmethod
+    def _serialize_response(response):
+        if hasattr(response, "model_dump_json"):
+            return json.loads(response.model_dump_json())
+
+        if hasattr(response, "model_dump"):
+            try:
+                return response.model_dump(mode="json")
+            except TypeError:
+                return response.model_dump()
+
+        return response
 
 
 def process_transaction(
