@@ -1,3 +1,4 @@
+import json
 from decimal import Decimal
 
 from django.conf import settings
@@ -27,7 +28,7 @@ class ZarinpalService:
                 currency=currency,
             )
             response = self.zarinpal.request(request_data)
-            return response.model_dump()
+            return json.loads(response.model_dump_json())
         except Exception as e:
             return {"error": str(e)}
 
@@ -35,7 +36,7 @@ class ZarinpalService:
         try:
             verify_data = VerifyInput(amount=amount, authority=authority)
             response = self.zarinpal.verify(verify_data)
-            return response.model_dump()
+            return json.loads(response.model_dump_json())
         except Exception as e:
             return {"error": str(e)}
 
