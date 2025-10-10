@@ -236,18 +236,18 @@ class DepositAPITests(APITestCase):
         self.client.force_authenticate(user=self.user)
         self.deposit_url = "/api/wallet/deposit/"
 
-    @patch("wallet.views.ZarinpalService")
-    def test_deposit_request_successful(self, MockZarinpalService):
+    @patch("wallet.views.ZibalService")
+    def test_deposit_request_successful(self, MockZibalService):
         """
         Test that a deposit request is handled successfully and returns a payment URL.
         """
-        mock_zarinpal_instance = MockZarinpalService.return_value
-        mock_zarinpal_instance.create_payment.return_value = {
-            "data": {"authority": "test-authority"},
-            "error": None,
+        mock_zibal_instance = MockZibalService.return_value
+        mock_zibal_instance.create_payment.return_value = {
+            "result": 100,
+            "trackId": "test-track-id",
         }
-        mock_zarinpal_instance.generate_payment_url.return_value = (
-            "https://www.zarinpal.com/pg/StartPay/test-authority"
+        mock_zibal_instance.generate_payment_url.return_value = (
+            "https://gateway.zibal.ir/start/test-track-id"
         )
 
         deposit_amount = Decimal("50000.00")
@@ -261,20 +261,20 @@ class DepositAPITests(APITestCase):
             Transaction.objects.filter(
                 wallet=self.user.wallet,
                 amount=deposit_amount,
-                authority="test-authority",
+                authority="test-track-id",
                 status="pending",
             ).exists()
         )
 
-    @patch("wallet.views.ZarinpalService")
-    def test_deposit_request_zarinpal_error(self, MockZarinpalService):
+    @patch("wallet.views.ZibalService")
+    def test_deposit_request_zibal_error(self, MockZibalService):
         """
-        Test how the system handles an error from Zarinpal on payment creation.
+        Test how the system handles an error from Zibal on payment creation.
         """
-        mock_zarinpal_instance = MockZarinpalService.return_value
-        mock_zarinpal_instance.create_payment.return_value = {
-            "data": None,
-            "error": "Failed to connect to Zarinpal",
+        mock_zibal_instance = MockZibalService.return_value
+        mock_zibal_instance.create_payment.return_value = {
+            "result": 102,
+            "message": "merchant not found",
         }
 
         response = self.client.post(
@@ -283,6 +283,86 @@ class DepositAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("error", response.data)
+        self.assertEqual(response.data["error"], "merchant not found")
         self.assertFalse(
             Transaction.objects.filter(wallet=self.user.wallet).exists()
         )
+
+
+class VerifyDepositAPITests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username="testuser",
+            password="password",
+            phone_number="+98123456789",
+            email="test@example.com",
+        )
+        self.wallet = self.user.wallet
+        self.transaction = Transaction.objects.create(
+            wallet=self.wallet,
+            amount=Decimal("50000.00"),
+            transaction_type="deposit",
+            authority="test-track-id",
+            status="pending",
+        )
+        self.verify_url = "/api/wallet/verify-deposit/"
+
+    @patch("wallet.views.ZibalService.verify_payment")
+    def test_verify_deposit_successful(self, mock_verify_payment):
+        """
+        Test successful deposit verification.
+        """
+        mock_verify_payment.return_value = {
+            "result": 100,
+            "paidAt": "2023-11-20T12:00:00Z",
+        }
+        initial_balance = self.wallet.total_balance
+
+        response = self.client.get(
+            self.verify_url, {"trackId": "test-track-id", "success": "1"}
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+        self.transaction.refresh_from_db()
+        self.wallet.refresh_from_db()
+        self.assertEqual(self.transaction.status, "success")
+        self.assertEqual(
+            self.wallet.total_balance, initial_balance + self.transaction.amount
+        )
+
+    @patch("wallet.views.ZibalService.verify_payment")
+    def test_verify_deposit_failed_no_paid_at(self, mock_verify_payment):
+        """
+        Test deposit verification fails if 'paidAt' is missing.
+        """
+        mock_verify_payment.return_value = {"result": 100}
+        initial_balance = self.wallet.total_balance
+
+        response = self.client.get(
+            self.verify_url, {"trackId": "test-track-id", "success": "1"}
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+        self.transaction.refresh_from_db()
+        self.wallet.refresh_from_db()
+        self.assertEqual(self.transaction.status, "failed")
+        self.assertEqual(self.wallet.total_balance, initial_balance)
+
+    @patch("wallet.views.ZibalService.verify_payment")
+    def test_verify_deposit_failed_bad_result(self, mock_verify_payment):
+        """
+        Test deposit verification fails if 'result' is not 100.
+        """
+        mock_verify_payment.return_value = {"result": 102}  # Example error code
+        initial_balance = self.wallet.total_balance
+
+        response = self.client.get(
+            self.verify_url, {"trackId": "test-track-id", "success": "1"}
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+        self.transaction.refresh_from_db()
+        self.wallet.refresh_from_db()
+        self.assertEqual(self.transaction.status, "failed")
+        self.assertEqual(self.wallet.total_balance, initial_balance)
