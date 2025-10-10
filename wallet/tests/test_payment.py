@@ -25,13 +25,16 @@ class PaymentAPITestCase(APITestCase):
         self.verify_deposit_url = reverse("verify_deposit")
         self.withdraw_url = reverse("withdraw")
 
-    @patch("wallet.services.ZarinpalService.generate_payment_url")
-    @patch("wallet.services.ZarinpalService.create_payment")
-    def test_deposit_success(self, mock_create_payment, mock_generate_url):
-        authority = str(uuid.uuid4())
-        mock_create_payment.return_value = {"authority": authority}
-        mock_generate_url.return_value = (
-            f"https://www.zarinpal.com/pg/StartPay/{authority}"
+    @patch("wallet.views.ZibalService")
+    def test_deposit_success(self, MockZibalService):
+        track_id = str(uuid.uuid4())
+        mock_zibal_instance = MockZibalService.return_value
+        mock_zibal_instance.create_payment.return_value = {
+            "result": 100,
+            "trackId": track_id,
+        }
+        mock_zibal_instance.generate_payment_url.return_value = (
+            f"https://gateway.zibal.ir/start/{track_id}"
         )
 
         data = {"amount": "10000.00"}
@@ -41,7 +44,7 @@ class PaymentAPITestCase(APITestCase):
         self.assertIn("payment_url", response.data)
         self.assertTrue(
             Transaction.objects.filter(
-                wallet=self.wallet, authority=authority, status="pending"
+                wallet=self.wallet, authority=track_id, status="pending"
             ).exists()
         )
 
@@ -50,24 +53,23 @@ class PaymentAPITestCase(APITestCase):
         response = self.client.post(self.deposit_url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    @patch("wallet.services.ZarinpalService.verify_payment")
-    def test_verify_deposit_success(self, mock_verify_payment):
-        authority = str(uuid.uuid4())
+    @patch("wallet.views.ZibalService")
+    def test_verify_deposit_success(self, MockZibalService):
+        track_id = str(uuid.uuid4())
         tx = Transaction.objects.create(
             wallet=self.wallet,
             amount=Decimal("10000.00"),
-            authority=authority,
+            authority=track_id,
             status="pending",
             transaction_type="deposit",
         )
-        mock_verify_payment.return_value = {"code": 100}
+        mock_zibal_instance = MockZibalService.return_value
+        mock_zibal_instance.verify_payment.return_value = {"result": 100}
 
-        response = self.client.get(
-            f"{self.verify_deposit_url}?Authority={authority}&Status=OK"
-        )
+        response = self.client.get(f"{self.verify_deposit_url}?trackId={track_id}&success=1")
 
         self.assertEqual(response.status_code, status.HTTP_302_FOUND)
-        self.assertEqual(response.url, settings.ZARINPAL_PAYMENT_SUCCESS_URL)
+        self.assertEqual(response.url, settings.ZIBAL_PAYMENT_SUCCESS_URL)
 
         tx.refresh_from_db()
         self.assertEqual(tx.status, "success")
@@ -76,55 +78,50 @@ class PaymentAPITestCase(APITestCase):
         self.assertEqual(self.wallet.total_balance, Decimal("10000.00"))
         self.assertEqual(self.wallet.withdrawable_balance, Decimal("10000.00"))
 
-    @patch("wallet.services.ZarinpalService.verify_payment")
-    def test_verify_deposit_failed_from_zarinpal(self, mock_verify_payment):
-        authority = str(uuid.uuid4())
+    @patch("wallet.views.ZibalService")
+    def test_verify_deposit_failed_from_zibal(self, MockZibalService):
+        track_id = str(uuid.uuid4())
         tx = Transaction.objects.create(
             wallet=self.wallet,
             amount=Decimal("10000.00"),
-            authority=authority,
+            authority=track_id,
             status="pending",
             transaction_type="deposit",
         )
-        mock_verify_payment.return_value = {"code": -1}
+        mock_zibal_instance = MockZibalService.return_value
+        mock_zibal_instance.verify_payment.return_value = {"result": 202}
 
-        response = self.client.get(
-            f"{self.verify_deposit_url}?Authority={authority}&Status=OK"
-        )
+        response = self.client.get(f"{self.verify_deposit_url}?trackId={track_id}&success=1")
 
         self.assertEqual(response.status_code, status.HTTP_302_FOUND)
-        self.assertEqual(response.url, settings.ZARINPAL_PAYMENT_FAILED_URL)
+        self.assertEqual(response.url, settings.ZIBAL_PAYMENT_FAILED_URL)
 
         tx.refresh_from_db()
         self.assertEqual(tx.status, "failed")
 
     def test_verify_deposit_failed_by_user_cancellation(self):
-        authority = str(uuid.uuid4())
+        track_id = str(uuid.uuid4())
         tx = Transaction.objects.create(
             wallet=self.wallet,
             amount=Decimal("10000.00"),
-            authority=authority,
+            authority=track_id,
             status="pending",
             transaction_type="deposit",
         )
 
-        response = self.client.get(
-            f"{self.verify_deposit_url}?Authority={authority}&Status=NOK"
-        )
+        response = self.client.get(f"{self.verify_deposit_url}?trackId={track_id}&success=0")
 
         self.assertEqual(response.status_code, status.HTTP_302_FOUND)
-        self.assertEqual(response.url, settings.ZARINPAL_PAYMENT_FAILED_URL)
+        self.assertEqual(response.url, settings.ZIBAL_PAYMENT_FAILED_URL)
 
         tx.refresh_from_db()
         self.assertEqual(tx.status, "failed")
 
     def test_verify_deposit_transaction_not_found(self):
-        authority = str(uuid.uuid4())
-        response = self.client.get(
-            f"{self.verify_deposit_url}?Authority={authority}&Status=OK"
-        )
+        track_id = str(uuid.uuid4())
+        response = self.client.get(f"{self.verify_deposit_url}?trackId={track_id}&success=1")
         self.assertEqual(response.status_code, status.HTTP_302_FOUND)
-        self.assertEqual(response.url, settings.ZARINPAL_PAYMENT_FAILED_URL)
+        self.assertEqual(response.url, settings.ZIBAL_PAYMENT_FAILED_URL)
 
     def test_withdraw_success(self):
         self.wallet.total_balance = Decimal("5000.00")
