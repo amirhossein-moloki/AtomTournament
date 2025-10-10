@@ -88,7 +88,9 @@ class VerifyDepositAPIView(APIView):
         if success == "1":
             zibal = ZibalService()
             verification_response = zibal.verify_payment(track_id=track_id)
-            if verification_response.get("result") == 100:
+            if verification_response.get("result") == 100 and verification_response.get(
+                "paidAt"
+            ):
                 try:
                     with transaction.atomic():
                         wallet = Wallet.objects.select_for_update().get(
