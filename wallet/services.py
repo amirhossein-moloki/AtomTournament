@@ -13,7 +13,8 @@ from .models import Transaction, Wallet
 class ZarinpalService:
     def __init__(self):
         self.zarinpal = ZarinPal(
-            merchant_id=settings.ZARINPAL_MERCHANT_ID
+            merchant_id=settings.ZARINPAL_MERCHANT_ID,
+            sandbox=settings.ZARINPAL_SANDBOX,
         )
 
     def create_payment(
@@ -51,10 +52,7 @@ class ZarinpalService:
             return json.loads(response.model_dump_json())
 
         if hasattr(response, "model_dump"):
-            try:
-                return response.model_dump(mode="json")
-            except TypeError:
-                return response.model_dump()
+            return response.model_dump(mode="json")
 
         return response
 
