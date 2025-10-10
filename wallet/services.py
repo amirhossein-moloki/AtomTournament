@@ -1,60 +1,45 @@
-import json
+import requests
 from decimal import Decimal
-from enum import Enum
 
 from django.conf import settings
 from django.db import transaction
-from zarinpal import ZarinPal
-from zarinpal.models import RequestInput, VerifyInput
 
 from .models import Transaction, Wallet
 
 
-class ZarinpalService:
+class ZibalService:
     def __init__(self):
-        self.zarinpal = ZarinPal(
-            merchant_id=settings.ZARINPAL_MERCHANT_ID,
-            sandbox=settings.ZARINPAL_SANDBOX,
-        )
+        self.merchant_id = getattr(settings, "ZIBAL_MERCHANT_ID", "zibal")
+        self.api_base_url = "https://gateway.zibal.ir/v1"
 
-    def create_payment(
-        self, amount, description, callback_url, mobile=None, email=None, currency="IRT"
-    ):
+    def create_payment(self, amount, description, callback_url, mobile=None):
+        url = f"{self.api_base_url}/request"
+        payload = {
+            "merchant": self.merchant_id,
+            "amount": amount,
+            "callbackUrl": callback_url,
+            "description": description,
+            "mobile": mobile,
+        }
         try:
-            currency_value = currency.value if isinstance(currency, Enum) else currency
-            request_data = RequestInput(
-                amount=amount,
-                callback_url=callback_url,
-                description=description,
-                mobile=mobile,
-                email=email,
-                currency=currency_value,
-            )
-            response = self.zarinpal.request(request_data)
-            return self._serialize_response(response)
-        except Exception as e:
+            response = requests.post(url, json=payload)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
             return {"error": str(e)}
 
-    def verify_payment(self, amount, authority):
+    def verify_payment(self, track_id):
+        url = f"{self.api_base_url}/verify"
+        payload = {"merchant": self.merchant_id, "trackId": track_id}
         try:
-            verify_data = VerifyInput(amount=amount, authority=authority)
-            response = self.zarinpal.verify(verify_data)
-            return self._serialize_response(response)
-        except Exception as e:
+            response = requests.post(url, json=payload)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
             return {"error": str(e)}
 
-    def generate_payment_url(self, authority):
-        return self.zarinpal.get_payment_link(authority)
-
-    @staticmethod
-    def _serialize_response(response):
-        if hasattr(response, "model_dump_json"):
-            return json.loads(response.model_dump_json())
-
-        if hasattr(response, "model_dump"):
-            return response.model_dump(mode="json")
-
-        return response
+    def generate_payment_url(self, track_id):
+        return f"https://gateway.zibal.ir/start/{track_id}"
 
 
 def process_transaction(

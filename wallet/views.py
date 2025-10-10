@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 
 from .models import Transaction, Wallet
 from .serializers import PaymentSerializer, TransactionSerializer, WalletSerializer
-from .services import ZarinpalService, process_transaction
+from .services import ZibalService, process_transaction
 
 logger = logging.getLogger(__name__)
 
@@ -33,64 +33,62 @@ class DepositAPIView(generics.GenericAPIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        zarinpal = ZarinpalService()
+        zibal = ZibalService()
         callback_url = request.build_absolute_uri("/api/wallet/verify-deposit/")
-        mobile_number = None
-        if user.phone_number:
-            mobile_number = f"0{user.phone_number.national_number}"
+        mobile_number = (
+            f"0{user.phone_number.national_number}" if user.phone_number else None
+        )
 
-        zarinpal_response = zarinpal.create_payment(
+        zibal_response = zibal.create_payment(
             amount=int(amount),
             description="Wallet deposit",
             callback_url=callback_url,
-            email=user.email,
             mobile=mobile_number,
         )
 
-        response_data = zarinpal_response.get("data") or {}
-        authority = response_data.get("authority")
+        track_id = zibal_response.get("trackId")
 
-        if authority:
+        if track_id:
             Transaction.objects.create(
                 wallet=wallet,
                 amount=amount,
                 transaction_type="deposit",
-                authority=authority,
+                authority=str(track_id),
                 status="pending",
-                description=f"Zarinpal deposit with authority {authority}",
+                description=f"Zibal deposit with trackId {track_id}",
             )
-            payment_url = zarinpal.generate_payment_url(authority)
+            payment_url = zibal.generate_payment_url(track_id)
             return Response({"payment_url": payment_url}, status=status.HTTP_200_OK)
 
-        error_message = zarinpal_response.get("error") or response_data.get("message")
+        error_message = zibal_response.get("message") or "Failed to create payment."
         logger.error(
-            "Zarinpal deposit creation failed for user %s: %s",
+            "Zibal deposit creation failed for user %s: %s",
             user.id,
-            error_message or "unknown error",
+            error_message,
         )
         return Response(
-            {"error": error_message or "Failed to create payment."},
+            {"error": error_message},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
 
 class VerifyDepositAPIView(APIView):
     def get(self, request, *args, **kwargs):
-        authority = request.query_params.get("Authority")
-        zarinpal_status = request.query_params.get("Status")
+        track_id = request.query_params.get("trackId")
+        success = request.query_params.get("success")
+
+        if not track_id:
+            return redirect(settings.ZIBAL_PAYMENT_FAILED_URL)
 
         try:
-            tx = Transaction.objects.get(authority=authority)
+            tx = Transaction.objects.get(authority=track_id)
         except Transaction.DoesNotExist:
-            return redirect(settings.ZARINPAL_PAYMENT_FAILED_URL)
+            return redirect(settings.ZIBAL_PAYMENT_FAILED_URL)
 
-        if zarinpal_status == "OK":
-            zarinpal = ZarinpalService()
-            verification_response = zarinpal.verify_payment(
-                amount=int(tx.amount), authority=authority
-            )
-            verification_data = verification_response.get("data") or {}
-            if verification_data.get("code") == 100:
+        if success == "1":
+            zibal = ZibalService()
+            verification_response = zibal.verify_payment(track_id=track_id)
+            if verification_response.get("result") == 100:
                 try:
                     with transaction.atomic():
                         wallet = Wallet.objects.select_for_update().get(
@@ -102,7 +100,7 @@ class VerifyDepositAPIView(APIView):
                             wallet.save()
                             tx.status = "success"
                             tx.save()
-                    return redirect(settings.ZARINPAL_PAYMENT_SUCCESS_URL)
+                    return redirect(settings.ZIBAL_PAYMENT_SUCCESS_URL)
                 except Exception as e:
                     logger.error(
                         f"Error processing successful deposit for transaction {tx.id}: {e}"
@@ -110,7 +108,7 @@ class VerifyDepositAPIView(APIView):
 
         tx.status = "failed"
         tx.save()
-        return redirect(settings.ZARINPAL_PAYMENT_FAILED_URL)
+        return redirect(settings.ZIBAL_PAYMENT_FAILED_URL)
 
 
 class WithdrawalAPIView(generics.GenericAPIView):

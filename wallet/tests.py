@@ -9,8 +9,7 @@ from rest_framework.test import APIClient, APITestCase
 
 from .models import Transaction, Wallet
 from .serializers import PaymentSerializer
-from .services import ZarinpalService
-from zarinpal.models import CurrencyEnum
+from .services import ZibalService
 
 User = get_user_model()
 
@@ -33,48 +32,41 @@ class PaymentSerializerTests(SimpleTestCase):
         )
 
 
-class ZarinpalServiceTests(SimpleTestCase):
-    @patch("wallet.services.RequestInput")
-    @patch("wallet.services.ZarinPal")
-    def test_create_payment_serializes_currency_enum(
-        self, mock_zarinpal_cls, mock_request_input
-    ):
-        mock_zarinpal = mock_zarinpal_cls.return_value
-        response_data = {"data": {"currency": CurrencyEnum.IRR.value}}
+class ZibalServiceTests(SimpleTestCase):
+    @patch("wallet.services.requests.post")
+    def test_create_payment_successful(self, mock_post):
         mock_response = Mock()
-        mock_response.model_dump_json.return_value = json.dumps(response_data)
-        mock_zarinpal.request.return_value = mock_response
+        expected_response = {"result": 100, "trackId": 12345}
+        mock_response.json.return_value = expected_response
+        mock_response.raise_for_status.return_value = None
+        mock_post.return_value = mock_response
 
-        service = ZarinpalService()
+        service = ZibalService()
         result = service.create_payment(
-            amount=1000,
-            description="desc",
-            callback_url="https://callback.test",
-            currency=CurrencyEnum.IRR,
+            amount=10000,
+            description="Test payment",
+            callback_url="https://example.com/callback",
+            mobile="09123456789",
         )
 
-        mock_request_input.assert_called_once()
-        self.assertEqual(
-            mock_request_input.call_args.kwargs["currency"], CurrencyEnum.IRR.value
-        )
-        self.assertEqual(result, response_data)
+        self.assertEqual(result, expected_response)
+        mock_post.assert_called_once()
+        self.assertIn("request", mock_post.call_args[0][0])
 
-    @patch("wallet.services.VerifyInput")
-    @patch("wallet.services.ZarinPal")
-    def test_verify_payment_serializes_response(
-        self, mock_zarinpal_cls, mock_verify_input
-    ):
-        mock_zarinpal = mock_zarinpal_cls.return_value
-        response_data = {"data": {"currency": CurrencyEnum.IRT.value}}
+    @patch("wallet.services.requests.post")
+    def test_verify_payment_successful(self, mock_post):
         mock_response = Mock()
-        mock_response.model_dump_json.return_value = json.dumps(response_data)
-        mock_zarinpal.verify.return_value = mock_response
+        expected_response = {"result": 100, "status": 1}
+        mock_response.json.return_value = expected_response
+        mock_response.raise_for_status.return_value = None
+        mock_post.return_value = mock_response
 
-        service = ZarinpalService()
-        result = service.verify_payment(amount=2000, authority="auth")
+        service = ZibalService()
+        result = service.verify_payment(track_id=12345)
 
-        mock_verify_input.assert_called_once_with(amount=2000, authority="auth")
-        self.assertEqual(result, response_data)
+        self.assertEqual(result, expected_response)
+        mock_post.assert_called_once()
+        self.assertIn("verify", mock_post.call_args[0][0])
 
 class WalletSignalTests(TestCase):
     """Tests for wallet signal handlers."""
