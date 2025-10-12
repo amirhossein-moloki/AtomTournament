@@ -1,8 +1,10 @@
 import requests
 from decimal import Decimal
+from datetime import timedelta
 
 from django.conf import settings
 from django.db import transaction
+from django.utils import timezone
 
 from .models import Transaction, Wallet
 
@@ -62,6 +64,31 @@ def process_transaction(
             is_debit = transaction_type in ["withdrawal", "entry_fee"]
 
             if is_debit:
+                if transaction_type == "withdrawal":
+                    # Check for minimum withdrawal amount
+                    if amount < settings.MINIMUM_WITHDRAWAL_AMOUNT:
+                        return (
+                            None,
+                            f"Minimum withdrawal amount is {settings.MINIMUM_WITHDRAWAL_AMOUNT} IRR.",
+                        )
+
+                    # Check for withdrawal frequency
+                    last_withdrawal = (
+                        Transaction.objects.filter(
+                            wallet=wallet,
+                            transaction_type="withdrawal",
+                            status="success",
+                            timestamp__gte=timezone.now() - timedelta(hours=24),
+                        )
+                        .order_by("-timestamp")
+                        .first()
+                    )
+                    if last_withdrawal:
+                        return (
+                            None,
+                            "You can only make one withdrawal every 24 hours.",
+                        )
+
                 if wallet.withdrawable_balance < amount:
                     return None, "Insufficient withdrawable balance."
                 if wallet.total_balance < amount:

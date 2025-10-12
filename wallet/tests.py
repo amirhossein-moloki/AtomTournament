@@ -99,93 +99,127 @@ class WalletServiceTests(TestCase):
             email="test@example.com",
         )
         self.wallet = self.user.wallet
-        self.wallet.total_balance = Decimal("100.00")
-        self.wallet.withdrawable_balance = Decimal("80.00")
+        self.wallet.total_balance = Decimal("2000000.00")
+        self.wallet.withdrawable_balance = Decimal("2000000.00")
         self.wallet.save()
+
+    def test_withdrawal_fails_if_amount_is_less_than_minimum(self):
+        """Test that a withdrawal fails if the amount is less than the minimum."""
+        _, error = process_transaction(
+            user=self.user,
+            amount=Decimal("500000.00"),
+            transaction_type="withdrawal",
+        )
+        self.assertIsNotNone(error)
+        self.assertIn("Minimum withdrawal amount", error)
+
+    def test_withdrawal_fails_if_within_24_hours_of_last_withdrawal(self):
+        """Test that a withdrawal fails if another one was made within 24 hours."""
+        # First successful withdrawal
+        process_transaction(
+            user=self.user,
+            amount=Decimal("1000000.00"),
+            transaction_type="withdrawal",
+        )
+
+        # Second attempt within 24 hours
+        _, error = process_transaction(
+            user=self.user,
+            amount=Decimal("1000000.00"),
+            transaction_type="withdrawal",
+        )
+        self.assertIsNotNone(error)
+        self.assertIn("one withdrawal every 24 hours", error)
 
     def test_deposit_updates_balance_correctly(self):
         """Test that a 'deposit' transaction correctly updates wallet balances."""
         transaction, error = process_transaction(
-            user=self.user, amount=Decimal("50.00"), transaction_type="deposit"
+            user=self.user, amount=Decimal("500000.00"), transaction_type="deposit"
         )
         self.assertIsNone(error)
         self.assertIsNotNone(transaction)
         self.wallet.refresh_from_db()
-        self.assertEqual(self.wallet.total_balance, Decimal("150.00"))
-        self.assertEqual(self.wallet.withdrawable_balance, Decimal("130.00"))
+        self.assertEqual(self.wallet.total_balance, Decimal("2500000.00"))
+        self.assertEqual(self.wallet.withdrawable_balance, Decimal("2500000.00"))
 
     def test_prize_updates_balance_correctly(self):
         """Test that a 'prize' transaction correctly updates wallet balances."""
         transaction, error = process_transaction(
-            user=self.user, amount=Decimal("200.00"), transaction_type="prize"
+            user=self.user, amount=Decimal("200000.00"), transaction_type="prize"
         )
         self.assertIsNone(error)
         self.assertIsNotNone(transaction)
         self.wallet.refresh_from_db()
-        self.assertEqual(self.wallet.total_balance, Decimal("300.00"))
-        self.assertEqual(self.wallet.withdrawable_balance, Decimal("280.00"))
+        self.assertEqual(self.wallet.total_balance, Decimal("2200000.00"))
+        self.assertEqual(self.wallet.withdrawable_balance, Decimal("2200000.00"))
 
     def test_entry_fee_updates_balance_correctly(self):
         """Test that an 'entry_fee' transaction correctly updates wallet balances."""
         transaction, error = process_transaction(
-            user=self.user, amount=Decimal("10.00"), transaction_type="entry_fee"
+            user=self.user, amount=Decimal("100000.00"), transaction_type="entry_fee"
         )
         self.assertIsNone(error)
         self.assertIsNotNone(transaction)
         self.wallet.refresh_from_db()
-        self.assertEqual(self.wallet.total_balance, Decimal("90.00"))
-        self.assertEqual(self.wallet.withdrawable_balance, Decimal("70.00"))
+        self.assertEqual(self.wallet.total_balance, Decimal("1900000.00"))
+        self.assertEqual(self.wallet.withdrawable_balance, Decimal("1900000.00"))
 
     def test_withdrawal_updates_balance_correctly(self):
         """Test that a 'withdrawal' transaction correctly updates wallet balances."""
         transaction, error = process_transaction(
-            user=self.user, amount=Decimal("30.00"), transaction_type="withdrawal"
+            user=self.user,
+            amount=Decimal("1000000.00"),
+            transaction_type="withdrawal",
         )
         self.assertIsNone(error)
         self.assertIsNotNone(transaction)
         self.wallet.refresh_from_db()
-        self.assertEqual(self.wallet.total_balance, Decimal("70.00"))
-        self.assertEqual(self.wallet.withdrawable_balance, Decimal("50.00"))
+        self.assertEqual(self.wallet.total_balance, Decimal("1000000.00"))
+        self.assertEqual(self.wallet.withdrawable_balance, Decimal("1000000.00"))
 
     def test_withdrawal_insufficient_funds(self):
         """Test that a withdrawal fails if funds are insufficient."""
         transaction, error = process_transaction(
-            user=self.user, amount=Decimal("90.00"), transaction_type="withdrawal"
+            user=self.user,
+            amount=Decimal("3000000.00"),
+            transaction_type="withdrawal",
         )
         self.assertIsNone(transaction)
         self.assertIsNotNone(error)
         self.assertIn("Insufficient withdrawable balance", error)
         # Check that the balance has not changed
         self.wallet.refresh_from_db()
-        self.assertEqual(self.wallet.total_balance, Decimal("100.00"))
+        self.assertEqual(self.wallet.total_balance, Decimal("2000000.00"))
 
     def test_multiple_transactions_are_handled_correctly(self):
         """Test a sequence of transactions to ensure the final balance is correct."""
-        # 1. Deposit 100
+        # 1. Deposit 1000000
         process_transaction(
-            user=self.user, amount=Decimal("100.00"), transaction_type="deposit"
+            user=self.user, amount=Decimal("1000000.00"), transaction_type="deposit"
         )
-        # 2. Pay entry fee of 25
+        # 2. Pay entry fee of 250000
         process_transaction(
-            user=self.user, amount=Decimal("25.00"), transaction_type="entry_fee"
+            user=self.user, amount=Decimal("250000.00"), transaction_type="entry_fee"
         )
-        # 3. Win prize of 50
+        # 3. Win prize of 500000
         process_transaction(
-            user=self.user, amount=Decimal("50.00"), transaction_type="prize"
+            user=self.user, amount=Decimal("500000.00"), transaction_type="prize"
         )
-        # 4. Withdraw 120
+        # 4. Withdraw 1200000
         process_transaction(
-            user=self.user, amount=Decimal("120.00"), transaction_type="withdrawal"
+            user=self.user,
+            amount=Decimal("1200000.00"),
+            transaction_type="withdrawal",
         )
 
         self.wallet.refresh_from_db()
-        # Initial: Total 100, Withdrawable 80
-        # 1. Deposit 100 -> Total 200, Withdrawable 180
-        # 2. Fee 25 -> Total 175, Withdrawable 155
-        # 3. Prize 50 -> Total 225, Withdrawable 205
-        # 4. Withdraw 120 -> Total 105, Withdrawable 85
-        self.assertEqual(self.wallet.total_balance, Decimal("105.00"))
-        self.assertEqual(self.wallet.withdrawable_balance, Decimal("85.00"))
+        # Initial: Total 2000000, Withdrawable 2000000
+        # 1. Deposit 1000000 -> Total 3000000, Withdrawable 3000000
+        # 2. Fee 250000 -> Total 2750000, Withdrawable 2750000
+        # 3. Prize 500000 -> Total 3250000, Withdrawable 3250000
+        # 4. Withdraw 1200000 -> Total 2050000, Withdrawable 2050000
+        self.assertEqual(self.wallet.total_balance, Decimal("2050000.00"))
+        self.assertEqual(self.wallet.withdrawable_balance, Decimal("2050000.00"))
 
 
 class WalletViewSetTests(APITestCase):
