@@ -127,7 +127,8 @@ class TeamViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
     def perform_create(self, serializer):
-        serializer.save(captain=self.request.user)
+        team = serializer.save(captain=self.request.user)
+        team.members.add(self.request.user)
 
     @action(
         detail=True,
@@ -153,6 +154,22 @@ class TeamViewSet(viewsets.ModelViewSet):
             )
         except ApplicationError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(
+        detail=False,
+        methods=["get"],
+        permission_classes=[IsAuthenticated],
+        url_path="invitations",
+    )
+    def invitations(self, request):
+        """
+        List all pending invitations for the current user.
+        """
+        invitations = TeamInvitation.objects.filter(
+            to_user=request.user, status="pending"
+        )
+        serializer = TeamInvitationSerializer(invitations, many=True)
+        return Response(serializer.data)
 
     @action(
         detail=False,

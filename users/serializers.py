@@ -137,10 +137,12 @@ class UserSerializer(serializers.ModelSerializer):
 class TeamSerializer(serializers.ModelSerializer):
     """Serializer for the Team model."""
 
+    members = UserReadOnlySerializer(many=True, read_only=True)
+
     class Meta:
         model = Team
         fields = ("id", "name", "captain", "members", "team_picture")
-        read_only_fields = ("captain",)
+        read_only_fields = ("captain", "members")
 
 
 class RoleSerializer(serializers.ModelSerializer):
