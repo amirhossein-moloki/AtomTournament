@@ -3,7 +3,7 @@ import re
 
 from rest_framework import serializers
 
-from .models import Transaction, Wallet
+from .models import Transaction, Wallet, WithdrawalRequest
 
 
 logger = logging.getLogger(__name__)
@@ -49,4 +49,22 @@ class PaymentSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "Ensure that there are no more than 10 digits in total."
             )
+        return value
+
+
+class WithdrawalRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WithdrawalRequest
+        fields = ('id', 'user', 'amount', 'status', 'created_at', 'updated_at')
+        read_only_fields = ('user', 'status', 'created_at', 'updated_at')
+
+
+class CreateWithdrawalRequestSerializer(serializers.Serializer):
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    card_number = serializers.CharField(max_length=16)
+    sheba_number = serializers.CharField(max_length=26)
+
+    def validate_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Amount must be positive.")
         return value
