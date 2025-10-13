@@ -10,7 +10,7 @@ from import_export import resources
 from django_select2.forms import Select2Widget
 
 # Local Imports
-from .models import Transaction, Wallet
+from .models import Transaction, Wallet, WithdrawalRequest
 
 # --- Resources for django-import-export ---
 
@@ -64,3 +64,12 @@ class TransactionAdmin(ImportExportModelAdmin, SimpleHistoryAdmin, ModelAdmin):
     list_filter = ("transaction_type", "timestamp", "status")
     search_fields = ("wallet__user__username", "description")
     autocomplete_fields = ("wallet",)
+
+
+@admin.register(WithdrawalRequest)
+class WithdrawalRequestAdmin(ImportExportModelAdmin, SimpleHistoryAdmin, ModelAdmin):
+    list_display = ("user", "amount", "status", "created_at")
+    list_filter = ("status",)
+    search_fields = ("user__username",)
+    list_editable = ("status",)
+    autocomplete_fields = ("user",)

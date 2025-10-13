@@ -10,12 +10,35 @@ class Wallet(models.Model):
         max_digits=10, decimal_places=2, default=0
     )
     token_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    card_number = models.CharField(
+        max_length=16, blank=True, null=True, help_text="شماره کارت"
+    )
+    sheba_number = models.CharField(
+        max_length=26, blank=True, null=True, help_text="شماره شبا"
+    )
 
     class Meta:
         app_label = "wallet"
 
+
+class WithdrawalRequest(models.Model):
+    STATUS_CHOICES = (
+        ("pending", "در انتظار بررسی"),
+        ("approved", "تایید شده"),
+        ("rejected", "رد شده"),
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="withdrawal_requests")
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
     def __str__(self):
-        return f"{self.user.username} Wallet"
+        return f"Withdrawal request by {self.user.username} for {self.amount}"
+
+    class Meta:
+        app_label = "wallet"
+        ordering = ["-created_at"]
 
 
 class Transaction(models.Model):

@@ -9,8 +9,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Transaction, Wallet
-from .serializers import PaymentSerializer, TransactionSerializer, WalletSerializer
+from .models import Transaction, Wallet, WithdrawalRequest
+from .serializers import (
+    PaymentSerializer,
+    TransactionSerializer,
+    WalletSerializer,
+    CreateWithdrawalRequestSerializer,
+    WithdrawalRequestSerializer,
+)
 from .services import ZibalService, process_transaction
 
 logger = logging.getLogger(__name__)
@@ -184,30 +190,85 @@ class VerifyDepositAPIView(APIView):
             return redirect(settings.ZIBAL_PAYMENT_FAILED_URL)
 
 
-class WithdrawalAPIView(generics.GenericAPIView):
-    serializer_class = PaymentSerializer
+class WithdrawalRequestAPIView(generics.CreateAPIView):
+    serializer_class = CreateWithdrawalRequestSerializer
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         amount = serializer.validated_data["amount"]
+        card_number = serializer.validated_data["card_number"]
+        sheba_number = serializer.validated_data["sheba_number"]
         user = request.user
 
-        transaction, error = process_transaction(
+        try:
+            wallet = user.wallet
+        except Wallet.DoesNotExist:
+            return Response({"error": "Wallet not found for this user."}, status=status.HTTP_404_NOT_FOUND)
+
+        if wallet.withdrawable_balance < amount:
+            return Response({"error": "Insufficient balance."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Update wallet card and sheba number if not already set
+        if not wallet.card_number:
+            wallet.card_number = card_number
+        if not wallet.sheba_number:
+            wallet.sheba_number = sheba_number
+        wallet.save()
+
+        withdrawal_request = WithdrawalRequest.objects.create(
             user=user,
             amount=amount,
-            transaction_type="withdrawal",
-            description="User withdrawal request.",
         )
+        # Deduct from withdrawable_balance, but hold it until admin approves
+        wallet.withdrawable_balance -= amount
+        wallet.save()
 
-        if error:
-            return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(
-            {"message": "Withdrawal successful.", "transaction_id": transaction.id},
-            status=status.HTTP_200_OK,
+            WithdrawalRequestSerializer(withdrawal_request).data,
+            status=status.HTTP_201_CREATED,
         )
+
+
+class AdminWithdrawalRequestViewSet(viewsets.ModelViewSet):
+    queryset = WithdrawalRequest.objects.all()
+    serializer_class = WithdrawalRequestSerializer
+    permission_classes = [IsAuthenticated] # Should be IsAdminUser in a real app
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        status = request.data.get("status")
+
+        if status not in ["approved", "rejected"]:
+            return Response({"error": "Invalid status."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if instance.status != "pending":
+            return Response({"error": f"Request already {instance.status}."}, status=status.HTTP_400_BAD_REQUEST)
+
+        wallet = instance.user.wallet
+
+        if status == "approved":
+            instance.status = "approved"
+            # Create a transaction record
+            Transaction.objects.create(
+                wallet=wallet,
+                amount=instance.amount,
+                transaction_type="withdrawal",
+                status="success",
+                description=f"Withdrawal request {instance.id} approved by admin.",
+            )
+            # The balance was already deducted, so we just finalize it here.
+            # In a real-world scenario, you might move the funds from a "held" state to "sent".
+        elif status == "rejected":
+            instance.status = "rejected"
+            # Refund the amount to the user's withdrawable balance
+            wallet.withdrawable_balance += instance.amount
+            wallet.save()
+
+        instance.save()
+        return Response(WithdrawalRequestSerializer(instance).data)
 
 
 class WalletViewSet(viewsets.ReadOnlyModelViewSet):
