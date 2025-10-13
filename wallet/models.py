@@ -39,9 +39,24 @@ class Transaction(models.Model):
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPE_CHOICES)
     timestamp = models.DateTimeField(auto_now_add=True)
     description = models.CharField(max_length=255, blank=True)
-    authority = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    authority = models.CharField(
+        max_length=255, unique=True, null=True, blank=True, help_text="Zibal trackId"
+    )
+    order_id = models.CharField(
+        max_length=255,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text="Unique order ID for the transaction",
+    )
+    ref_number = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="Zibal reference number after successful payment",
+    )
     status = models.CharField(
-        max_length=10, choices=STATUS_CHOICES, null=True, blank=True
+        max_length=10, choices=STATUS_CHOICES, default="pending", db_index=True
     )
 
     def __str__(self):
