@@ -3,6 +3,8 @@ import uuid
 
 from django.conf import settings
 from django.db import transaction
+from django.utils import timezone
+from datetime import timedelta
 from django.shortcuts import redirect
 from rest_framework import generics, status, viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -208,7 +210,24 @@ class WithdrawalRequestAPIView(generics.CreateAPIView):
             return Response({"error": "Wallet not found for this user."}, status=status.HTTP_404_NOT_FOUND)
 
         if wallet.withdrawable_balance < amount:
-            return Response({"error": "Insufficient balance."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "موجودی کافی نیست."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if amount < settings.MINIMUM_WITHDRAWAL_AMOUNT:
+            return Response(
+                {
+                    "error": f"حداقل مقدار برداشت {settings.MINIMUM_WITHDRAWAL_AMOUNT:,.0f} ریال است."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check for recent withdrawal requests
+        if WithdrawalRequest.objects.filter(
+            user=user, created_at__gte=timezone.now() - timedelta(hours=24)
+        ).exists():
+            return Response(
+                {"error": "شما در ۲۴ ساعت گذشته یک درخواست برداشت ثبت کرده‌اید."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Update wallet card and sheba number if not already set
         if not wallet.card_number:
