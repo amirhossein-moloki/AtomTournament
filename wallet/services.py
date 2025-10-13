@@ -14,13 +14,14 @@ class ZibalService:
         self.merchant_id = getattr(settings, "ZIBAL_MERCHANT_ID", "zibal")
         self.api_base_url = "https://gateway.zibal.ir/v1"
 
-    def create_payment(self, amount, description, callback_url, mobile=None):
+    def create_payment(self, amount, description, callback_url, order_id, mobile=None):
         url = f"{self.api_base_url}/request"
         payload = {
             "merchant": self.merchant_id,
             "amount": amount,
             "callbackUrl": callback_url,
             "description": description,
+            "orderId": order_id,
             "mobile": mobile,
         }
         try:
@@ -32,6 +33,16 @@ class ZibalService:
 
     def verify_payment(self, track_id):
         url = f"{self.api_base_url}/verify"
+        payload = {"merchant": self.merchant_id, "trackId": track_id}
+        try:
+            response = requests.post(url, json=payload)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            return {"error": str(e)}
+
+    def inquiry_payment(self, track_id):
+        url = f"{self.api_base_url}/inquiry"
         payload = {"merchant": self.merchant_id, "trackId": track_id}
         try:
             response = requests.post(url, json=payload)

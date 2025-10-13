@@ -46,6 +46,7 @@ class ZibalServiceTests(SimpleTestCase):
             amount=10000,
             description="Test payment",
             callback_url="https://example.com/callback",
+            order_id="test-order-id",
             mobile="09123456789",
         )
 
@@ -300,8 +301,9 @@ class DepositAPITests(APITestCase):
             ).exists()
         )
 
+    @patch("wallet.views.uuid.uuid4", return_value="test-order-id")
     @patch("wallet.views.ZibalService")
-    def test_deposit_request_zibal_error(self, MockZibalService):
+    def test_deposit_request_zibal_error(self, MockZibalService, mock_uuid):
         """
         Test how the system handles an error from Zibal on payment creation.
         """
@@ -318,8 +320,12 @@ class DepositAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("error", response.data)
         self.assertEqual(response.data["error"], "merchant not found")
-        self.assertFalse(
-            Transaction.objects.filter(wallet=self.user.wallet).exists()
+        self.assertTrue(
+            Transaction.objects.filter(
+                wallet=self.user.wallet,
+                order_id="test-order-id",
+                status="failed",
+            ).exists()
         )
 
 
@@ -338,6 +344,7 @@ class VerifyDepositAPITests(APITestCase):
             amount=Decimal("50000.00"),
             transaction_type="deposit",
             authority="test-track-id",
+            order_id="test-order-id",
             status="pending",
         )
         self.verify_url = "/api/wallet/verify-deposit/"
@@ -350,31 +357,34 @@ class VerifyDepositAPITests(APITestCase):
         mock_verify_payment.return_value = {
             "result": 100,
             "paidAt": "2023-11-20T12:00:00Z",
+            "refNumber": "test-ref-number",
         }
         initial_balance = self.wallet.total_balance
 
         response = self.client.get(
-            self.verify_url, {"trackId": "test-track-id", "success": "1"}
+            self.verify_url,
+            {"trackId": "test-track-id", "success": "1", "orderId": "test-order-id"},
         )
 
         self.assertEqual(response.status_code, status.HTTP_302_FOUND)
         self.transaction.refresh_from_db()
         self.wallet.refresh_from_db()
         self.assertEqual(self.transaction.status, "success")
+        self.assertEqual(self.transaction.ref_number, "test-ref-number")
         self.assertEqual(
             self.wallet.total_balance, initial_balance + self.transaction.amount
         )
 
     @patch("wallet.views.ZibalService.verify_payment")
-    def test_verify_deposit_failed_no_paid_at(self, mock_verify_payment):
+    def test_verify_deposit_failed_by_user_cancellation(self, mock_verify_payment):
         """
-        Test deposit verification fails if 'paidAt' is missing.
+        Test deposit verification when the user cancels the payment (success=0).
         """
-        mock_verify_payment.return_value = {"result": 100}
         initial_balance = self.wallet.total_balance
 
         response = self.client.get(
-            self.verify_url, {"trackId": "test-track-id", "success": "1"}
+            self.verify_url,
+            {"trackId": "test-track-id", "success": "0", "orderId": "test-order-id"},
         )
 
         self.assertEqual(response.status_code, status.HTTP_302_FOUND)
@@ -382,17 +392,23 @@ class VerifyDepositAPITests(APITestCase):
         self.wallet.refresh_from_db()
         self.assertEqual(self.transaction.status, "failed")
         self.assertEqual(self.wallet.total_balance, initial_balance)
+        # Verify that verify_payment was not even called
+        mock_verify_payment.assert_not_called()
 
     @patch("wallet.views.ZibalService.verify_payment")
     def test_verify_deposit_failed_bad_result(self, mock_verify_payment):
         """
         Test deposit verification fails if 'result' is not 100.
         """
-        mock_verify_payment.return_value = {"result": 102}  # Example error code
+        mock_verify_payment.return_value = {
+            "result": 102,
+            "message": "Verification failed",
+        }
         initial_balance = self.wallet.total_balance
 
         response = self.client.get(
-            self.verify_url, {"trackId": "test-track-id", "success": "1"}
+            self.verify_url,
+            {"trackId": "test-track-id", "success": "1", "orderId": "test-order-id"},
         )
 
         self.assertEqual(response.status_code, status.HTTP_302_FOUND)
