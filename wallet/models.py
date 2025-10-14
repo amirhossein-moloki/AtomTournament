@@ -17,6 +17,10 @@ class Wallet(models.Model):
         max_length=26, blank=True, null=True, help_text="شماره شبا"
     )
 
+    @property
+    def latest_transactions(self):
+        return self.transactions.order_by("-timestamp")[:10]
+
     class Meta:
         app_label = "wallet"
 

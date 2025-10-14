@@ -24,12 +24,46 @@ class TransactionSerializer(serializers.ModelSerializer):
 
 
 class WalletSerializer(serializers.ModelSerializer):
-    transactions = TransactionSerializer(many=True, read_only=True)
+    transactions = TransactionSerializer(many=True, read_only=True, source="latest_transactions")
+    summary = serializers.SerializerMethodField()
 
     class Meta:
         model = Wallet
-        fields = ("id", "user", "total_balance", "withdrawable_balance", "token_balance", "transactions")
+        fields = (
+            "id",
+            "user",
+            "total_balance",
+            "withdrawable_balance",
+            "token_balance",
+            "transactions",
+            "summary",
+        )
         read_only_fields = fields
+
+    def get_summary(self, obj):
+        from django.db.models import Sum, Count
+        summary_data = obj.transactions.aggregate(
+            transaction_count=Count('id'),
+            total_amount=Sum('amount')
+        )
+        return {
+            "transaction_count": summary_data["transaction_count"] or 0,
+            "total_amount": summary_data["total_amount"] or 0,
+        }
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+
+        include = self.context.get("request").query_params.get("include")
+
+        if include == "summary":
+            # Remove detailed transactions and keep only the summary
+            representation.pop("transactions", None)
+        else:
+            # Remove the summary if we are showing detailed transactions
+            representation.pop("summary", None)
+
+        return representation
 
 
 class PaymentSerializer(serializers.Serializer):
