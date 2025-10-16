@@ -46,20 +46,15 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "username",
             "email",
             "phone_number",
-            "password",
             "first_name",
             "last_name",
             "referral_code",
         )
-        extra_kwargs = {
-            "password": {"write_only": True},
-        }
 
     def create(self, validated_data):
         referral_code = validated_data.pop('referral_code', None)
-        password = validated_data.pop("password")
         user = User(**validated_data)
-        user.set_password(password)
+        user.set_unusable_password()
         user.save()
 
         if referral_code:
@@ -95,20 +90,11 @@ class UserSerializer(serializers.ModelSerializer):
             "rank",
             "role",
             "in_game_ids",
-            "password",
             "verification",
         )
         read_only_fields = ("id", "score", "rank", "role", "verification")
-        extra_kwargs = {
-            "password": {"write_only": True, "required": False},
-        }
 
     def update(self, instance, validated_data):
-        # Handle password update separately
-        password = validated_data.pop("password", None)
-        if password:
-            instance.set_password(password)
-
         in_game_ids_data = validated_data.pop("in_game_ids", None)
         instance = super().update(instance, validated_data)
 
