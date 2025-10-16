@@ -12,6 +12,7 @@ class TournamentFilter(django_filters.FilterSet):
             ("upcoming", "Upcoming"),
             ("ongoing", "Ongoing"),
             ("finished", "Finished"),
+            ("all", "All"),
         ),
         method="filter_by_status",
     )
@@ -40,4 +41,16 @@ class TournamentFilter(django_filters.FilterSet):
             return queryset.filter(start_date__lte=now, end_date__gte=now)
         elif value == "finished":
             return queryset.filter(end_date__lt=now)
+        elif value == "all":
+            return queryset
         return queryset
+
+    @property
+    def qs(self):
+        parent_qs = super().qs
+        status = self.data.get("status")
+        if not status:
+            return parent_qs.filter(end_date__gte=timezone.now())
+        if status == "all":
+            return parent_qs
+        return parent_qs

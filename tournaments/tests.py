@@ -403,7 +403,8 @@ class TournamentViewSetTests(APITestCase):
             end_date=now - timedelta(days=9),
         )
         self.client.force_authenticate(user=self.user)
-        response = self.client.get(f"{self.tournaments_url}tournaments/")
+        # Add status=all to include finished tournaments for ordering test
+        response = self.client.get(f"{self.tournaments_url}tournaments/?status=all")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 3)  # 1 from setup, 2 from this test
         self.assertEqual(len(response.data["results"]), 3)
@@ -1140,7 +1141,9 @@ class TournamentFilterTests(APITestCase):
         self.assertEqual(response.data["results"][0]["name"], "Gamma Tournament")
 
     def test_ordering_by_name_asc(self):
-        response = self.client.get(self.tournaments_url, {"ordering": "name"})
+        response = self.client.get(
+            self.tournaments_url, {"ordering": "name", "status": "all"}
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 3)
         self.assertEqual(len(response.data["results"]), 3)
@@ -1149,7 +1152,9 @@ class TournamentFilterTests(APITestCase):
         self.assertEqual(response.data["results"][2]["name"], "Gamma Tournament")
 
     def test_ordering_by_name_desc(self):
-        response = self.client.get(self.tournaments_url, {"ordering": "-name"})
+        response = self.client.get(
+            self.tournaments_url, {"ordering": "-name", "status": "all"}
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 3)
         self.assertEqual(len(response.data["results"]), 3)
@@ -1158,7 +1163,9 @@ class TournamentFilterTests(APITestCase):
         self.assertEqual(response.data["results"][2]["name"], "Alpha Tournament")
 
     def test_ordering_by_start_date_asc(self):
-        response = self.client.get(self.tournaments_url, {"ordering": "start_date"})
+        response = self.client.get(
+            self.tournaments_url, {"ordering": "start_date", "status": "all"}
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 3)
         self.assertEqual(len(response.data["results"]), 3)
@@ -1167,7 +1174,9 @@ class TournamentFilterTests(APITestCase):
         self.assertEqual(response.data["results"][2]["name"], "Alpha Tournament")
 
     def test_ordering_by_start_date_desc(self):
-        response = self.client.get(self.tournaments_url, {"ordering": "-start_date"})
+        response = self.client.get(
+            self.tournaments_url, {"ordering": "-start_date", "status": "all"}
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 3)
         self.assertEqual(len(response.data["results"]), 3)
@@ -1176,7 +1185,9 @@ class TournamentFilterTests(APITestCase):
         self.assertEqual(response.data["results"][2]["name"], "Gamma Tournament")
 
     def test_ordering_by_entry_fee_asc(self):
-        response = self.client.get(self.tournaments_url, {"ordering": "entry_fee"})
+        response = self.client.get(
+            self.tournaments_url, {"ordering": "entry_fee", "status": "all"}
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 3)
         self.assertEqual(len(response.data["results"]), 3)
@@ -1185,7 +1196,9 @@ class TournamentFilterTests(APITestCase):
         self.assertEqual(response.data["results"][2]["name"], "Beta Tournament")
 
     def test_ordering_by_entry_fee_desc(self):
-        response = self.client.get(self.tournaments_url, {"ordering": "-entry_fee"})
+        response = self.client.get(
+            self.tournaments_url, {"ordering": "-entry_fee", "status": "all"}
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 3)
         self.assertEqual(len(response.data["results"]), 3)
