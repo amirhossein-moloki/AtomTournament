@@ -197,8 +197,6 @@ class Tournament(models.Model):
             raise ValidationError("Individual tournaments must have a team size of 1.")
         if self.type == "team" and self.team_size <= 1:
             raise ValidationError("Team tournaments must have a team size greater than 1.")
-        if self.mode == "battle_royale" and self.type != "individual":
-            raise ValidationError("Battle Royale tournaments must be individual.")
 
     def __str__(self):
         return self.name
