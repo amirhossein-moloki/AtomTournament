@@ -109,6 +109,20 @@ class UserViewSet(viewsets.ModelViewSet):
         except ApplicationError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(
+        detail=False,
+        methods=["get"],
+        permission_classes=[IsAuthenticated],
+        url_path="me",
+    )
+    def me(self, request):
+        """
+        Return the authenticated user's data.
+        """
+        user = self.get_queryset().get(pk=request.user.pk)
+        serializer = UserSerializer(user, context={"request": request})
+        return Response(serializer.data)
+
 
 class TeamViewSet(viewsets.ModelViewSet):
     """
