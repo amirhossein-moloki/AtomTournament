@@ -6,8 +6,10 @@ from users.models import User
 
 class Ticket(models.Model):
     TICKET_STATUS_CHOICES = (
-        ("open", "Open"),
-        ("closed", "Closed"),
+        ("open", "باز"),
+        ("closed", "بسته"),
+        ("answered", "پاسخ داده شده"),
+        ("pending", "در انتظار پاسخ"),
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=255)

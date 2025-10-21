@@ -44,7 +44,7 @@ class TicketAdmin(SimpleHistoryAdmin, ModelAdmin):
     search_fields = ("title", "user__username")
     autocomplete_fields = ("user",)
     inlines = [TicketMessageInline, ConversationInline]
-    actions = ["close_tickets"]
+    actions = ["close_tickets", "answer_tickets"]
     readonly_fields = ("created_at",)
 
     formfield_overrides = {
@@ -64,6 +64,15 @@ class TicketAdmin(SimpleHistoryAdmin, ModelAdmin):
             "success",
         )
     close_tickets.short_description = "Close selected tickets"
+
+    def answer_tickets(self, request, queryset):
+        updated_count = queryset.update(status="answered")
+        self.message_user(
+            request,
+            f"{updated_count} tickets have been marked as answered.",
+            "success",
+        )
+    answer_tickets.short_description = "Answer selected tickets"
 
 
 @admin.register(TicketMessage)
