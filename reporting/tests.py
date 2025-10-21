@@ -96,6 +96,49 @@ class ReportingAPITests(TestCase):
         self.normal_user = User.objects.create_user(username="user", password="password", phone_number="+989123456789")
         self.client = APIClient()
 
+    def test_statistics_endpoint_is_public(self):
+        """Test the statistics endpoint is public and returns correct data."""
+        # Create some test data
+        user1 = User.objects.create_user(username="testuser1", is_active=True, phone_number="+989120000001")
+        user2 = User.objects.create_user(username="testuser2", is_active=True, phone_number="+989120000002")
+        User.objects.create_user(username="testuser3", is_active=False, phone_number="+989120000003")
+
+        wallet1 = Wallet.objects.get(user=user1)
+        wallet2 = Wallet.objects.get(user=user2)
+
+        Transaction.objects.create(wallet=wallet1, amount=1000, transaction_type="prize", status="success")
+        Transaction.objects.create(wallet=wallet2, amount=500, transaction_type="prize", status="success")
+        Transaction.objects.create(wallet=wallet1, amount=200, transaction_type="prize", status="failed")
+        Transaction.objects.create(wallet=wallet1, amount=300, transaction_type="deposit", status="success")
+
+        game = Game.objects.create(name="Test Game for Stats")
+        Tournament.objects.create(
+            name="Past Tournament 1",
+            game=game,
+            start_date=timezone.now() - datetime.timedelta(days=2),
+            end_date=timezone.now() - datetime.timedelta(days=1),
+        )
+        Tournament.objects.create(
+            name="Past Tournament 2",
+            game=game,
+            start_date=timezone.now() - datetime.timedelta(days=5),
+            end_date=timezone.now() - datetime.timedelta(days=3),
+        )
+        Tournament.objects.create(
+            name="Future Tournament",
+            game=game,
+            start_date=timezone.now() + datetime.timedelta(days=1),
+            end_date=timezone.now() + datetime.timedelta(days=2),
+        )
+
+        response = self.client.get('/api/reporting/statistics/')
+        self.assertEqual(response.status_code, 200)
+
+        data = response.json()
+        self.assertEqual(data['total_prizes_paid'], "1500.00")
+        self.assertEqual(data['active_users_count'], 5)  # admin, normal_user, testuser1, testuser2, AtomGameBot
+        self.assertEqual(data['total_tournaments_held'], 2)
+
     def test_api_permissions(self):
         """Test that only admin users can access the reporting API."""
         self.client.force_authenticate(user=self.normal_user)

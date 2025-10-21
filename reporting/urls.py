@@ -6,6 +6,7 @@ from .views import (
     TournamentReportViewSet,
     FinancialReportViewSet,
     MarketingReportViewSet,
+    StatisticsAPIView,
 )
 
 router = DefaultRouter()
@@ -16,5 +17,6 @@ router.register(r'financial', FinancialReportViewSet, basename='financial-report
 router.register(r'marketing', MarketingReportViewSet, basename='marketing-report')
 
 urlpatterns = [
+    path('statistics/', StatisticsAPIView.as_view(), name='statistics'),
     path('', include(router.urls)),
 ]
