@@ -1,8 +1,16 @@
-from rest_framework.viewsets import ViewSet
-from rest_framework.response import Response
+from django.db.models import Sum
+from django.utils import timezone
 from rest_framework.permissions import IsAdminUser
 from rest_framework.renderers import JSONRenderer
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.viewsets import ViewSet
+
+from tournaments.models import Tournament
+from users.models import User
+from wallet.models import Transaction
 from .renderers import CSVRenderer
+from .serializers import StatisticsSerializer
 from .services import (
     generate_revenue_report,
     generate_players_report,
@@ -10,6 +18,7 @@ from .services import (
     generate_financial_report,
     generate_marketing_report,
 )
+
 
 class RevenueReportViewSet(ViewSet):
     """
@@ -23,6 +32,7 @@ class RevenueReportViewSet(ViewSet):
         report_data = generate_revenue_report()
         return Response(report_data)
 
+
 class PlayersReportViewSet(ViewSet):
     """
     API endpoint for the Players Report.
@@ -34,6 +44,7 @@ class PlayersReportViewSet(ViewSet):
         report_data = generate_players_report()
         return Response(report_data)
 
+
 class TournamentReportViewSet(ViewSet):
     """
     API endpoint for the Tournament Report.
@@ -44,6 +55,7 @@ class TournamentReportViewSet(ViewSet):
     def list(self, request):
         report_data = generate_tournament_report()
         return Response(report_data)
+
 
 class FinancialReportViewSet(ViewSet):
     """
@@ -83,3 +95,31 @@ def dashboard_callback(request, context):
     })
 
     return context
+
+
+class StatisticsAPIView(APIView):
+    """
+    An endpoint to display overall platform statistics.
+    """
+    permission_classes = [IsAdminUser]
+
+    def get(self, request, *args, **kwargs):
+        total_prizes_paid = (
+            Transaction.objects.filter(
+                transaction_type="prize", status="success"
+            ).aggregate(total=Sum("amount"))["total"]
+            or 0
+        )
+        active_users_count = User.objects.filter(is_active=True).count()
+        total_tournaments_held = Tournament.objects.filter(
+            end_date__lt=timezone.now()
+        ).count()
+
+        data = {
+            "total_prizes_paid": total_prizes_paid,
+            "active_users_count": active_users_count,
+            "total_tournaments_held": total_tournaments_held,
+        }
+
+        serializer = StatisticsSerializer(data)
+        return Response(serializer.data)
