@@ -341,6 +341,7 @@ MINIMUM_WITHDRAWAL_AMOUNT = int(
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 1
 AXES_RESET_ON_SUCCESS = True
+AXES_NEVER_LOCKOUT_CALLABLE = "users.auth_utils.should_never_lockout_staff"
 
 ZIBAL_MERCHANT_ID = os.environ.get("ZIBAL_MERCHANT_ID", "zibal")
 
