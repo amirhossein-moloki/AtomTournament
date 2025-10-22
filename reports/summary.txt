@@ -1,0 +1,22 @@
+# Test Summary
+
+- **Total Tests Executed:** 13
+- **Successful Tests:** 13
+- **Failed Tests:** 0
+- **Code Coverage:** 47%
+
+## Modules with Low Coverage
+
+- `chat/consumers.py`: 0%
+- `rewards/views.py`: 58%
+- `tournaments/services.py`: 37%
+- `users/services.py`: 17%
+- `wallet/views.py`: 24%
+
+## Suggestions for Improvement
+
+- **chat/consumers.py:** Add tests for WebSocket consumers to cover real-time chat functionality.
+- **rewards/views.py:** Implement tests for the reward wheel spinning and prize claiming logic.
+- **tournaments/services.py:** Expand tests to cover edge cases in match generation and tournament progression.
+- **users/services.py:** Add tests for OTP and team invitation services.
+- **wallet/views.py:** Increase coverage for deposit and withdrawal API views, including failure scenarios.
