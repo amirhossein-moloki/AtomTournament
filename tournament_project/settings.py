@@ -311,7 +311,7 @@ else:
 
 # In production (when DEBUG is False), redirect all HTTP requests to HTTPS.
 # We disable this during tests as the test client makes plain HTTP requests.
-is_testing = "test" in sys.argv
+is_testing = "test" in sys.argv or "pytest" in sys.modules
 
 SECURE_SSL_REDIRECT = not DEBUG and not is_testing
 # In production, use secure cookies.
