@@ -124,7 +124,8 @@ class TestVerifyDepositAPIView:
         response = api_client.get(url)
 
         assert response.status_code == status.HTTP_302_FOUND
-        assert response.url == SUCCESS_URL
+        expected_url = f"{SUCCESS_URL}?orderId={pending_tx.order_id}&trackId={pending_tx.authority}"
+        assert response.url == expected_url
 
         pending_tx.refresh_from_db()
         assert pending_tx.status == "success"
@@ -146,7 +147,8 @@ class TestVerifyDepositAPIView:
         response = api_client.get(url)
 
         assert response.status_code == status.HTTP_302_FOUND
-        assert response.url == FAILED_URL
+        expected_url = f"{FAILED_URL}?orderId={pending_tx.order_id}&trackId={pending_tx.authority}"
+        assert response.url == expected_url
 
         pending_tx.refresh_from_db()
         assert pending_tx.status == "failed"
@@ -172,7 +174,8 @@ class TestVerifyDepositAPIView:
         response = api_client.get(url)
 
         assert response.status_code == status.HTTP_302_FOUND
-        assert response.url == FAILED_URL
+        expected_url = f"{FAILED_URL}?orderId={pending_tx.order_id}&trackId={pending_tx.authority}"
+        assert response.url == expected_url
         pending_tx.refresh_from_db()
         assert pending_tx.status == "failed"
 
@@ -195,7 +198,8 @@ class TestVerifyDepositAPIView:
         response = api_client.get(url)
 
         assert response.status_code == status.HTTP_302_FOUND
-        assert response.url == SUCCESS_URL
+        expected_url = f"{SUCCESS_URL}?orderId={pending_tx.order_id}&trackId={pending_tx.authority}"
+        assert response.url == expected_url
 
         pending_tx.refresh_from_db()
         assert pending_tx.status == "success"
@@ -213,4 +217,5 @@ class TestVerifyDepositAPIView:
         url = f"{reverse('verify_deposit')}?success=1&trackId=invalid_track&orderId=invalid_order"
         response = api_client.get(url)
         assert response.status_code == status.HTTP_302_FOUND
-        assert response.url == FAILED_URL
+        expected_url = f"{FAILED_URL}?orderId=invalid_order&trackId=invalid_track"
+        assert response.url == expected_url

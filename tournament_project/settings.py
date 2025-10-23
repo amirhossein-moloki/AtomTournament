@@ -81,7 +81,6 @@ INSTALLED_APPS = [
     "guardian",
     "simple_history",
     "import_export",
-    "silk",
     "django_select2",
     "jalali_date",
     "tempus_dominus",
@@ -97,10 +96,12 @@ AUTHENTICATION_BACKENDS = [
     "guardian.backends.ObjectPermissionBackend",
 ]
 
+if 'test' in sys.argv or 'pytest' in sys.modules:
+    AUTHENTICATION_BACKENDS.remove('axes.backends.AxesStandaloneBackend')
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
-    "silk.middleware.SilkyMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -265,6 +266,7 @@ REST_FRAMEWORK = {
     # This line is for using JWT Authentication
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
     ),
 }
 
