@@ -77,12 +77,13 @@ class WalletSignalTests(TestCase):
         Test that a Wallet instance is automatically created
         when a new User is created.
         """
+        initial_wallet_count = Wallet.objects.count()
         user = User.objects.create_user(
             username="newuser", password="password", phone_number="+9876543210"
         )
         self.assertTrue(hasattr(user, "wallet"))
         self.assertIsInstance(user.wallet, Wallet)
-        self.assertEqual(Wallet.objects.count(), 1)
+        self.assertEqual(Wallet.objects.count(), initial_wallet_count + 1)
         self.assertEqual(user.wallet.total_balance, 0)
 
 

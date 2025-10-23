@@ -134,8 +134,7 @@ class UserViewSetTests(APITestCase):
         response = self.client.get(self.users_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # By default, list should return all users.
-        # The count is 4 because the data migration for AtomGameBot creates an additional user.
-        self.assertEqual(len(response.data), 4)
+        self.assertEqual(len(response.data), User.objects.count())
 
     def test_retrieve_own_details(self):
         self.client.force_authenticate(user=self.user1)
