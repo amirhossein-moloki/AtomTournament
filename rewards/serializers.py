@@ -20,6 +20,10 @@ class WheelSerializer(serializers.ModelSerializer):
 
 
 class SpinSerializer(serializers.ModelSerializer):
+    prize = PrizeSerializer(read_only=True)
+    wheel = serializers.StringRelatedField(read_only=True)
+    user = serializers.StringRelatedField(read_only=True)
+
     class Meta:
         model = Spin
         fields = ("id", "user", "wheel", "prize", "timestamp")
