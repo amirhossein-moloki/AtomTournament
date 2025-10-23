@@ -64,7 +64,7 @@ class ReportingServiceTests(TestCase):
 
     def test_generate_players_report(self):
         report = generate_players_report()
-        self.assertEqual(report['summary']['total_users'], 4) # admin, user1, user2 + bot
+        self.assertEqual(report['summary']['total_users'], User.objects.count())
         self.assertEqual(report['summary']['active_players'], 2)
 
     def test_generate_financial_report(self):
@@ -136,7 +136,7 @@ class ReportingAPITests(TestCase):
 
         data = response.json()
         self.assertEqual(data['total_prizes_paid'], "1500.00")
-        self.assertEqual(data['active_users_count'], 5)  # admin, normal_user, testuser1, testuser2, AtomGameBot
+        self.assertEqual(data['active_users_count'], User.objects.filter(is_active=True).count())
         self.assertEqual(data['total_tournaments_held'], 2)
 
     def test_api_permissions(self):
