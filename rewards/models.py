@@ -24,7 +24,9 @@ class Prize(models.Model):
 
 class Spin(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    wheel = models.ForeignKey(Wheel, on_delete=models.CASCADE)
+    wheel = models.ForeignKey(
+        Wheel, on_delete=models.CASCADE, related_name="spins"
+    )
     prize = models.ForeignKey(Prize, on_delete=models.CASCADE)
     timestamp = models.DateTimeField(auto_now_add=True)
 

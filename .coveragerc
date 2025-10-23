@@ -1,0 +1,20 @@
+[run]
+branch = True
+source = .
+omit =
+    */migrations/*
+    */settings.py
+    */__init__.py
+    manage.py
+    tests/*
+    */apps.py
+    */admin.py
+    */urls.py
+    */*_urls.py
+    */wsgi.py
+    */asgi.py
+    */celery.py
+
+[report]
+show_missing = True
+fail_under = 90

@@ -136,12 +136,12 @@ def leave_team_service(team: Team, user: User):
     """
     Allows a user to leave a team.
     """
-    if user not in team.members.all():
-        raise ApplicationError("You are not a member of this team.")
     if user == team.captain:
         raise ApplicationError(
             "The captain cannot leave the team. Please transfer captaincy first."
         )
+    if user not in team.members.all():
+        raise ApplicationError("You are not a member of this team.")
 
     team.members.remove(user)
 

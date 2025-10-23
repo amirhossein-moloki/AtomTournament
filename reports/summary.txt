@@ -1,22 +1,19 @@
-# Test Summary
+Total tests run: 49
+Successful: 49
+Failed: 0
 
-- **Total Tests Executed:** 13
-- **Successful Tests:** 13
-- **Failed Tests:** 0
-- **Code Coverage:** 47%
+Overall code coverage: 42.24%
 
-## Modules with Low Coverage
+Low coverage modules (<85%):
+- tournaments/services.py: 43%
+- wallet/views.py: 62%
+- users/services.py: 72%
+- blog/views.py: 42%
+- reporting/services.py: 13%
+- notifications/tasks.py: 22%
+- ... and many others.
 
-- `chat/consumers.py`: 0%
-- `rewards/views.py`: 58%
-- `tournaments/services.py`: 37%
-- `users/services.py`: 17%
-- `wallet/views.py`: 24%
-
-## Suggestions for Improvement
-
-- **chat/consumers.py:** Add tests for WebSocket consumers to cover real-time chat functionality.
-- **rewards/views.py:** Implement tests for the reward wheel spinning and prize claiming logic.
-- **tournaments/services.py:** Expand tests to cover edge cases in match generation and tournament progression.
-- **users/services.py:** Add tests for OTP and team invitation services.
-- **wallet/views.py:** Increase coverage for deposit and withdrawal API views, including failure scenarios.
+Suggestions for improvement:
+- **tournaments/services.py**: Add tests for match disputing, prize payment, refunds, and winner submission services.
+- **wallet/views.py**: Add tests for the `WithdrawalRequestAPIView` and `AdminWithdrawalRequestViewSet`, covering creation, approval, and rejection of withdrawal requests.
+- **users/services.py**: Add more edge cases for team management, such as trying to remove a non-existent member or responding to an invalid invitation.

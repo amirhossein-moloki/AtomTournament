@@ -77,7 +77,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         message.content = new_content
         message.is_edited = True
-        await message.save()
+        await self.save_message_instance(message)
 
         await self.channel_layer.group_send(
             self.conversation_group_name,
@@ -98,7 +98,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return  # Or handle error
 
         message.is_deleted = True
-        await message.save()
+        await self.save_message_instance(message)
 
         await self.channel_layer.group_send(
             self.conversation_group_name,
@@ -128,5 +128,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
     @database_sync_to_async
+    def save_message_instance(self, message):
+        message.save()
+
+    @database_sync_to_async
     def get_message(self, message_id):
-        return Message.objects.get(id=message_id)
+        return Message.objects.select_related("sender").get(id=message_id)
