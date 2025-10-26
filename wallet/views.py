@@ -8,8 +8,8 @@ from django.utils import timezone
 from datetime import timedelta
 from django.shortcuts import redirect
 from urllib.parse import urlencode
-from rest_framework import generics, status, viewsets
-from rest_framework.permissions import IsAuthenticated
+from rest_framework import filters, generics, status, viewsets
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -253,7 +253,10 @@ class WithdrawalRequestAPIView(generics.CreateAPIView):
 class AdminWithdrawalRequestViewSet(viewsets.ModelViewSet):
     queryset = WithdrawalRequest.objects.all()
     serializer_class = WithdrawalRequestSerializer
-    permission_classes = [IsAuthenticated] # Should be IsAdminUser in a real app
+    permission_classes = [IsAdminUser]
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ["created_at"]
+    ordering = ["-created_at"]
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
