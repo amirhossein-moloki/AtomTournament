@@ -1,12 +1,8 @@
-import logging
 import re
 
 from rest_framework import serializers
 
 from .models import Transaction, Wallet, WithdrawalRequest
-
-
-logger = logging.getLogger(__name__)
 
 
 class TransactionSerializer(serializers.ModelSerializer):
@@ -76,10 +72,6 @@ class PaymentSerializer(serializers.Serializer):
         raw_amount = self.initial_data.get("amount", value)
         digit_count = len(re.findall(r"\d", str(raw_amount)))
         if digit_count > 10:
-            logger.warning(
-                "Payment amount validation failed: digit limit exceeded",
-                extra={"digit_count": digit_count},
-            )
             raise serializers.ValidationError(
                 "Ensure that there are no more than 10 digits in total."
             )

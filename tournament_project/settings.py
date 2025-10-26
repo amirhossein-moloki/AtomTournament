@@ -251,50 +251,6 @@ else:
         },
     }
 
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "verbose": {
-            "format": "{levelname} {asctime} {module} {message}",
-            "style": "{",
-        },
-    },
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "formatter": "verbose",
-        },
-        "file": {
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": "logs/app.log",
-            "formatter": "verbose",
-            "maxBytes": 1024 * 1024 * 5,  # 5 MB
-            "backupCount": 5,
-        },
-    },
-    "loggers": {
-        "django": {
-            "handlers": ["console", "file"],
-            "level": "INFO",
-            "propagate": True,
-        },
-        "celery": {
-            "handlers": ["console", "file"],
-            "level": "INFO",
-            "propagate": True,
-        },
-        "daphne": {
-            "handlers": ["console", "file"],
-            "level": "INFO",
-            "propagate": True,
-        },
-        "": {
-            "handlers": ["console", "file"],
-            "level": "INFO",
-        },
-    },
-}
 
 
 UNFOLD = {
@@ -374,20 +330,6 @@ if is_testing:
     if "silk.middleware.SilkyMiddleware" in MIDDLEWARE:
         MIDDLEWARE.remove("silk.middleware.SilkyMiddleware")
 
-    # Simplify logging for tests to avoid external dependency issues
-    LOGGING["formatters"] = {
-        "verbose": {
-            "format": "{levelname} {asctime} {module} {message}",
-            "style": "{",
-        },
-    }
-    LOGGING["handlers"]["console"]["formatter"] = "verbose"
-    if 'file' in LOGGING['handlers']:
-        del LOGGING['handlers']['file']
-    LOGGERS = ["django", "celery", "daphne", ""]
-    for logger in LOGGERS:
-        if logger in LOGGING["loggers"]:
-            LOGGING["loggers"][logger]["handlers"] = ["console"]
 
 
 SECURE_SSL_REDIRECT = not DEBUG and not is_testing

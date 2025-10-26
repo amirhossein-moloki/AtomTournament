@@ -1,4 +1,3 @@
-import logging
 import uuid
 from urllib.parse import urljoin, urlencode
 
@@ -22,8 +21,6 @@ from .serializers import (
     WithdrawalRequestSerializer,
 )
 from .services import ZibalService, process_transaction
-
-logger = logging.getLogger(__name__)
 
 
 class DepositAPIView(generics.GenericAPIView):
@@ -82,12 +79,6 @@ class DepositAPIView(generics.GenericAPIView):
         transaction.save()
 
         error_message = zibal_response.get("message") or "Failed to create payment."
-        logger.error(
-            "Zibal deposit creation failed for user %s (order %s): %s",
-            user.id,
-            order_id,
-            error_message,
-        )
         return Response(
             {"error": error_message},
             status=status.HTTP_400_BAD_REQUEST,
@@ -112,7 +103,6 @@ class VerifyDepositAPIView(APIView):
             return f"{base_url.rstrip('/')}?{urlencode(redirect_params)}"
 
         if not track_id or not order_id:
-            logger.warning("Zibal callback missing trackId or orderId.")
             fail_params = {}
             if track_id:
                 fail_params['trackId'] = track_id
@@ -125,15 +115,9 @@ class VerifyDepositAPIView(APIView):
         try:
             tx = Transaction.objects.get(order_id=order_id, authority=track_id)
         except Transaction.DoesNotExist:
-            logger.error(
-                f"Transaction not found for order_id={order_id} and track_id={track_id}"
-            )
             return redirect(build_url(settings.ZIBAL_PAYMENT_FAILED_URL))
 
         if tx.status != "pending":
-            logger.warning(
-                f"Verification attempt on already processed transaction {tx.id} with status {tx.status}"
-            )
             if tx.status == "success":
                 return redirect(build_url(settings.ZIBAL_PAYMENT_SUCCESS_URL))
             else:
@@ -157,18 +141,15 @@ class VerifyDepositAPIView(APIView):
                     tx.ref_number = verification_response.get("refNumber")
                     tx.description = verification_response.get("description", "Payment successful")
                     card_number = verification_response.get("cardNumber")
-                    logger.info(f"Successful payment for tx {tx.id} with card {card_number}")
                     wallet.total_balance += tx.amount
                     wallet.withdrawable_balance += tx.amount
                     wallet.save()
                     tx.save()
                 return redirect(build_url(settings.ZIBAL_PAYMENT_SUCCESS_URL))
             except Exception as e:
-                logger.error(f"Error processing successful deposit for transaction {tx.id}: {e}")
                 return redirect(build_url(settings.ZIBAL_PAYMENT_FAILED_URL))
 
         elif result == 201:
-            logger.warning(f"Zibal reported transaction {tx.id} (trackId: {track_id}) as already verified.")
             if tx.status == "pending":
                 inquiry_response = zibal.inquiry_payment(track_id=track_id)
                 if inquiry_response.get("status") == 1:
@@ -187,7 +168,6 @@ class VerifyDepositAPIView(APIView):
             tx.status = "failed"
             tx.description = verification_response.get("message", "Payment verification failed.")
             tx.save()
-            logger.error(f"Zibal verification failed for tx {tx.id} (trackId: {track_id}): {tx.description}")
             return redirect(build_url(settings.ZIBAL_PAYMENT_FAILED_URL))
 
 
