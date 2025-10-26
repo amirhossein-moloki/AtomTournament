@@ -50,6 +50,7 @@ urlpatterns = [
     path("api/management/", include("management_dashboard.urls")),
     path("api/atomgamebot/", include("atomgamebot.urls")),
     path("api/", include("blog.urls")),
+    path("", include("django_prometheus.urls")),
 ]
 
 # --- Debug Tools & Static/Media ---
