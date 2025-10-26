@@ -86,15 +86,15 @@ services:
     ports:
       - "9121:9121"
 
-  celery-exporter:
-    build:
-      context: .
-      dockerfile: Dockerfile.celery-exporter
-    command: celery_exporter --broker-url=redis://redis:6379/0
-    depends_on:
-      - redis
-    ports:
-      - "9808:9808"
+#  celery-exporter:
+#    build:
+#      context: .
+#      dockerfile: Dockerfile.celery-exporter
+#    command: celery_exporter --broker-url=redis://redis:6379/0
+#    depends_on:
+#      - redis
+#    ports:
+#      - "9808:9808"
 
 volumes:
   postgres_data:
