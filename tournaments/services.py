@@ -148,6 +148,7 @@ def record_match_result(match: Match, winner_id, proof_image=None):
     confirm_match_result(match, winner, proof_image)
 
 
+@transaction.atomic
 def join_tournament(
     tournament: Tournament,
     user: User,
@@ -265,11 +266,6 @@ def join_tournament(
                         description=f"Entry fee for tournament: {tournament.name}",
                     )
                 if error:
-                    # Note: In a real-world scenario, we would need to roll back
-                    # the transactions for other team members who were already charged.
-                    # The current `process_transaction` is atomic per user, but the
-                    # overall team join is not. This is a complex problem.
-                    # For now, we raise an error for the first member that fails.
                     raise ApplicationError(
                         f"Failed to process fee for {member.username}: {error}"
                     )

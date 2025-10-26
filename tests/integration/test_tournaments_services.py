@@ -143,6 +143,22 @@ class TestJoinTournament:
         with pytest.raises(ApplicationError, match="Insufficient funds."):
             join_tournament(tournament=individual_tournament, user=verified_user)
 
+    def test_join_tournament_already_joined(
+        self, mock_process_tx, individual_tournament, verified_user
+    ):
+        """
+        GIVEN a user who has already joined a tournament
+        WHEN they try to join again
+        THEN an ApplicationError should be raised.
+        """
+        # First join
+        join_tournament(tournament=individual_tournament, user=verified_user)
+        # Second attempt
+        with pytest.raises(
+            ApplicationError, match="You have already joined this tournament."
+        ):
+            join_tournament(tournament=individual_tournament, user=verified_user)
+
     @patch("tournaments.services.send_email_notification.delay")
     @patch("tournaments.services.send_sms_notification.delay")
     def test_join_team_tournament_success(
@@ -186,6 +202,171 @@ class TestJoinTournament:
             ),
         ]
         mock_process_tx.assert_has_calls(calls, any_order=True)
+
+    def test_join_team_tournament_rollback_on_failure(
+        self, mock_process_tx, team_tournament, user_factory
+    ):
+        """
+        GIVEN a team joining a tournament
+        WHEN one member's payment fails
+        THEN the entire transaction should be rolled back, and no one is charged
+              or registered.
+        """
+        captain = user_factory(username="captain", phone_number="+989123456711")
+        member = user_factory(username="member", phone_number="+989123456722")
+        Verification.objects.create(user=captain, level=1)
+        Verification.objects.create(user=member, level=1)
+        team = Team.objects.create(name="The Winners", captain=captain)
+        team.members.add(member)
+
+        # Simulate the second team member having insufficient funds
+        mock_process_tx.side_effect = [
+            (True, None),  # First member pays successfully
+            (None, "Insufficient funds."),  # Second member fails
+        ]
+
+        with pytest.raises(ApplicationError, match="Insufficient funds."):
+            join_tournament(tournament=team_tournament, user=captain, team_id=team.id)
+
+        # Verify that the team was not added to the tournament
+        assert not team_tournament.teams.filter(id=team.id).exists()
+        # Verify that no participants were created
+        assert team_tournament.participants.count() == 0
+        # Verify that `process_transaction` was called for both members before failing
+        assert mock_process_tx.call_count == 2
+
+    def test_join_team_tournament_invalid_team_id(
+        self, mock_process_tx, team_tournament, verified_user
+    ):
+        """
+        GIVEN a user
+        WHEN they try to join a team tournament with an invalid team ID
+        THEN an ApplicationError should be raised.
+        """
+        with pytest.raises(ApplicationError, match="Invalid team ID."):
+            join_tournament(tournament=team_tournament, user=verified_user, team_id=999)
+
+    def test_join_team_tournament_not_captain(
+        self, mock_process_tx, team_tournament, user_factory
+    ):
+        """
+        GIVEN a user who is not a team captain
+        WHEN they try to join a team tournament
+        THEN an ApplicationError should be raised.
+        """
+        captain = user_factory(username="captain", phone_number="+989123456711")
+        member = user_factory(username="member", phone_number="+989123456722")
+        Verification.objects.create(user=captain, level=1)
+        Verification.objects.create(user=member, level=1)
+        team = Team.objects.create(name="The Winners", captain=captain)
+        team.members.add(member)
+
+        with pytest.raises(
+            ApplicationError, match="Only the team captain can join a tournament."
+        ):
+            join_tournament(tournament=team_tournament, user=member, team_id=team.id)
+
+    def test_join_team_tournament_wrong_team_size(
+        self, mock_process_tx, team_tournament, user_factory
+    ):
+        """
+        GIVEN a team with a size different from the tournament's requirement
+        WHEN the captain tries to join
+        THEN an ApplicationError should be raised.
+        """
+        captain = user_factory(username="captain", phone_number="+989123456711")
+        Verification.objects.create(user=captain, level=1)
+        team = Team.objects.create(name="Solo Team", captain=captain)  # Team size is 1
+
+        with pytest.raises(
+            ApplicationError, match="This tournament requires teams of size 2."
+        ):
+            join_tournament(tournament=team_tournament, user=captain, team_id=team.id)
+
+    def test_join_team_tournament_member_already_joined(
+        self, mock_process_tx, team_tournament, user_factory
+    ):
+        """
+        GIVEN a team where one member is already in the tournament
+        WHEN the captain tries to join
+        THEN an ApplicationError should be raised.
+        """
+        captain = user_factory(username="captain_test_1", phone_number="+989123456733")
+        member = user_factory(username="member_test_1", phone_number="+989123456744")
+        Verification.objects.create(user=captain, level=1)
+        Verification.objects.create(user=member, level=1)
+        team = Team.objects.create(name="The Winners", captain=captain)
+        team.members.add(member)
+
+        # Manually add one of the team members as a participant
+        Participant.objects.create(user=member, tournament=team_tournament)
+
+        with pytest.raises(
+            ApplicationError,
+            match="One or more members of your team are already in this tournament.",
+        ):
+            join_tournament(tournament=team_tournament, user=captain, team_id=team.id)
+
+    @patch("tournaments.services.send_email_notification.delay")
+    @patch("tournaments.services.send_sms_notification.delay")
+    def test_join_team_tournament_already_joined(
+        self, mock_sms, mock_email, mock_process_tx, team_tournament, user_factory
+    ):
+        """
+        GIVEN a team that has already joined a tournament
+        WHEN the captain tries to join again
+        THEN an ApplicationError should be raised.
+        """
+        captain = user_factory(username="captain_test_4", phone_number="+989123456799")
+        member = user_factory(username="member_test_4", phone_number="+989123456700")
+        Verification.objects.create(user=captain, level=1)
+        Verification.objects.create(user=member, level=1)
+        team = Team.objects.create(name="The Winners Again 2", captain=captain)
+        team.members.add(member)
+
+        # First join
+        join_tournament(tournament=team_tournament, user=captain, team_id=team.id)
+
+        # Ensure the mock is reset for the second call
+        mock_process_tx.reset_mock()
+
+        # Second attempt
+        with pytest.raises(
+            ApplicationError, match="Your team has already joined this tournament."
+        ):
+            join_tournament(tournament=team_tournament, user=captain, team_id=team.id)
+
+        # Make sure no new transactions were processed
+        mock_process_tx.assert_not_called()
+        assert mock_sms.call_count == 2
+        assert mock_email.call_count == 2
+
+    @pytest.mark.parametrize(
+        "score, level, expected_error",
+        [
+            (1500, 1, "You must be verified at level 2 to join this tournament."),
+            (2500, 2, "You must be verified at level 3 to join this tournament."),
+        ],
+    )
+    def test_join_tournament_high_score_verification(
+        self,
+        mock_process_tx,
+        individual_tournament,
+        user_factory,
+        score,
+        level,
+        expected_error,
+    ):
+        """
+        GIVEN a user with a high score but insufficient verification
+        WHEN they try to join a tournament
+        THEN an ApplicationError should be raised.
+        """
+        user = user_factory(username=f"high_score_user_{score}", score=score)
+        Verification.objects.create(user=user, level=level)
+
+        with pytest.raises(ApplicationError, match=expected_error):
+            join_tournament(tournament=individual_tournament, user=user)
 
 
 @pytest.mark.django_db
