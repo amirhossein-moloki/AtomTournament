@@ -89,6 +89,7 @@ INSTALLED_APPS = [
     "atomgamebot",
     "blog",
     "django_prometheus",
+    "silk",
 ]
 
 AUTHENTICATION_BACKENDS = [
@@ -102,6 +103,7 @@ if 'test' in sys.argv or 'pytest' in sys.modules:
 
 MIDDLEWARE = [
     "django_prometheus.middleware.PrometheusBeforeMiddleware",
+    "silk.middleware.SilkyMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
