@@ -68,5 +68,4 @@ django-select2
 django-tempus-dominus
 django-formtools
 django-jalali-date
-python-json-logger
 django-prometheus

@@ -255,10 +255,6 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
-        "json": {
-            "()": "python_json_logger.jsonlogger.JsonFormatter",
-            "format": "%(asctime)s %(name)s %(levelname)s %(module)s %(funcName)s %(lineno)d %(message)s",
-        },
         "verbose": {
             "format": "{levelname} {asctime} {module} {message}",
             "style": "{",
@@ -267,12 +263,12 @@ LOGGING = {
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "formatter": "json",
+            "formatter": "verbose",
         },
         "file": {
             "class": "logging.handlers.RotatingFileHandler",
-            "filename": "logs/json.log",
-            "formatter": "json",
+            "filename": "logs/app.log",
+            "formatter": "verbose",
             "maxBytes": 1024 * 1024 * 5,  # 5 MB
             "backupCount": 5,
         },

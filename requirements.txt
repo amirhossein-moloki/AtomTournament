@@ -328,8 +328,6 @@ python-dateutil==2.9.0.post0
     #   freezegun
 python-dotenv==1.1.1
     # via -r requirements.in
-python-json-logger==4.0.0
-    # via -r requirements.in
 python3-openid==3.2.0
     # via social-auth-core
 pyyaml==6.0.2
