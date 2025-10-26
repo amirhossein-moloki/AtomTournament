@@ -118,6 +118,7 @@ django==5.2.5
     #   django-import-export
     #   django-jalali-date
     #   django-phonenumber-field
+    #   django-prometheus
     #   django-redis
     #   django-select2
     #   django-silk
@@ -151,6 +152,8 @@ django-import-export==4.3.9
 django-jalali-date==2.0.0
     # via -r requirements.in
 django-phonenumber-field==8.1.0
+    # via -r requirements.in
+django-prometheus==2.4.1
     # via -r requirements.in
 django-ratelimit==4.1.0
     # via -r requirements.in
@@ -263,6 +266,8 @@ pluggy==1.6.0
     # via
     #   pytest
     #   pytest-cov
+prometheus-client==0.23.1
+    # via django-prometheus
 prompt-toolkit==3.0.51
     # via click-repl
 propcache==0.3.2
@@ -322,6 +327,8 @@ python-dateutil==2.9.0.post0
     #   celery
     #   freezegun
 python-dotenv==1.1.1
+    # via -r requirements.in
+python-json-logger==4.0.0
     # via -r requirements.in
 python3-openid==3.2.0
     # via social-auth-core
