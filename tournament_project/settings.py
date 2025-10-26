@@ -367,6 +367,31 @@ else:
 # We disable this during tests as the test client makes plain HTTP requests.
 is_testing = "test" in sys.argv or "pytest" in sys.modules
 
+# Disable Silk middleware if it's in INSTALLED_APPS during tests
+if is_testing:
+    # Remove Silk from INSTALLED_APPS to avoid conflicts with time mocking
+    if "silk" in INSTALLED_APPS:
+        INSTALLED_APPS.remove("silk")
+    # Also remove Silk from MIDDLEWARE if it's there
+    if "silk.middleware.SilkyMiddleware" in MIDDLEWARE:
+        MIDDLEWARE.remove("silk.middleware.SilkyMiddleware")
+
+    # Simplify logging for tests to avoid external dependency issues
+    LOGGING["formatters"] = {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {message}",
+            "style": "{",
+        },
+    }
+    LOGGING["handlers"]["console"]["formatter"] = "verbose"
+    if 'file' in LOGGING['handlers']:
+        del LOGGING['handlers']['file']
+    LOGGERS = ["django", "celery", "daphne", ""]
+    for logger in LOGGERS:
+        if logger in LOGGING["loggers"]:
+            LOGGING["loggers"][logger]["handlers"] = ["console"]
+
+
 SECURE_SSL_REDIRECT = not DEBUG and not is_testing
 # In production, use secure cookies.
 SESSION_COOKIE_SECURE = not DEBUG and not is_testing
