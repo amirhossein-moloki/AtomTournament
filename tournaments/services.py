@@ -148,6 +148,7 @@ def record_match_result(match: Match, winner_id, proof_image=None):
     confirm_match_result(match, winner, proof_image)
 
 
+@transaction.atomic
 def join_tournament(
     tournament: Tournament,
     user: User,
