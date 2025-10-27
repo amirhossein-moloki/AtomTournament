@@ -100,7 +100,6 @@ AUTHENTICATION_BACKENDS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
-    "silk.middleware.SilkyMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -178,7 +177,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 # Internationalization
-# https://docs.djangoproject.com/en/5.0/topics/i18n/
+# https://docs.djangoproject.com/en/5.0/topics/i1n/
 
 LANGUAGE_CODE = "en-us"
 
@@ -311,12 +310,15 @@ else:
 
 # In production (when DEBUG is False), redirect all HTTP requests to HTTPS.
 # We disable this during tests as the test client makes plain HTTP requests.
-is_testing = "test" in sys.argv
+is_testing = "test" in sys.argv or 'pytest' in sys.modules
 
 SECURE_SSL_REDIRECT = not DEBUG and not is_testing
 # In production, use secure cookies.
 SESSION_COOKIE_SECURE = not DEBUG and not is_testing
 CSRF_COOKIE_SECURE = not DEBUG and not is_testing
+
+if not is_testing:
+    MIDDLEWARE.insert(2, "silk.middleware.SilkyMiddleware")
 
 CORS_ALLOWED_ORIGINS = [
     origin for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if origin

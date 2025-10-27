@@ -13,13 +13,14 @@ from rest_framework.views import APIView
 
 from .models import Transaction, Wallet, WithdrawalRequest
 from .serializers import (
+    AdminWithdrawalRequestUpdateSerializer,
+    CreateWithdrawalRequestSerializer,
     PaymentSerializer,
     TransactionSerializer,
     WalletSerializer,
-    CreateWithdrawalRequestSerializer,
     WithdrawalRequestSerializer,
 )
-from .services import ZibalService, process_transaction
+from .services import ZibalService
 
 logger = logging.getLogger(__name__)
 
@@ -254,23 +255,39 @@ class WithdrawalRequestAPIView(generics.CreateAPIView):
 class AdminWithdrawalRequestViewSet(viewsets.ModelViewSet):
     queryset = WithdrawalRequest.objects.all()
     serializer_class = WithdrawalRequestSerializer
-    permission_classes = [IsAuthenticated] # Should be IsAdminUser in a real app
+    permission_classes = [IsAuthenticated]  # Should be IsAdminUser in a real app
+
+    def get_serializer_class(self):
+        if self.action in ["update", "partial_update"]:
+            return AdminWithdrawalRequestUpdateSerializer
+        return WithdrawalRequestSerializer
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        status = request.data.get("status")
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        status = serializer.validated_data.get("status")
+
+        if status is None:
+            return Response(
+                {"error": "Status is required."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         if status not in ["approved", "rejected"]:
-            return Response({"error": "Invalid status."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Invalid status."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         if instance.status != "pending":
-            return Response({"error": f"Request already {instance.status}."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": f"Request already {instance.status}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         wallet = instance.user.wallet
 
         if status == "approved":
             instance.status = "approved"
-            # Create a transaction record
             Transaction.objects.create(
                 wallet=wallet,
                 amount=instance.amount,
@@ -278,11 +295,8 @@ class AdminWithdrawalRequestViewSet(viewsets.ModelViewSet):
                 status="success",
                 description=f"Withdrawal request {instance.id} approved by admin.",
             )
-            # The balance was already deducted, so we just finalize it here.
-            # In a real-world scenario, you might move the funds from a "held" state to "sent".
         elif status == "rejected":
             instance.status = "rejected"
-            # Refund the amount to the user's withdrawable balance
             wallet.withdrawable_balance += instance.amount
             wallet.save()
 
