@@ -56,8 +56,6 @@ class UserViewSet(viewsets.ModelViewSet):
     filterset_fields = ["username", "email"]
 
     def get_serializer_class(self):
-        if self.action == "create":
-            return UserCreateSerializer
         if self.action in ("list", "retrieve"):
             # Use read-only serializer for lists or for retrieving other users
             if self.action == "retrieve" and self.request.user.is_authenticated and self.get_object() == self.request.user:
@@ -66,7 +64,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return UserSerializer  # For update, partial_update, etc.
 
     def get_permissions(self):
-        if self.action in ["create", "send_otp", "verify_otp", "list", "retrieve"]:
+        if self.action in ["send_otp", "verify_otp", "list", "retrieve"]:
             return [AllowAny()]
         return super().get_permissions()
 
