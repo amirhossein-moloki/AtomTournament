@@ -1,6 +1,7 @@
 import random
 import string
 
+from django.core.cache import cache
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -13,77 +14,66 @@ class ApplicationError(Exception):
     pass
 
 
-def _get_user_by_identifier(identifier):
+def send_otp_service(identifier=None):
     """
-    Retrieves a user by email or phone number.
+    Generates an OTP and sends it to the user's identifier (phone or email).
+    The OTP is stored in the cache.
     """
     if not identifier:
         raise ApplicationError("Identifier (email or phone number) is required.")
 
-    # Simple check to see if it's an email or phone number.
-    # This can be improved with more robust validation if needed.
-    if "@" in identifier:
-        query = {"email": identifier}
-    else:
-        query = {"phone_number": identifier}
-
-    try:
-        return User.objects.get(**query)
-    except User.DoesNotExist:
-        raise ApplicationError("User not found.")
-
-
-def send_otp_service(identifier=None):
-    """
-    Finds the user by identifier and sends an OTP code.
-    """
-    user = _get_user_by_identifier(identifier)
-
     otp_code = "".join(random.choices(string.digits, k=6))
-    otp = OTP.objects.create(user=user, code=otp_code)
 
-    # Send SMS if the identifier was a phone number (and the user has one)
-    if user.phone_number:
-        send_sms_notification.delay(str(user.phone_number), {"code": otp.code})
+    # Store OTP in cache for 5 minutes
+    cache.set(f"otp_{identifier}", otp_code, timeout=300)
 
-    # Send Email if the identifier was an email (and the user has one)
-    if user.email:
+    # Send SMS or Email based on identifier type
+    if "@" in identifier:
         send_email_notification.delay(
-            user.email,
+            identifier,
             "Your Verification Code",
             "notifications/email/login_verification_email.html",
-            {"code": otp.code},
+            {"code": otp_code},
         )
-
-    return otp
+    else:
+        send_sms_notification.delay(identifier, {"code": otp_code})
 
 
 def verify_otp_service(identifier=None, code=None):
     """
-    Verifies the OTP code and returns JWT tokens if valid.
+    Verifies the OTP. If valid, logs in the user or creates a new one.
     """
     if not code:
         raise ApplicationError("Code is required.")
+    if not identifier:
+        raise ApplicationError("Identifier (email or phone number) is required.")
 
-    user = _get_user_by_identifier(identifier)
-
-    try:
-        otp = OTP.objects.get(user=user, code=code, is_active=True)
-        if (timezone.now() - otp.created_at).total_seconds() > 300:  # 5 minutes
-            otp.is_active = False
-            otp.save()
-            raise ApplicationError("OTP expired.")
-
-        otp.is_active = False
-        otp.save()
-
-        refresh = RefreshToken.for_user(user)
-        return {
-            "refresh": str(refresh),
-            "access": str(refresh.access_token),
-        }
-    except OTP.DoesNotExist:
+    cached_otp = cache.get(f"otp_{identifier}")
+    if not cached_otp or cached_otp != code:
         raise ApplicationError("Invalid OTP.")
+
+    # OTP is valid, clear it from cache
+    cache.delete(f"otp_{identifier}")
+
+    # Determine if identifier is email or phone
+    is_email = "@" in identifier
+    query_field = "email" if is_email else "phone_number"
+
+    # Get or create the user
+    user, created = User.objects.get_or_create(
+        **{query_field: identifier},
+        defaults={"username": identifier}  # Use identifier as username for simplicity
+    )
+
+    if created:
+        user.set_unusable_password()
+        user.save()
+
+    refresh = RefreshToken.for_user(user)
+    return {
+        "refresh": str(refresh),
+        "access": str(refresh.access_token),
+    }
 
 
 def invite_member_service(team: Team, from_user: User, to_user_id: int):

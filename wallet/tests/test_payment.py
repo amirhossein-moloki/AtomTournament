@@ -17,7 +17,6 @@ class PaymentAPITestCase(APITestCase):
             username="testuser",
             password="testpassword",
             phone_number="+989123456789",
-            country="IR",
         )
         self.wallet = Wallet.objects.get(user=self.user)
         self.client.login(username="testuser", password="testpassword")
