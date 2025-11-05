@@ -46,7 +46,6 @@ FROM nginx:stable-alpine
 
 # Copy the custom Nginx build from the builder stage
 COPY --from=builder /usr/sbin/nginx /usr/sbin/nginx
-COPY --from=builder /usr/lib/nginx/modules /usr/lib/nginx/modules
 COPY --from=builder /etc/nginx/nginx.conf /etc/nginx/nginx.conf
 
 # Copy the project's final nginx configuration
