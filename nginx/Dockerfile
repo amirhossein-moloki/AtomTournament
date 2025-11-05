@@ -44,9 +44,14 @@ RUN cd nginx-${NGINX_VERSION} && \
 # Final, smaller image
 FROM nginx:stable-alpine
 
+# Copy required libraries from the builder stage to ensure compatibility
+COPY --from=builder /usr/lib/libpcre.so.1 /usr/lib/
+COPY --from=builder /usr/lib/libssl.so.1.1 /usr/lib/
+COPY --from=builder /usr/lib/libcrypto.so.1.1 /usr/lib/
+COPY --from=builder /lib/libz.so.1 /lib/
+
 # Copy the custom Nginx build from the builder stage
 COPY --from=builder /usr/sbin/nginx /usr/sbin/nginx
-COPY --from=builder /usr/lib/nginx/modules /usr/lib/nginx/modules
 COPY --from=builder /etc/nginx/nginx.conf /etc/nginx/nginx.conf
 
 # Copy the project's final nginx configuration
