@@ -4,27 +4,25 @@ FROM alpine:3.14 as builder
 # Install build dependencies
 RUN apk add --no-cache build-base pcre-dev zlib-dev openssl-dev git
 
-# Define Nginx and Brotli versions
+# Define Nginx version
 ENV NGINX_VERSION 1.20.2
-ENV BROTLI_COMMIT_SHA e61b7f3630cf5638c4ef4e37f10b7b3a86241b80
 
 # Download and extract Nginx source
 RUN wget http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz && \
     tar -zxvf nginx-${NGINX_VERSION}.tar.gz && \
     rm nginx-${NGINX_VERSION}.tar.gz
 
-# Clone Google Brotli repository
-RUN git clone https://github.com/google/brotli.git && \
-    cd brotli && \
-    git checkout ${BROTLI_COMMIT_SHA} && \
-    cd ..
+# Clone the correct Nginx Brotli module repository and initialize its submodules
+RUN git clone https://github.com/eustas/ngx_brotli.git && \
+    cd ngx_brotli && \
+    git submodule update --init
 
-# Build Nginx with Brotli module
+# Build Nginx with the Brotli module
 RUN cd nginx-${NGINX_VERSION} && \
     ./configure \
         --with-http_ssl_module \
         --with-http_v2_module \
-        --add-module=../brotli/nginx/ \
+        --add-module=../ngx_brotli \
         --prefix=/usr/share/nginx \
         --sbin-path=/usr/sbin/nginx \
         --modules-path=/usr/lib/nginx/modules \
@@ -43,7 +41,7 @@ RUN cd nginx-${NGINX_VERSION} && \
     make && \
     make install
 
-# Final image
+# Final, smaller image
 FROM nginx:stable-alpine
 
 # Copy the custom Nginx build from the builder stage
@@ -51,5 +49,5 @@ COPY --from=builder /usr/sbin/nginx /usr/sbin/nginx
 COPY --from=builder /usr/lib/nginx/modules /usr/lib/nginx/modules
 COPY --from=builder /etc/nginx/nginx.conf /etc/nginx/nginx.conf
 
-# Copy the project's nginx configuration
+# Copy the project's final nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
