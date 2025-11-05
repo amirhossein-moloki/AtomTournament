@@ -13,10 +13,12 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 import locale
 import os
 import sys
+from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
 from dotenv import load_dotenv
+from kombu import Exchange, Queue
 
 load_dotenv()
 
@@ -355,6 +357,31 @@ CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
+CELERY_TASK_DEFAULT_QUEUE = "default"
+CELERY_TASK_QUEUES = (
+    Queue("default", Exchange("default"), routing_key="default"),
+    Queue("long-running", Exchange("long-running"), routing_key="long-running"),
+)
+CELERY_TASK_ROUTES = {
+    "tournaments.tasks.run_seed_data_task": {
+        "queue": "long-running",
+        "routing_key": "long-running",
+    }
+}
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_ACKS_ON_FAILURE_OR_TIMEOUT = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_WORKER_MAX_TASKS_PER_CHILD = int(
+    os.environ.get("CELERY_WORKER_MAX_TASKS_PER_CHILD", "100")
+)
+CELERY_TASK_SOFT_TIME_LIMIT = int(os.environ.get("CELERY_TASK_SOFT_TIME_LIMIT", "900"))
+CELERY_TASK_TIME_LIMIT = int(os.environ.get("CELERY_TASK_TIME_LIMIT", "960"))
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    "visibility_timeout": int(os.environ.get("CELERY_VISIBILITY_TIMEOUT", "1200"))
+}
+CELERY_RESULT_EXPIRES = timedelta(
+    hours=int(os.environ.get("CELERY_RESULT_EXPIRES_HOURS", "1"))
+)
 if "test" in sys.argv:
     CELERY_TASK_ALWAYS_EAGER = True
     RATELIMIT_ENABLED = False
