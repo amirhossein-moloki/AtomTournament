@@ -5,8 +5,17 @@ from django.template.loader import render_to_string
 from sms_ir import SmsIr
 
 
-@shared_task
-def send_sms_notification(phone_number, context):
+@shared_task(
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_backoff_max=300,
+    retry_jitter=True,
+    retry_kwargs={"max_retries": 5},
+    rate_limit="20/m",
+    ignore_result=True,
+)
+def send_sms_notification(self, phone_number, context):
     """
     Sends an SMS notification using sms.ir.
     """
@@ -30,8 +39,16 @@ def send_sms_notification(phone_number, context):
     smsir.send_bulk(message, [str(phone_number)])
 
 
-@shared_task
-def send_email_notification(email, subject, template_name, context):
+@shared_task(
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_backoff_max=600,
+    retry_jitter=True,
+    retry_kwargs={"max_retries": 4},
+    ignore_result=True,
+)
+def send_email_notification(self, email, subject, template_name, context):
     """
     Sends an email notification using a specified template.
     """
@@ -46,7 +63,7 @@ def send_email_notification(email, subject, template_name, context):
     )
 
 
-@shared_task
+@shared_task(ignore_result=True)
 def send_tournament_credentials(tournament_id):
     """
     Sends tournament credentials to all participants for their specific matches.

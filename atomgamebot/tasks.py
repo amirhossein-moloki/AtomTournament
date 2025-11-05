@@ -3,7 +3,7 @@ from django.utils import timezone
 from blog.models import Post
 
 
-@shared_task
+@shared_task(ignore_result=True, rate_limit="6/h")
 def create_bot_article():
     """
     A Celery task to create a new blog post authored by the bot.
