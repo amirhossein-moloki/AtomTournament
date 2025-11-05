@@ -70,7 +70,6 @@ INSTALLED_APPS = [
     "axes",
     "chat",
     "notifications",
-    "django_celery_results",
     "djoser",
     "support",
     "django_ratelimit",
@@ -349,12 +348,29 @@ ZIBAL_MERCHANT_ID = os.environ.get("ZIBAL_MERCHANT_ID", "zibal")
 
 # Celery Configuration
 CELERY_BROKER_URL = REDIS_URL
-CELERY_RESULT_BACKEND = "django-db"
+CELERY_RESULT_BACKEND = REDIS_URL
 
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
+
+# Celery Task Queues for prioritizing tasks
+CELERY_TASK_QUEUES = {
+    'critical': {
+        'exchange': 'critical',
+        'routing_key': 'critical',
+    },
+    'default': {
+        'exchange': 'default',
+        'routing_key': 'default',
+    },
+    'low': {
+        'exchange': 'low',
+        'routing_key': 'low',
+    },
+}
+CELERY_TASK_DEFAULT_QUEUE = 'default'
 if "test" in sys.argv:
     CELERY_TASK_ALWAYS_EAGER = True
     RATELIMIT_ENABLED = False

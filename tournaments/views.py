@@ -3,7 +3,9 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Prefetch
 from django.http import FileResponse, Http404
+from django.utils.decorators import method_decorator
 from django.utils import timezone
+from django.views.decorators.cache import cache_page
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
@@ -85,6 +87,10 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
         return Tournament.objects.prefetch_related(
             Prefetch("participant_set", queryset=participant_queryset), "teams", "game"
         ).order_by("start_date")
+
+    @method_decorator(cache_page(60 * 2)) # Cache the tournament list for 2 minutes
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
     def get_permissions(self):
         if self.action in ["list", "retrieve"]:

@@ -31,7 +31,20 @@ services:
 
   celery:
     build: .
-    command: celery -A tournament_project worker -l info
+    command: celery -A tournament_project worker -l info -Q default,low
+    volumes:
+      - .:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  celery-critical:
+    build: .
+    command: celery -A tournament_project worker -l info -Q critical
     volumes:
       - .:/app
       - static_volume:/app/staticfiles
