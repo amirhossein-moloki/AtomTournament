@@ -53,7 +53,7 @@ class UserAdmin(BaseUserAdmin, SimpleHistoryAdmin, ModelAdmin):
         (None, {"fields": ("username", "password")}),
         ("Personal info", {"fields": ("first_name", "last_name", "email", "phone_number"), "classes": ("tab",)}),
         ("Game Profile", {"fields": ("score", "rank", "profile_picture"), "classes": ("tab",)}),
-        ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions"), "classes": ("tab",)}),
+        ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "is_phone_verified", "groups", "user_permissions"), "classes": ("tab",)}),
         ("Important dates", {"fields": ("last_login", "date_joined"), "classes": ("tab",)}),
     )
 
