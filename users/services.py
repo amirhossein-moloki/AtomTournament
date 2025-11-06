@@ -29,6 +29,17 @@ def send_otp_service(identifier=None):
 
     # Send SMS or Email based on identifier type
     if "@" in identifier:
+        try:
+            user = User.objects.get(email=identifier)
+            if not user.is_phone_verified:
+                raise ApplicationError(
+                    "Please verify your phone number before using email to log in."
+                )
+        except User.DoesNotExist:
+            raise ApplicationError(
+                "No user found with this email. Please sign up with your phone number first."
+            )
+
         send_email_notification.delay(
             identifier,
             "Your Verification Code",
@@ -68,6 +79,11 @@ def verify_otp_service(identifier=None, code=None):
     if created:
         user.set_unusable_password()
         user.save()
+
+    # If the user is verifying with a phone number, mark as verified
+    if not is_email and not user.is_phone_verified:
+        user.is_phone_verified = True
+        user.save(update_fields=["is_phone_verified"])
 
     refresh = RefreshToken.for_user(user)
     return {

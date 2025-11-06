@@ -16,6 +16,7 @@ class User(AbstractUser):
         "tournaments.Rank", on_delete=models.SET_NULL, null=True, blank=True
     )
     referral_code = models.CharField(max_length=22, unique=True, blank=True)
+    is_phone_verified = models.BooleanField(default=False)
 
     def __str__(self):
         return self.username
