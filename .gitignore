@@ -26,3 +26,5 @@ node_modules/
 # Test output
 .coverage
 htmlcov/
+
+frontend/
