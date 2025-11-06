@@ -38,9 +38,9 @@ class TeamMembershipInline(TabularInline):
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin, SimpleHistoryAdmin, ModelAdmin):
-    list_display = ("username", "email", "phone_number", "score", "rank", "is_staff")
+    list_display = ("username", "email", "phone_number", "score", "rank", "is_staff", "is_phone_verified")
     search_fields = ("username", "first_name", "last_name", "email", "phone_number")
-    list_filter = ("is_staff", "is_superuser", "is_active", "groups", "rank")
+    list_filter = ("is_staff", "is_superuser", "is_active", "groups", "rank", "is_phone_verified")
     autocomplete_fields = ("rank", "groups")
     inlines = [InGameIDInline]  # TeamMembershipInline is on TeamAdmin
     readonly_fields = ("score", "rank", "last_login", "date_joined")

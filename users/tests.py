@@ -180,10 +180,13 @@ class UserViewSetTests(APITestCase):
         """
         Test that OTP is sent successfully.
         """
+        from django.core.cache import cache
+
         data = {"identifier": self.user1.phone_number}
         response = self.client.post(f"{self.users_url}send_otp/", data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(OTP.objects.filter(user=self.user1).exists())
+        # Check that OTP is in cache
+        self.assertIsNotNone(cache.get(f"otp_{self.user1.phone_number}"))
         mock_send_sms.assert_called_once()
         mock_send_email.assert_not_called()
 
@@ -191,20 +194,28 @@ class UserViewSetTests(APITestCase):
         """
         Test that a valid OTP is verified successfully.
         """
-        otp = OTP.objects.create(user=self.user1, code="123456")
-        data = {"identifier": self.user1.phone_number, "code": "123456"}
+        from django.core.cache import cache
+
+        otp_code = "123456"
+        cache.set(f"otp_{self.user1.phone_number}", otp_code, timeout=300)
+
+        data = {"identifier": self.user1.phone_number, "code": otp_code}
         response = self.client.post(f"{self.users_url}verify_otp/", data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("access", response.data)
         self.assertIn("refresh", response.data)
-        otp.refresh_from_db()
-        self.assertFalse(otp.is_active)
+        # Check that OTP is removed from cache
+        self.assertIsNone(cache.get(f"otp_{self.user1.phone_number}"))
 
     def test_verify_otp_invalid_code(self):
         """
         Test that an invalid OTP fails verification.
         """
-        OTP.objects.create(user=self.user1, code="123456")
+        from django.core.cache import cache
+
+        otp_code = "123456"
+        cache.set(f"otp_{self.user1.phone_number}", otp_code, timeout=300)
+
         data = {"identifier": self.user1.phone_number, "code": "654321"}
         response = self.client.post(f"{self.users_url}verify_otp/", data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -214,13 +225,11 @@ class UserViewSetTests(APITestCase):
         """
         Test that an expired OTP fails verification.
         """
-        otp = OTP.objects.create(user=self.user1, code="123456")
-        otp.created_at = timezone.now() - timedelta(minutes=10)
-        otp.save()
+        # The service now removes expired OTPs, so the error will be 'Invalid OTP.'
         data = {"identifier": self.user1.phone_number, "code": "123456"}
         response = self.client.post(f"{self.users_url}verify_otp/", data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data["error"], "OTP expired.")
+        self.assertEqual(response.data["error"], "Invalid OTP.")
 
 
 class TeamViewSetTests(APITestCase):
