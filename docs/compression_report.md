@@ -8,7 +8,7 @@
 ## Implementation Decisions
 - Dynamic responses are compressed at the reverse proxy using **gzip** at level 5.
 - Static assets are pre-compressed during the build/entrypoint phase using `scripts/precompress_static.py` with Brotli level 5 and gzip level 5.
-- Pre-compressed assets are served directly by Nginx via `gzip_static on` and `brotli_static on`.
+- Pre-compressed assets are served directly by Nginx via `gzip_static on` and `brotli_static on` inside the static and SPA locations (proxy locations explicitly disable the static module to avoid interception).
 - The backend is shielded from `Accept-Encoding` to avoid double compression.
 
 ## MIME Types Included
