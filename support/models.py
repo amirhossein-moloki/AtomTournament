@@ -48,3 +48,17 @@ class SupportAssignment(models.Model):
     class Meta:
         unique_together = ("support_person", "game")
         app_label = "support"
+
+
+class TicketAttachment(models.Model):
+    ticket_message = models.ForeignKey(
+        TicketMessage, on_delete=models.CASCADE, related_name="attachments"
+    )
+    file = models.FileField(upload_to="support_attachments/")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Attachment for message {self.ticket_message.id}"
+
+    class Meta:
+        app_label = "support"
