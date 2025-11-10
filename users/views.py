@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.db.models import Count, F, Prefetch, Q, Sum
 from django.utils import timezone
@@ -44,9 +45,8 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         except TokenError as e:
             raise InvalidToken(e.args[0])
 
-        # Check if user is staff
         user = serializer.user
-        if not user.is_staff:
+        if not settings.DEBUG and not user.is_staff:
             return Response(
                 {"error": "You are not authorized to login from here."},
                 status=status.HTTP_403_FORBIDDEN,
