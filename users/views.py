@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.db.models import Count, F, Prefetch, Q, Sum
 from django.utils import timezone
@@ -17,10 +18,12 @@ from wallet.serializers import TransactionSerializer
 from .models import Role, Team, TeamInvitation, User
 from .permissions import (IsAdminUser, IsCaptain, IsCaptainOrReadOnly,
                           IsOwnerOrReadOnly)
-from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from .serializers import CustomTokenObtainPairSerializer
 
-from .serializers import (AdminLoginSerializer, RoleSerializer,
+from .serializers import (RoleSerializer,
                           TeamInvitationSerializer, TeamSerializer,
                           TopPlayerByRankSerializer, TopPlayerSerializer,
                           TopTeamSerializer, UserCreateSerializer,
@@ -29,6 +32,27 @@ from .services import (ApplicationError, invite_member_service,
                        leave_team_service, remove_member_service,
                        respond_to_invitation_service, send_otp_service,
                        verify_otp_service)
+
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+
+        try:
+            serializer.is_valid(raise_exception=True)
+        except TokenError as e:
+            raise InvalidToken(e.args[0])
+
+        user = serializer.user
+        if not settings.DEBUG and not user.is_staff:
+            return Response(
+                {"error": "You are not authorized to login from here."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
 
 class RoleViewSet(viewsets.ModelViewSet):
@@ -102,8 +126,14 @@ class UserViewSet(viewsets.ModelViewSet):
         identifier = request.data.get("identifier")
         code = request.data.get("code")
         try:
-            tokens = verify_otp_service(identifier=identifier, code=code)
-            return Response(tokens, status=status.HTTP_200_OK)
+            user = verify_otp_service(identifier=identifier, code=code)
+            refresh = RefreshToken.for_user(user)
+            return Response(
+                {
+                    "refresh": str(refresh),
+                    "access": str(refresh.access_token),
+                }
+            )
         except ApplicationError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -414,35 +444,3 @@ class TeamMatchHistoryView(generics.ListAPIView):
         ).distinct()
 
 
-class AdminLoginView(APIView):
-    """
-    API view for admin login.
-    """
-
-    permission_classes = [AllowAny]
-    serializer_class = AdminLoginSerializer
-
-    def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        username = serializer.validated_data["username"]
-        password = serializer.validated_data["password"]
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            if user.is_staff:
-                refresh = RefreshToken.for_user(user)
-                return Response(
-                    {
-                        "refresh": str(refresh),
-                        "access": str(refresh.access_token),
-                    }
-                )
-            else:
-                return Response(
-                    {"error": "You are not authorized to login from here."},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
-        else:
-            return Response(
-                {"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED
-            )
