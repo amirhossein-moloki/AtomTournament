@@ -85,11 +85,7 @@ def verify_otp_service(identifier=None, code=None):
         user.is_phone_verified = True
         user.save(update_fields=["is_phone_verified"])
 
-    refresh = RefreshToken.for_user(user)
-    return {
-        "refresh": str(refresh),
-        "access": str(refresh.access_token),
-    }
+    return user
 
 
 def invite_member_service(team: Team, from_user: User, to_user_id: int):

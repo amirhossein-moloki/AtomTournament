@@ -1,8 +1,13 @@
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
 
 from verification.serializers import VerificationSerializer
 
 from .models import InGameID, Role, Team, TeamInvitation, User, Referral
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    pass
 
 
 class InGameIDSerializer(serializers.ModelSerializer):
@@ -187,8 +192,3 @@ class TopPlayerByRankSerializer(serializers.ModelSerializer):
         )
 
 
-class AdminLoginSerializer(serializers.Serializer):
-    """Serializer for admin login."""
-
-    username = serializers.CharField()
-    password = serializers.CharField(write_only=True)
