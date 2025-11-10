@@ -1,10 +1,11 @@
 from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 
 from users.permissions import IsAdminUser
 
-from .models import SupportAssignment, Ticket, TicketMessage
+from .models import SupportAssignment, Ticket, TicketAttachment, TicketMessage
 from .serializers import (SupportAssignmentSerializer, TicketMessageSerializer,
                           TicketSerializer)
 
@@ -30,6 +31,7 @@ class TicketMessageViewSet(viewsets.ModelViewSet):
     queryset = TicketMessage.objects.all()
     serializer_class = TicketMessageSerializer
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
 
     def get_queryset(self):
         queryset = TicketMessage.objects.filter(ticket_id=self.kwargs["ticket_pk"])
@@ -43,7 +45,10 @@ class TicketMessageViewSet(viewsets.ModelViewSet):
             raise PermissionDenied(
                 "You do not have permission to add messages to this ticket."
             )
-        serializer.save(user=self.request.user, ticket=ticket)
+        message = serializer.save(user=self.request.user, ticket=ticket)
+        files_data = self.request.FILES.getlist("files")
+        for file_data in files_data:
+            TicketAttachment.objects.create(ticket_message=message, file=file_data)
 
 
 class SupportAssignmentViewSet(viewsets.ModelViewSet):

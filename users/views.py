@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Count, F, Prefetch, Q, Sum
 from django.utils import timezone
@@ -15,7 +16,7 @@ from tournaments.serializers import (TournamentListSerializer,
 from wallet.models import Transaction
 from wallet.serializers import TransactionSerializer
 
-from .models import Role, Team, TeamInvitation, User
+from .models import Role, Team, TeamInvitation, TeamMembership, User
 from .permissions import (IsAdminUser, IsCaptain, IsCaptainOrReadOnly,
                           IsOwnerOrReadOnly)
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -170,7 +171,7 @@ class TeamViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         team = serializer.save(captain=self.request.user)
-        team.members.add(self.request.user)
+        TeamMembership.objects.create(user=self.request.user, team=team)
 
     @action(
         detail=True,
@@ -238,7 +239,7 @@ class TeamViewSet(viewsets.ModelViewSet):
             return Response(
                 {"message": f"Invitation {status_action}."}, status=status.HTTP_200_OK
             )
-        except ApplicationError as e:
+        except (ApplicationError, ValidationError) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])

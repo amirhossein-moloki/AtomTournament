@@ -282,6 +282,18 @@ class TeamViewSetTests(APITestCase):
         response = self.client.patch(f"{self.teams_url}{self.team.id}/", data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_team_full_validation(self):
+        self.team.max_members = 2
+        self.team.save()
+        invitation = TeamInvitation.objects.create(
+            from_user=self.captain, to_user=self.non_member, team=self.team
+        )
+        self.client.force_authenticate(user=self.non_member)
+        data = {"invitation_id": invitation.id, "status": "accepted"}
+        response = self.client.post(self.respond_invitation_url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["error"], "['This team is already full.']")
+
     def test_invite_member_by_captain(self):
         self.client.force_authenticate(user=self.captain)
         data = {"user_id": self.non_member.id}

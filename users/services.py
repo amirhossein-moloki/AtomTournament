@@ -7,7 +7,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from notifications.tasks import send_email_notification, send_sms_notification
 
-from .models import OTP, Team, TeamInvitation, User
+from .models import OTP, Team, TeamInvitation, TeamMembership, User
 
 
 class ApplicationError(Exception):
@@ -123,7 +123,7 @@ def respond_to_invitation_service(invitation_id: int, user: User, status: str):
 
     if status == "accepted":
         invitation.status = "accepted"
-        invitation.team.members.add(user)
+        TeamMembership.objects.create(user=user, team=invitation.team)
         invitation.save()
     elif status == "rejected":
         invitation.status = "rejected"
