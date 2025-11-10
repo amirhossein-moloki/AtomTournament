@@ -9,9 +9,11 @@ from .models import Attachment, Conversation, Message
 class MessageCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating a new message."""
 
+    recipient_id = serializers.IntegerField(write_only=True)
+
     class Meta:
         model = Message
-        fields = ("content",)
+        fields = ("content", "recipient_id")
 
 
 class MessageSerializer(serializers.ModelSerializer):
@@ -31,18 +33,6 @@ class MessageSerializer(serializers.ModelSerializer):
             "is_edited",
             "is_deleted",
         )
-
-
-class ConversationCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating a new conversation."""
-
-    participants = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=User.objects.all()
-    )
-
-    class Meta:
-        model = Conversation
-        fields = ("participants",)
 
 
 class ConversationSerializer(serializers.ModelSerializer):

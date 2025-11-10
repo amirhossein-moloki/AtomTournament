@@ -2,11 +2,13 @@ from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
+from users.models import User
+
 from .models import Attachment, Conversation, Message
 from .permissions import IsParticipantInConversation, IsSenderOrReadOnly
 from .serializers import (AttachmentCreateSerializer, AttachmentSerializer,
-                          ConversationCreateSerializer, ConversationSerializer,
-                          MessageCreateSerializer, MessageSerializer)
+                          ConversationSerializer, MessageCreateSerializer,
+                          MessageSerializer)
 
 
 class ConversationViewSet(viewsets.ModelViewSet):
@@ -18,8 +20,6 @@ class ConversationViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
-        if self.action == "create":
-            return ConversationCreateSerializer
         return ConversationSerializer
 
     def get_queryset(self):
@@ -51,9 +51,19 @@ class MessageViewSet(viewsets.ModelViewSet):
         )
 
     def perform_create(self, serializer):
-        conversation = get_object_or_404(
-            Conversation, pk=self.kwargs["conversation_pk"]
+        recipient_id = serializer.validated_data.pop("recipient_id")
+        recipient = get_object_or_404(User, pk=recipient_id)
+
+        conversation = (
+            Conversation.objects.filter(participants=self.request.user)
+            .filter(participants=recipient)
+            .first()
         )
+
+        if not conversation:
+            conversation = Conversation.objects.create()
+            conversation.participants.add(self.request.user, recipient)
+
         serializer.save(sender=self.request.user, conversation=conversation)
 
 
