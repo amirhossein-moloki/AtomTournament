@@ -179,6 +179,29 @@ class TournamentReadOnlySerializer(serializers.ModelSerializer):
                 return p.prize
         return None
 
+    def to_representation(self, instance):
+        """
+        Conditionally remove fields based on the tournament's status.
+        """
+        data = super().to_representation(instance)
+        is_finished = instance.end_date < timezone.now()
+
+        if is_finished:
+            # For finished tournaments, remove pre-start and registration fields
+            data.pop("spots_left", None)
+            data.pop("countdown_start_time", None)
+            data.pop("required_verification_level", None)
+            data.pop("min_rank", None)
+            data.pop("max_rank", None)
+        else:
+            # For ongoing or upcoming tournaments, remove result-related fields
+            data.pop("final_rank", None)
+            data.pop("prize_won", None)
+            data.pop("top_players", None)
+            data.pop("top_teams", None)
+
+        return data
+
 
 class TournamentListSerializer(TournamentReadOnlySerializer):
     """
