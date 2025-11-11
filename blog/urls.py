@@ -1,12 +1,38 @@
-from rest_framework_nested import routers
-from . import views
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import (
+    PostViewSet,
+    CategoryViewSet,
+    TagViewSet,
+    CommentViewSet,
+    AuthorProfileViewSet,
+    MediaViewSet,
+    SeriesViewSet,
+    ReactionViewSet,
+    PageViewSet,
+    RevisionViewSet,
+    MenuViewSet,
+    MenuItemViewSet,
+    RoleViewSet,
+    PermissionViewSet,
+)
 
-router = routers.SimpleRouter()
-router.register(r'posts', views.PostViewSet, basename='post')
-router.register(r'tags', views.TagViewSet, basename='tag')
-router.register(r'categories', views.CategoryViewSet, basename='category')
+router = DefaultRouter()
+router.register(r"posts", PostViewSet)
+router.register(r"categories", CategoryViewSet)
+router.register(r"tags", TagViewSet)
+router.register(r"comments", CommentViewSet)
+router.register(r"authors", AuthorProfileViewSet)
+router.register(r"media", MediaViewSet)
+router.register(r"series", SeriesViewSet)
+router.register(r"reactions", ReactionViewSet)
+router.register(r"pages", PageViewSet)
+router.register(r"revisions", RevisionViewSet)
+router.register(r"menus", MenuViewSet)
+router.register(r"menu-items", MenuItemViewSet)
+router.register(r"roles", RoleViewSet)
+router.register(r"permissions", PermissionViewSet)
 
-posts_router = routers.NestedSimpleRouter(router, r'posts', lookup='post')
-posts_router.register(r'comments', views.CommentViewSet, basename='post-comments')
-
-urlpatterns = router.urls + posts_router.urls
+urlpatterns = [
+    path("", include(router.urls)),
+]

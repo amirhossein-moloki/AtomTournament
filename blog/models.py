@@ -1,12 +1,158 @@
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.conf import settings
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 
 
+class Role(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+    description = models.TextField(blank=True)
+    permissions = models.ManyToManyField("Permission", blank=True, related_name="roles")
+
+    def __str__(self):
+        return self.name
+
+
+class Permission(models.Model):
+    code = models.CharField(max_length=100, unique=True, help_text=_("e.g., post.create, post.publish"))
+    description = models.CharField(max_length=255, blank=True)
+
+    def __str__(self):
+        return self.code
+
+
+class AuthorProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="author_profile"
+    )
+    display_name = models.CharField(max_length=100)
+    bio = models.TextField(blank=True)
+    avatar = models.ForeignKey(
+        "Media", on_delete=models.SET_NULL, null=True, blank=True, related_name="author_avatars"
+    )
+    social_links = models.JSONField(default=dict, blank=True)
+
+    def __str__(self):
+        return self.display_name
+
+
+class Media(models.Model):
+    TYPE_CHOICES = (
+        ("image", _("Image")),
+        ("video", _("Video")),
+        ("audio", _("Audio")),
+        ("file", _("File")),
+    )
+
+    storage_key = models.CharField(max_length=255, unique=True)
+    url = models.URLField(max_length=512)
+    type = models.CharField(max_length=10, choices=TYPE_CHOICES)
+    mime = models.CharField(max_length=100)
+    width = models.PositiveIntegerField(null=True, blank=True)
+    height = models.PositiveIntegerField(null=True, blank=True)
+    duration = models.PositiveIntegerField(null=True, blank=True, help_text=_("In seconds"))
+    size_bytes = models.PositiveBigIntegerField()
+    alt_text = models.CharField(max_length=255, blank=True)
+    title = models.CharField(max_length=255, blank=True)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="uploaded_media"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title or self.storage_key
+
+
+class Series(models.Model):
+    ORDER_STRATEGY_CHOICES = (
+        ("manual", _("Manual")),
+        ("by_date", _("By Date")),
+    )
+
+    slug = models.SlugField(max_length=200, unique=True)
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    order_strategy = models.CharField(
+        max_length=10, choices=ORDER_STRATEGY_CHOICES, default="manual"
+    )
+
+    def __str__(self):
+        return self.title
+
+
+class Page(models.Model):
+    STATUS_CHOICES = (
+        ("draft", _("Draft")),
+        ("published", _("Published")),
+    )
+
+    slug = models.SlugField(max_length=200, unique=True)
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="draft")
+    published_at = models.DateTimeField(null=True, blank=True)
+    seo_title = models.CharField(max_length=255, blank=True)
+    seo_description = models.CharField(max_length=500, blank=True)
+
+    def __str__(self):
+        return self.title
+
+
+class Menu(models.Model):
+    LOCATION_CHOICES = (
+        ("header", _("Header")),
+        ("footer", _("Footer")),
+        ("sidebar", _("Sidebar")),
+    )
+
+    name = models.CharField(max_length=100, unique=True)
+    location = models.CharField(max_length=20, choices=LOCATION_CHOICES, unique=True, null=True, blank=True)
+
+    def __str__(self):
+        return self.name
+
+
+class MenuItem(models.Model):
+    menu = models.ForeignKey(Menu, on_delete=models.CASCADE, related_name="items")
+    parent = models.ForeignKey(
+        "self", on_delete=models.CASCADE, null=True, blank=True, related_name="children"
+    )
+    label = models.CharField(max_length=100)
+    url = models.CharField(max_length=500)
+    order = models.PositiveIntegerField()
+    target_blank = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["order"]
+
+    def __str__(self):
+        return self.label
+
+
+class Revision(models.Model):
+    post = models.ForeignKey("Post", on_delete=models.CASCADE, related_name="revisions")
+    editor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="edited_revisions"
+    )
+    title = models.CharField(max_length=200)
+    excerpt = models.TextField(blank=True)
+    content = models.TextField()
+    change_note = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Revision for {self.post.title} at {self.created_at}"
+
+
 class Tag(models.Model):
     name = models.CharField(max_length=50, unique=True, verbose_name=_("Name"))
     slug = models.SlugField(max_length=50, unique=True, blank=True)
+    description = models.TextField(blank=True, verbose_name=_("Description"))
 
     class Meta:
         verbose_name = _("Tag")
@@ -24,10 +170,21 @@ class Tag(models.Model):
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True, verbose_name=_("Name"))
     slug = models.SlugField(max_length=100, unique=True, blank=True)
+    parent = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="children",
+        verbose_name=_("Parent"),
+    )
+    description = models.TextField(blank=True, verbose_name=_("Description"))
+    order = models.PositiveIntegerField(default=0, verbose_name=_("Order"))
 
     class Meta:
         verbose_name = _("Category")
         verbose_name_plural = _("Categories")
+        ordering = ["parent__id", "order"]
 
     def __str__(self):
         return self.name
@@ -41,155 +198,124 @@ class Category(models.Model):
 class Post(models.Model):
     STATUS_CHOICES = (
         ("draft", _("Draft")),
+        ("review", _("In Review")),
+        ("scheduled", _("Scheduled")),
         ("published", _("Published")),
+        ("archived", _("Archived")),
+    )
+    VISIBILITY_CHOICES = (
+        ("public", _("Public")),
+        ("private", _("Private")),
+        ("unlisted", _("Unlisted")),
     )
 
-    title = models.CharField(max_length=200, verbose_name=_("Title"))
-    slug = models.SlugField(max_length=200, unique_for_date="created_at", verbose_name=_("Slug"), blank=True)
-    author = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="blog_posts",
-        verbose_name=_("Author"),
-    )
-    content = models.TextField(verbose_name=_("Content"))
-    featured_image = models.ImageField(
-        upload_to="blog/featured_images/", null=True, blank=True, verbose_name=_("Featured Image")
-    )
-    status = models.CharField(
-        max_length=10, choices=STATUS_CHOICES, default="draft", verbose_name=_("Status")
-    )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created at"))
-    updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Updated at"))
+    slug = models.SlugField(max_length=200, unique=True)
+    canonical_url = models.URLField(max_length=512, blank=True, null=True)
+    title = models.CharField(max_length=200)
+    excerpt = models.TextField(blank=True)
+    content = models.TextField()
+    reading_time_sec = models.PositiveIntegerField(default=0)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="draft", db_index=True)
+    visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default="public")
+    published_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    scheduled_at = models.DateTimeField(null=True, blank=True)
+    author = models.ForeignKey(AuthorProfile, on_delete=models.CASCADE, related_name="posts")
     category = models.ForeignKey(
-        Category,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="posts",
-        verbose_name=_("Category"),
+        Category, on_delete=models.SET_NULL, null=True, blank=True, related_name="posts"
     )
-    tags = models.ManyToManyField(Tag, blank=True, related_name="posts", verbose_name=_("Tags"))
+    series = models.ForeignKey(
+        Series, on_delete=models.SET_NULL, null=True, blank=True, related_name="posts"
+    )
+    cover_media = models.ForeignKey(
+        Media, on_delete=models.SET_NULL, null=True, blank=True, related_name="post_covers"
+    )
+    tags = models.ManyToManyField(Tag, through="PostTag", related_name="posts")
+    seo_title = models.CharField(max_length=255, blank=True)
+    seo_description = models.CharField(max_length=500, blank=True)
+    og_image = models.ForeignKey(
+        Media, on_delete=models.SET_NULL, null=True, blank=True, related_name="post_og_images"
+    )
+    views_count = models.PositiveIntegerField(default=0)
+    likes_count = models.PositiveIntegerField(default=0)
+    comments_count = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ("-created_at",)
+        ordering = ("-published_at",)
         verbose_name = _("Post")
         verbose_name_plural = _("Posts")
+        indexes = [
+            models.Index(fields=["status", "published_at"]),
+            models.Index(fields=["category", "published_at"]),
+        ]
 
     def __str__(self):
         return self.title
 
 
+class PostTag(models.Model):
+    post = models.ForeignKey(Post, on_delete=models.CASCADE)
+    tag = models.ForeignKey(Tag, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("post", "tag")
+
+
 class Comment(models.Model):
-    post = models.ForeignKey(
-        Post, on_delete=models.CASCADE, related_name="comments", verbose_name=_("Post")
+    STATUS_CHOICES = (
+        ("pending", _("Pending")),
+        ("approved", _("Approved")),
+        ("spam", _("Spam")),
+        ("removed", _("Removed")),
     )
-    author = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="comments",
-        verbose_name=_("Author"),
+
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, related_name="comments"
     )
-    content = models.TextField(verbose_name=_("Content"))
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created at"))
     parent = models.ForeignKey(
-        "self",
-        null=True,
-        blank=True,
-        on_delete=models.CASCADE,
-        related_name="replies",
-        verbose_name=_("Parent"),
+        "self", on_delete=models.CASCADE, null=True, blank=True, related_name="replies"
     )
-    reactions = models.ManyToManyField(
-        settings.AUTH_USER_MODEL,
-        through="CommentReaction",
-        related_name="reacted_comments",
-        blank=True,
-        verbose_name=_("Reactions"),
-    )
-    active = models.BooleanField(default=True, verbose_name=_("Active"))
+    author_name = models.CharField(max_length=100, blank=True)
+    author_email = models.EmailField(blank=True)
+    content = models.TextField()
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="pending", db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=255, blank=True)
 
     class Meta:
         ordering = ("created_at",)
         verbose_name = _("Comment")
         verbose_name_plural = _("Comments")
+        indexes = [
+            models.Index(fields=["post", "status", "created_at"]),
+        ]
 
     def __str__(self):
-        return f"Comment by {self.author} on {self.post}"
+        return f"Comment by {self.user or self.author_name} on {self.post}"
 
 
-class CommentReaction(models.Model):
-    class ReactionType(models.TextChoices):
-        LIKE = "like", _("Like")
-        LOVE = "love", _("Love")
-        HAHA = "haha", _("Haha")
-        WOW = "wow", _("Wow")
-        SAD = "sad", _("Sad")
-        ANGRY = "angry", _("Angry")
-
+class Reaction(models.Model):
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name=_("User")
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True
     )
-    comment = models.ForeignKey(
-        Comment, on_delete=models.CASCADE, verbose_name=_("Comment")
-    )
-    reaction_type = models.CharField(
-        max_length=10,
-        choices=ReactionType.choices,
-        default=ReactionType.LIKE,
-        verbose_name=_("Reaction Type"),
-    )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created at"))
+    reaction = models.CharField(max_length=50)  # like, emoji_code, etc.
+    created_at = models.DateTimeField(auto_now_add=True)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+
+    # Generic relation to Post or Comment
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    target = GenericForeignKey("content_type", "object_id")
 
     class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["user", "comment"], name="unique_user_comment_reaction"
-            )
+        indexes = [
+            models.Index(fields=["content_type", "object_id"]),
         ]
-        verbose_name = _("Comment Reaction")
-        verbose_name_plural = _("Comment Reactions")
+        unique_together = ("user", "reaction", "content_type", "object_id")
 
     def __str__(self):
-        return f"{self.user} reacted to {self.comment} with {self.get_reaction_type_display()}"
-
-
-class CommentReport(models.Model):
-    class ReportStatus(models.TextChoices):
-        PENDING = "pending", _("Pending")
-        RESOLVED = "resolved", _("Resolved")
-        DISMISSED = "dismissed", _("Dismissed")
-
-    comment = models.ForeignKey(
-        Comment,
-        on_delete=models.CASCADE,
-        related_name="reports",
-        verbose_name=_("Comment"),
-    )
-    reporter = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="comment_reports",
-        verbose_name=_("Reporter"),
-    )
-    reason = models.TextField(verbose_name=_("Reason"))
-    status = models.CharField(
-        max_length=10,
-        choices=ReportStatus.choices,
-        default=ReportStatus.PENDING,
-        verbose_name=_("Status"),
-    )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created at"))
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["comment", "reporter"], name="unique_comment_reporter"
-            )
-        ]
-        verbose_name = _("Comment Report")
-        verbose_name_plural = _("Comment Reports")
-        ordering = ["-created_at"]
-
-    def __str__(self):
-        return f"Report by {self.reporter} on comment {self.comment.id}"
+        return f'{self.reaction} by {self.user or "Anonymous"}'

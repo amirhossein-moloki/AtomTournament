@@ -16,7 +16,7 @@ from tournaments.serializers import (TournamentListSerializer,
 from wallet.models import Transaction
 from wallet.serializers import TransactionSerializer
 
-from .models import Role, Team, TeamInvitation, TeamMembership, User
+from .models import Team, TeamInvitation, TeamMembership, User
 from .permissions import (IsAdminUser, IsCaptain, IsCaptainOrReadOnly,
                           IsOwnerOrReadOnly)
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -24,8 +24,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from .serializers import CustomTokenObtainPairSerializer
 
-from .serializers import (RoleSerializer,
-                          TeamInvitationSerializer, TeamSerializer,
+from .serializers import (TeamInvitationSerializer, TeamSerializer,
                           TopPlayerByRankSerializer, TopPlayerSerializer,
                           TopTeamSerializer, UserCreateSerializer,
                           UserReadOnlySerializer, UserSerializer)
@@ -54,16 +53,6 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             )
 
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
-
-
-class RoleViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for managing roles.
-    """
-
-    queryset = Role.objects.all()
-    serializer_class = RoleSerializer
-    permission_classes = [IsAdminUser]
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -443,5 +432,3 @@ class TeamMatchHistoryView(generics.ListAPIView):
         return Match.objects.filter(
             Q(participant1_team__id=team_id) | Q(participant2_team__id=team_id)
         ).distinct()
-
-

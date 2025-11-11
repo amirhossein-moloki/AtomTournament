@@ -12,7 +12,6 @@ from django_select2.forms import Select2Widget
 from .models import (
     InGameID,
     OTP,
-    Role,
     Team,
     TeamInvitation,
     TeamMembership,
@@ -63,14 +62,6 @@ class UserAdmin(BaseUserAdmin, SimpleHistoryAdmin, ModelAdmin):
         updated_count = queryset.update(score=0)
         self.message_user(request, f"{updated_count} users had their score reset.", "success")
     reset_score.short_description = "Reset score of selected users"
-
-
-@admin.register(Role)
-class RoleAdmin(ModelAdmin):
-    list_display = ("group", "is_default")
-    search_fields = ("group__name",)
-    list_filter = ("is_default",)
-    autocomplete_fields = ("group",)
 
 
 @admin.register(InGameID)

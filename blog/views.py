@@ -1,142 +1,176 @@
-from datetime import timedelta
-from django.db.models import Q, Count
-from django.shortcuts import get_object_or_404
-from django.utils import timezone
-from django.utils.text import slugify
-from rest_framework import viewsets, permissions, status
-from rest_framework.exceptions import PermissionDenied
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework import viewsets, permissions
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.filters import OrderingFilter
-from .models import Post, Tag, Category, Comment, CommentReaction, CommentReport
-from .serializers import (
-    PostListSerializer,
-    PostDetailSerializer,
-    TagSerializer,
-    CategorySerializer,
-    CommentSerializer,
-    CommentReportSerializer,
+from rest_framework.filters import SearchFilter, OrderingFilter
+from .models import (
+    Post,
+    Category,
+    Tag,
+    Comment,
+    AuthorProfile,
+    Media,
+    Series,
+    Reaction,
+    Page,
+    Revision,
+    Menu,
+    MenuItem,
+    Role,
+    Permission,
 )
-from .permissions import IsAuthorOrReadOnly
+from .serializers import (
+    PostSerializer,
+    CategorySerializer,
+    TagSerializer,
+    CommentSerializer,
+    AuthorProfileSerializer,
+    MediaSerializer,
+    SeriesSerializer,
+    ReactionSerializer,
+    PageSerializer,
+    RevisionSerializer,
+    MenuSerializer,
+    MenuItemSerializer,
+    RoleSerializer,
+    PermissionSerializer,
+)
+from .tasks import increment_post_view_count, update_post_counts
 
 
 class PostViewSet(viewsets.ModelViewSet):
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
-    parser_classes = [MultiPartParser, FormParser]
+    queryset = Post.objects.filter(status="published")
+    serializer_class = PostSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ["category", "tags", "author", "status", "visibility"]
+    search_fields = ["title", "content", "excerpt"]
+    ordering_fields = ["published_at", "views_count", "likes_count", "comments_count"]
     lookup_field = "slug"
 
-    def get_serializer_class(self):
-        if self.action == "list":
-            return PostListSerializer
-        return PostDetailSerializer
-
-    def perform_create(self, serializer):
-        slug = slugify(serializer.validated_data["title"])
-        serializer.save(author=self.request.user, slug=slug)
-
     def get_queryset(self):
-        if self.request.user.is_authenticated:
-            return Post.objects.filter(
-                Q(status="published")
-                | (Q(status="draft") & Q(author=self.request.user))
-            )
+        user = self.request.user
+        if user.is_authenticated and user.is_staff:
+            return Post.objects.all()
+        if user.is_authenticated:
+            return Post.objects.filter(status="published") | Post.objects.filter(author__user=user)
         return Post.objects.filter(status="published")
 
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        increment_post_view_count.delay(instance.id)
+        serializer = self.get_serializer(instance)
+        return permissions.Response(serializer.data)
 
-class TagViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Tag.objects.all()
-    serializer_class = TagSerializer
-    lookup_field = 'slug'
+    def perform_create(self, serializer):
+        author_profile = AuthorProfile.objects.get(user=self.request.user)
+        serializer.save(author=author_profile)
 
 
-class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
+class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    lookup_field = 'slug'
+    permission_classes = [permissions.IsAdminUser]
+    lookup_field = "slug"
 
 
-from rest_framework.decorators import action
-from rest_framework.response import Response
+class TagViewSet(viewsets.ModelViewSet):
+    queryset = Tag.objects.all()
+    serializer_class = TagSerializer
+    permission_classes = [permissions.IsAdminUser]
+    lookup_field = "slug"
 
 
 class CommentViewSet(viewsets.ModelViewSet):
+    queryset = Comment.objects.filter(status="approved")
     serializer_class = CommentSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
-    filter_backends = [OrderingFilter, DjangoFilterBackend]
-    ordering_fields = ['created_at', 'reactions_count']
-    filterset_fields = ['parent']
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = ["post"]
+    ordering_fields = ["created_at"]
 
     def get_queryset(self):
-        return Comment.objects.filter(active=True, post__slug=self.kwargs.get('post_slug')).annotate(
-            reactions_count=Count('reactions')
-        )
+        user = self.request.user
+        if user.is_authenticated and user.is_staff:
+            return Comment.objects.all()
+        return Comment.objects.filter(status="approved")
 
     def perform_create(self, serializer):
-        post = get_object_or_404(Post, slug=self.kwargs['post_slug'])
-        serializer.save(author=self.request.user, post=post)
+        comment = serializer.save(user=self.request.user)
+        update_post_counts.delay(comment.post.id)
 
-    def update(self, request, *args, **kwargs):
-        comment = self.get_object()
-        if timezone.now() > comment.created_at + timedelta(minutes=10):
-            raise PermissionDenied("You can only edit comments within 10 minutes of posting.")
-        return super().update(request, *args, **kwargs)
+    def perform_destroy(self, instance):
+        post_id = instance.post.id
+        instance.delete()
+        update_post_counts.delay(post_id)
 
-    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
-    def react(self, request, pk=None, post_slug=None):
-        comment = self.get_object()
-        user = request.user
-        reaction_type = request.data.get("reaction_type")
 
-        if not reaction_type:
-            return Response(
-                {"error": "Reaction type is required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+class AuthorProfileViewSet(viewsets.ModelViewSet):
+    queryset = AuthorProfile.objects.all()
+    serializer_class = AuthorProfileSerializer
+    permission_classes = [permissions.IsAdminUser]
 
-        if reaction_type not in CommentReaction.ReactionType.values:
-            return Response(
-                {"error": "Invalid reaction type."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
 
-        try:
-            existing_reaction = CommentReaction.objects.get(comment=comment, user=user)
-            if existing_reaction.reaction_type == reaction_type:
-                # User is removing their reaction
-                existing_reaction.delete()
-                return Response(status=status.HTTP_204_NO_CONTENT)
-            else:
-                # User is changing their reaction
-                existing_reaction.reaction_type = reaction_type
-                existing_reaction.save()
-                serializer = self.get_serializer(comment)
-                return Response(serializer.data)
-        except CommentReaction.DoesNotExist:
-            # User is adding a new reaction
-            CommentReaction.objects.create(
-                comment=comment, user=user, reaction_type=reaction_type
-            )
-            serializer = self.get_serializer(comment)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+class MediaViewSet(viewsets.ModelViewSet):
+    queryset = Media.objects.all()
+    serializer_class = MediaSerializer
+    permission_classes = [permissions.IsAdminUser]
 
-    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated], serializer_class=CommentReportSerializer)
-    def report(self, request, pk=None, post_slug=None):
-        comment = self.get_object()
-        reporter = request.user
 
-        if comment.author == reporter:
-            return Response(
-                {"error": "You cannot report your own comment."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+class SeriesViewSet(viewsets.ModelViewSet):
+    queryset = Series.objects.all()
+    serializer_class = SeriesSerializer
+    permission_classes = [permissions.IsAdminUser]
+    lookup_field = "slug"
 
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        try:
-            serializer.save(comment=comment, reporter=reporter)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response(
-                {"error": "You have already reported this comment."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+
+class ReactionViewSet(viewsets.ModelViewSet):
+    queryset = Reaction.objects.all()
+    serializer_class = ReactionSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def perform_create(self, serializer):
+        reaction = serializer.save(user=self.request.user)
+        if reaction.content_type == "post":
+            update_post_counts.delay(reaction.object_id)
+
+    def perform_destroy(self, instance):
+        post_id = instance.object_id if instance.content_type == "post" else None
+        instance.delete()
+        if post_id:
+            update_post_counts.delay(post_id)
+
+
+class PageViewSet(viewsets.ModelViewSet):
+    queryset = Page.objects.all()
+    serializer_class = PageSerializer
+    permission_classes = [permissions.IsAdminUser]
+    lookup_field = "slug"
+
+
+class RevisionViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Revision.objects.all()
+    serializer_class = RevisionSerializer
+    permission_classes = [permissions.IsAdminUser]
+
+
+class MenuViewSet(viewsets.ModelViewSet):
+    queryset = Menu.objects.all()
+    serializer_class = MenuSerializer
+    permission_classes = [permissions.IsAdminUser]
+
+
+class MenuItemViewSet(viewsets.ModelViewSet):
+    queryset = MenuItem.objects.all()
+    serializer_class = MenuItemSerializer
+    permission_classes = [permissions.IsAdminUser]
+
+
+class RoleViewSet(viewsets.ModelViewSet):
+    queryset = Role.objects.all()
+    serializer_class = RoleSerializer
+    permission_classes = [permissions.IsAdminUser]
+
+
+class PermissionViewSet(viewsets.ModelViewSet):
+    queryset = Permission.objects.all()
+    serializer_class = PermissionSerializer
+    permission_classes = [permissions.IsAdminUser]
