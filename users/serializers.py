@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 from verification.serializers import VerificationSerializer
 
-from .models import InGameID, Role, Team, TeamInvitation, User, Referral
+from .models import InGameID, Team, TeamInvitation, User, Referral
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -136,16 +136,6 @@ class TeamSerializer(serializers.ModelSerializer):
         read_only_fields = ("captain", "members")
 
 
-class RoleSerializer(serializers.ModelSerializer):
-    """Serializer for the Role model."""
-
-    name = serializers.CharField(source="group.name")
-
-    class Meta:
-        model = Role
-        fields = ("id", "name", "description", "is_default")
-
-
 class TeamInvitationSerializer(serializers.ModelSerializer):
     """Serializer for the TeamInvitation model."""
 
@@ -190,5 +180,3 @@ class TopPlayerByRankSerializer(serializers.ModelSerializer):
             "wins",
             "profile_picture",
         )
-
-
