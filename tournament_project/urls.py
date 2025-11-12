@@ -40,6 +40,7 @@ urlpatterns = [
     ),
 
     # --- App URLs ---
+    path("auth/", include("djoser.social.urls")),
     path("api/users/", include("users.urls")),
     path("api/tournaments/", include("tournaments.urls")),
     path("api/chat/", include("chat.urls")),

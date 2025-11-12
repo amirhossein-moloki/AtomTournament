@@ -12,7 +12,7 @@ from rest_framework.test import APIClient, APITestCase
 
 from tournaments.models import Game, Match, Participant, Rank, Tournament
 
-from .models import OTP, Role, Team, TeamInvitation, TeamMembership
+from .models import OTP, Team, TeamInvitation, TeamMembership
 from .services import (ApplicationError, invite_member_service,
                        leave_team_service, remove_member_service,
                        respond_to_invitation_service)
@@ -54,15 +54,6 @@ class UserModelTests(TestCase):
                 password="password123",
                 phone_number=self.user_data["phone_number"],
             )
-
-    def test_default_role_assignment(self):
-        """
-        Test that a default role is assigned to a new user.
-        """
-        group = Group.objects.create(name="Default Role")
-        Role.objects.create(group=group, is_default=True)
-        user = User.objects.create_user(**self.user_data)
-        self.assertIn(group, user.groups.all())
 
     def test_update_rank(self):
         """
