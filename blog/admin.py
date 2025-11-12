@@ -154,7 +154,7 @@ class MenuAdmin(ModelAdmin):
 @admin.register(Role)
 class RoleAdmin(ModelAdmin):
     list_display = ("name",)
-    filter_horizontal = ("permissions",)
+    autocomplete_fields = ["permissions"]
 
 
 @admin.register(Permission)

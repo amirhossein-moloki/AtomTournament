@@ -224,6 +224,7 @@ jsonschema-specifications==2025.4.1
     # via jsonschema
 kombu==5.5.4
     # via celery
+markdown==3.10
 mccabe==0.7.0
     # via flake8
 multidict==6.6.4
