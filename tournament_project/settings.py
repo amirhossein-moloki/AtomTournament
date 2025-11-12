@@ -292,6 +292,11 @@ DJOSER = {
     "SITE_NAME": SITE_NAME,
 }
 
+OAUTH_REDIRECT_WHITELIST = {
+    "https://atom-game.ir/auth/callback.html",
+    "http://localhost:3000/auth/callback.html",
+    "http://127.0.0.1:5500/auth/callback.html",
+}
 
 FILE_UPLOAD_HANDLERS = [
     "tournaments.upload_handlers.SafeFileUploadHandler",

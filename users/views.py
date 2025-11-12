@@ -32,6 +32,8 @@ from .services import (ApplicationError, invite_member_service,
                        leave_team_service, remove_member_service,
                        respond_to_invitation_service, send_otp_service,
                        verify_otp_service)
+from djoser.social.views import ProviderAuthView
+from django.http import JsonResponse
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -53,6 +55,15 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             )
 
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
+
+
+class CustomProviderAuthView(ProviderAuthView):
+    def get(self, request, *args, **kwargs):
+        redirect_uri = request.GET.get("redirect_uri", "").strip()
+        if redirect_uri not in settings.OAUTH_REDIRECT_WHITELIST:
+            return JsonResponse({"error": "invalid_redirect_uri"}, status=400)
+
+        return super().get(request, *args, **kwargs)
 
 
 class UserViewSet(viewsets.ModelViewSet):

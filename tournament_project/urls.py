@@ -15,6 +15,7 @@ from rest_framework_simplejwt.views import (
 )
 
 from tournaments.views import private_media_view
+from users.views import CustomProviderAuthView
 
 urlpatterns = [
     # --- JWT Token Authentication ---
@@ -40,6 +41,11 @@ urlpatterns = [
     ),
 
     # --- App URLs ---
+    path(
+        "auth/o/google-oauth2/",
+        CustomProviderAuthView.as_view(),
+        name="google-oauth-start",
+    ),
     path("auth/", include("djoser.social.urls")),
     path("api/users/", include("users.urls")),
     path("api/tournaments/", include("tournaments.urls")),
