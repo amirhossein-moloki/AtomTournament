@@ -56,6 +56,7 @@ urlpatterns = [
     path("api/reporting/", include("reporting.urls")),
     path("api/management/", include("management_dashboard.urls")),
     path("api/atomgamebot/", include("atomgamebot.urls")),
+    path("api/blog/", include("blog.urls")),
 ]
 
 # --- Debug Tools & Static/Media ---

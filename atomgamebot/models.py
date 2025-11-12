@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from .tasks import create_bot_article
+# from .tasks import create_bot_article
 
 class BotSettings(models.Model):
     """
@@ -33,14 +33,14 @@ class BotSettings(models.Model):
         # For updates, check if the status changed from False to True
         if not is_new:
             original = BotSettings.objects.get(pk=self.pk)
-            if not original.is_active and self.is_active:
-                create_bot_article.delay()
+            # if not original.is_active and self.is_active:
+                # create_bot_article.delay()
 
         super().save(*args, **kwargs)
 
         # For new instances, trigger if created as active
-        if is_new and self.is_active:
-            create_bot_article.delay()
+        # if is_new and self.is_active:
+            # create_bot_article.delay()
 
     class Meta:
         verbose_name = "AtomGameBot Settings"
