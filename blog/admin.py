@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.utils.safestring import mark_safe
+from django_summernote.admin import SummernoteModelAdmin
 from .models import (
     AuthorProfile, Category, Tag, Post, PostTag, Series, Media, Revision,
     Comment, Reaction, Page, Menu, MenuItem
@@ -7,9 +9,16 @@ from .models import (
 
 @admin.register(Media)
 class MediaAdmin(admin.ModelAdmin):
-    list_display = ('title', 'type', 'mime', 'size_bytes', 'created_at')
+    list_display = ('title', 'type', 'mime', 'size_bytes', 'created_at', 'image_preview')
     list_filter = ('type', 'mime')
     search_fields = ('title', 'alt_text')
+    readonly_fields = ('image_preview',)
+
+    def image_preview(self, obj):
+        if obj.type == 'image' and obj.url:
+            return mark_safe(f'<img src="{obj.url}" style="max-height: 100px; max-width: 100px;" />')
+        return "No Preview"
+    image_preview.short_description = 'Preview'
 
 
 @admin.register(AuthorProfile)
@@ -46,12 +55,36 @@ class PostTagInline(admin.TabularInline):
 
 
 @admin.register(Post)
-class PostAdmin(admin.ModelAdmin):
-    list_display = ('title', 'slug', 'author', 'category', 'status', 'published_at')
+class PostAdmin(SummernoteModelAdmin):
+    summernote_fields = ('content',)
+    list_display = ('title', 'slug', 'author', 'category', 'status', 'visibility', 'published_at', 'views_count', 'likes_count')
     list_filter = ('status', 'visibility', 'category', 'author')
     search_fields = ('title', 'content')
     prepopulated_fields = {'slug': ('title',)}
     inlines = [PostTagInline]
+    fieldsets = (
+        (None, {
+            'fields': ('title', 'slug', 'author', 'content', 'excerpt')
+        }),
+        ('Metadata', {
+            'fields': ('status', 'visibility', 'published_at', 'scheduled_at')
+        }),
+        ('Categorization', {
+            'fields': ('category', 'series')
+        }),
+        ('Media', {
+            'fields': ('cover_media', 'og_image')
+        }),
+        ('SEO', {
+            'classes': ('collapse',),
+            'fields': ('seo_title', 'seo_description', 'canonical_url')
+        }),
+        ('Counters', {
+            'classes': ('collapse',),
+            'fields': ('views_count', 'likes_count', 'comments_count', 'reading_time_sec')
+        }),
+    )
+    readonly_fields = ('views_count', 'likes_count', 'comments_count')
 
 
 @admin.register(Revision)
