@@ -1,8 +1,12 @@
+import logging
+
 from celery import shared_task
 from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from sms_ir import SmsIr
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(
@@ -52,15 +56,25 @@ def send_email_notification(self, email, subject, template_name, context):
     """
     Sends an email notification using a specified template.
     """
-    html_message = render_to_string(template_name, context)
-    send_mail(
-        subject,
-        None,  # Plain text message, can be empty if HTML message is provided
-        settings.EMAIL_HOST_USER,
-        [email],
-        fail_silently=False,
-        html_message=html_message,
-    )
+    logger.info(f"Attempting to send email to {email} with subject '{subject}'")
+    try:
+        html_message = render_to_string(template_name, context)
+        send_mail(
+            subject,
+            None,  # Plain text message, can be empty if HTML message is provided
+            settings.EMAIL_HOST_USER,
+            [email],
+            fail_silently=False,
+            html_message=html_message,
+        )
+        logger.info(f"Successfully sent email to {email}")
+    except Exception as e:
+        logger.error(
+            f"Failed to send email to {email} with subject '{subject}'. Error: {e}",
+            exc_info=True,
+        )
+        # Re-raise the exception to allow Celery to handle retries
+        raise
 
 
 @shared_task(ignore_result=True)
