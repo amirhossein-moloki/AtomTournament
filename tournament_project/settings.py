@@ -90,7 +90,6 @@ INSTALLED_APPS = [
     "formtools",
     "management_dashboard",
     "atomgamebot",
-    "blog",
 ]
 
 AUTHENTICATION_BACKENDS = [
