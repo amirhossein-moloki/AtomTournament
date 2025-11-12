@@ -1,5 +1,9 @@
 #!/bin/sh
 
+# Install dependencies
+echo "Installing dependencies..."
+pip install -r requirements.txt
+
 # Wait for the database to be ready
 echo "Waiting for postgres..."
 while ! nc -z $POSTGRES_HOST $POSTGRES_PORT; do
