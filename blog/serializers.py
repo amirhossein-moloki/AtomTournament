@@ -1,4 +1,5 @@
 from rest_framework import serializers
+import markdown
 from .models import (
     Post,
     Category,
@@ -64,6 +65,7 @@ class PostSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
     cover_media = MediaSerializer(read_only=True)
     og_image = MediaSerializer(read_only=True)
+    content_md = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
@@ -73,6 +75,7 @@ class PostSerializer(serializers.ModelSerializer):
             "title",
             "excerpt",
             "content",
+            "content_md",
             "status",
             "visibility",
             "published_at",
@@ -88,6 +91,9 @@ class PostSerializer(serializers.ModelSerializer):
             "likes_count",
             "comments_count",
         ]
+
+    def get_content_md(self, obj):
+        return markdown.markdown(obj.content)
 
 
 class CommentSerializer(serializers.ModelSerializer):
