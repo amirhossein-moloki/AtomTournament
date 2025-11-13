@@ -235,8 +235,8 @@ class UserViewSetTests(APITestCase):
 class TeamViewSetTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
-        self.teams_url = "/api/users/teams/"
-        self.respond_invitation_url = "/api/users/teams/respond-invitation/"
+        self.teams_url = "/api/teams/"
+        self.respond_invitation_url = "/api/teams/respond-invitation/"
         self.captain = User.objects.create_user(
             username="captain", password="password", phone_number="+10"
         )
@@ -474,13 +474,13 @@ class MatchHistoryAPITests(APITestCase):
         self.assertNotIn(self.match3.id, match_ids)
 
     def test_get_team_match_history_unauthenticated(self):
-        url = f"/api/users/teams/{self.team1.id}/match-history/"
+        url = f"/api/teams/{self.team1.id}/match-history/"
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_get_team_match_history_authenticated(self):
         self.client.force_authenticate(user=self.user1)
-        url = f"/api/users/teams/{self.team1.id}/match-history/"
+        url = f"/api/teams/{self.team1.id}/match-history/"
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
