@@ -1,0 +1,11 @@
+{% include "django/forms/widgets/textarea.html" %}
+{% load summernote_tags %}
+<script>
+    (function ($) {
+        $(document).ready(function () {
+            $('#{{ id }}').summernote({
+                {% summernote_config %}
+            });
+        });
+    })(jQuery);
+</script>
