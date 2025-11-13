@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.utils.safestring import mark_safe
 from django_summernote.admin import SummernoteModelAdmin
+from .forms import AuthorProfileForm
 from .models import (
     AuthorProfile, Category, Tag, Post, PostTag, Series, Media, Revision,
     Comment, Reaction, Page, Menu, MenuItem
@@ -23,6 +24,7 @@ class MediaAdmin(admin.ModelAdmin):
 
 @admin.register(AuthorProfile)
 class AuthorProfileAdmin(admin.ModelAdmin):
+    form = AuthorProfileForm
     list_display = ('display_name', 'user')
     search_fields = ('display_name', 'user__username')
 
