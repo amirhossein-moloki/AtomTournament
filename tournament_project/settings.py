@@ -96,6 +96,7 @@ INSTALLED_APPS = [
     "management_dashboard",
     "atomgamebot",
     "blog",
+    "django_summernote",
 ]
 
 AUTHENTICATION_BACKENDS = [
