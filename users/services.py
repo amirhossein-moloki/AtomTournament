@@ -16,30 +16,38 @@ class ApplicationError(Exception):
 
 def send_otp_service(identifier=None):
     """
-    Generates an OTP and sends it to the user's identifier (phone or email).
-    The OTP is stored in the cache.
+    Generates an OTP, stores it in the database, and sends it to the user's identifier (phone or email).
     """
     if not identifier:
         raise ApplicationError("Identifier (email or phone number) is required.")
 
     otp_code = "".join(random.choices(string.digits, k=6))
 
-    # Store OTP in cache for 5 minutes
-    cache.set(f"otp_{identifier}", otp_code, timeout=300)
+    # Invalidate previous OTPs for this identifier
+    OTP.objects.filter(identifier=identifier, is_used=False).update(is_used=True)
 
-    # Send SMS or Email based on identifier type
-    if "@" in identifier:
+    # Determine if identifier is email or phone
+    is_email = "@" in identifier
+    user = None
+    if is_email:
         try:
             user = User.objects.get(email=identifier)
             if not user.is_phone_verified:
-                raise ApplicationError(
-                    "Please verify your phone number before using email to log in."
-                )
+                raise ApplicationError("Please verify your phone number before using email to log in.")
         except User.DoesNotExist:
-            raise ApplicationError(
-                "No user found with this email. Please sign up with your phone number first."
-            )
+            raise ApplicationError("No user found with this email. Please sign up with your phone number first.")
+    else:
+        user = User.objects.filter(phone_number=identifier).first()
 
+    # Create and save the new OTP
+    OTP.objects.create(
+        identifier=identifier,
+        code=otp_code,
+        user=user
+    )
+
+    # Send SMS or Email based on identifier type
+    if is_email:
         plain_message = f"Your verification code is: {otp_code}"
         send_email_notification.delay(
             subject="Your Verification Code",
@@ -52,19 +60,24 @@ def send_otp_service(identifier=None):
 
 def verify_otp_service(identifier=None, code=None):
     """
-    Verifies the OTP. If valid, logs in the user or creates a new one.
+    Verifies the OTP from the database. If valid, logs in the user or creates a new one.
     """
     if not code:
         raise ApplicationError("Code is required.")
     if not identifier:
         raise ApplicationError("Identifier (email or phone number) is required.")
 
-    cached_otp = cache.get(f"otp_{identifier}")
-    if not cached_otp or cached_otp != code:
+    try:
+        otp = OTP.objects.get(identifier=identifier, code=code, is_used=False)
+    except OTP.DoesNotExist:
         raise ApplicationError("Invalid OTP.")
 
-    # OTP is valid, clear it from cache
-    cache.delete(f"otp_{identifier}")
+    if otp.is_expired:
+        raise ApplicationError("OTP has expired.")
+
+    # Mark OTP as used
+    otp.is_used = True
+    otp.save()
 
     # Determine if identifier is email or phone
     is_email = "@" in identifier

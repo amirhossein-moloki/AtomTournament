@@ -29,13 +29,33 @@ services:
       timeout: 3s
       retries: 5
 
-  celery:
+  celery_high_priority:
     build: .
-    command: celery -A tournament_project worker -l info
+    command: celery -A tournament_project worker -l info -Q high_priority
     volumes:
       - .:/app
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  celery_default:
+    build: .
+    command: celery -A tournament_project worker -l info -Q default
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  celery_low_priority:
+    build: .
+    command: celery -A tournament_project worker -l info -Q low_priority
+    volumes:
+      - .:/app
     env_file:
       - .env
     depends_on:
