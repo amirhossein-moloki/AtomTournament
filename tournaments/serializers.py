@@ -116,6 +116,7 @@ class TournamentReadOnlySerializer(serializers.ModelSerializer):
     final_rank = serializers.SerializerMethodField()
     prize_won = serializers.SerializerMethodField()
     spots_left = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
 
     class Meta:
         model = Tournament
@@ -149,8 +150,12 @@ class TournamentReadOnlySerializer(serializers.ModelSerializer):
             "team_size",
             "mode",
             "spots_left",
+            "status",
         )
         read_only_fields = fields
+
+    def get_status(self, obj):
+        return obj.status
 
     def get_spots_left(self, obj):
         if obj.max_participants is None:
@@ -228,6 +233,7 @@ class TournamentListSerializer(TournamentReadOnlySerializer):
             "prize_pool",
             "type",
             "spots_left",
+            "status",
         )
 
 
