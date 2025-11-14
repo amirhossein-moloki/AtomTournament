@@ -21,6 +21,7 @@ from .serializers import (
     WithdrawalRequestSerializer,
 )
 from .services import ZibalService
+from .tasks import verify_deposit_task
 
 logger = logging.getLogger(__name__)
 
@@ -101,96 +102,29 @@ class VerifyDepositAPIView(APIView):
 
         if not track_id or not order_id:
             logger.warning("Zibal callback missing trackId or orderId.")
+            # Redirect to a generic failure page if we don't have enough info
             return redirect(settings.ZIBAL_PAYMENT_FAILED_URL)
-
-        try:
-            tx = Transaction.objects.get(order_id=order_id, authority=track_id)
-        except Transaction.DoesNotExist:
-            logger.error(
-                f"Transaction not found for order_id={order_id} and track_id={track_id}"
-            )
-            return redirect(settings.ZIBAL_PAYMENT_FAILED_URL)
-
-        if tx.status != "pending":
-            logger.warning(
-                f"Verification attempt on already processed transaction {tx.id} with status {tx.status}"
-            )
-            # Redirect based on final status to avoid reprocessing
-            if tx.status == "success":
-                return redirect(settings.ZIBAL_PAYMENT_SUCCESS_URL)
-            else:
-                return redirect(settings.ZIBAL_PAYMENT_FAILED_URL)
 
         if success != "1":
-            tx.status = "failed"
-            tx.description = "Payment canceled by user or failed at gateway."
-            tx.save()
-            return redirect(settings.ZIBAL_PAYMENT_FAILED_URL)
-
-        zibal = ZibalService()
-        verification_response = zibal.verify_payment(track_id=track_id)
-        result = verification_response.get("result")
-
-        if result == 100:  # Success
+            # If the payment was not successful according to Zibal, no need to verify.
+            # We can optionally update our transaction status to 'cancelled' or 'failed' here.
             try:
-                with transaction.atomic():
-                    # Re-fetch wallet with lock to prevent race conditions
-                    wallet = Wallet.objects.select_for_update().get(id=tx.wallet.id)
-                    tx.status = "success"
-                    tx.ref_number = verification_response.get("refNumber")
-                    tx.description = verification_response.get(
-                        "description", "Payment successful"
-                    )
-                    # You might want to save cardNumber securely if needed, here it's just logged
-                    card_number = verification_response.get("cardNumber")
-                    logger.info(
-                        f"Successful payment for tx {tx.id} with card {card_number}"
-                    )
-
-                    wallet.total_balance += tx.amount
-                    wallet.withdrawable_balance += tx.amount
-                    wallet.save()
-                    tx.save()
-                return redirect(settings.ZIBAL_PAYMENT_SUCCESS_URL)
-            except Exception as e:
-                logger.error(
-                    f"Error processing successful deposit for transaction {tx.id}: {e}"
-                )
-                # The transaction remains pending for manual/automatic reconciliation
-                return redirect(settings.ZIBAL_PAYMENT_FAILED_URL)
-
-        elif result == 201:  # Already verified
-            logger.warning(
-                f"Zibal reported transaction {tx.id} (trackId: {track_id}) as already verified."
-            )
-            # Potentially a race condition, let's double check our DB
-            if tx.status == "pending":
-                # Our DB is out of sync, let's use inquiry to get the final state
-                inquiry_response = zibal.inquiry_payment(track_id=track_id)
-                if inquiry_response.get("status") == 1: # Paid and verified
-                     # Process as success
-                    with transaction.atomic():
-                        wallet = Wallet.objects.select_for_update().get(id=tx.wallet.id)
-                        wallet.total_balance += tx.amount
-                        wallet.withdrawable_balance += tx.amount
-                        wallet.save()
-                        tx.status = "success"
-                        tx.ref_number = inquiry_response.get("refNumber")
-                        tx.save()
-                    return redirect(settings.ZIBAL_PAYMENT_SUCCESS_URL)
-
-            return redirect(settings.ZIBAL_PAYMENT_SUCCESS_URL)
-
-        else:  # Verification failed
-            tx.status = "failed"
-            tx.description = verification_response.get(
-                "message", "Payment verification failed."
-            )
-            tx.save()
-            logger.error(
-                f"Zibal verification failed for tx {tx.id} (trackId: {track_id}): {tx.description}"
-            )
+                tx = Transaction.objects.get(order_id=order_id, authority=track_id, status="pending")
+                tx.status = "failed"
+                tx.description = "Payment canceled by user or failed at gateway."
+                tx.save()
+            except Transaction.DoesNotExist:
+                # If transaction not found, we can't do much. Log it.
+                logger.error(f"Transaction not found for failed payment callback. order_id={order_id}, track_id={track_id}")
             return redirect(settings.ZIBAL_PAYMENT_FAILED_URL)
+
+        # Instead of verifying here, queue a Celery task.
+        verify_deposit_task.delay(track_id=track_id, order_id=order_id)
+
+        # Redirect the user to a pending/processing page.
+        # This URL should be defined in your settings.
+        processing_url = getattr(settings, 'ZIBAL_PAYMENT_PROCESSING_URL', settings.ZIBAL_PAYMENT_SUCCESS_URL)
+        return redirect(processing_url)
 
 
 class WithdrawalRequestAPIView(generics.CreateAPIView):

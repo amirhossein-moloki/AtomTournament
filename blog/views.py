@@ -8,11 +8,17 @@ from .serializers import (
     SeriesSerializer, MediaSerializer, RevisionSerializer, CommentSerializer,
     ReactionSerializer, PageSerializer, MenuSerializer, MenuItemSerializer
 )
+from .tasks import process_media_image, notify_author_on_new_comment
 
 
 class MediaViewSet(viewsets.ModelViewSet):
     queryset = Media.objects.all()
     serializer_class = MediaSerializer
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        if 'image' in instance.file.content_type:
+            process_media_image.delay(instance.id)
 
 
 class AuthorProfileViewSet(viewsets.ModelViewSet):
@@ -48,6 +54,10 @@ class RevisionViewSet(viewsets.ModelViewSet):
 class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        notify_author_on_new_comment.delay(instance.id)
 
 
 class ReactionViewSet(viewsets.ModelViewSet):

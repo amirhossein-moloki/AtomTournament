@@ -3,6 +3,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Count, F, Prefetch, Q, Sum
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -156,6 +158,7 @@ class DashboardView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
+    @method_decorator(cache_page(60 * 5))
     def get(self, request):
         user = request.user
 
@@ -216,6 +219,7 @@ class TopPlayersView(APIView):
     """
     permission_classes = [AllowAny]
 
+    @method_decorator(cache_page(60 * 15))
     def get(self, request):
         users = User.objects.annotate(
             total_winnings=models.Sum(
@@ -234,6 +238,7 @@ class TopPlayersByRankView(APIView):
 
     permission_classes = [AllowAny]
 
+    @method_decorator(cache_page(60 * 15))
     def get(self, request):
         users = (
             User.objects.annotate(
