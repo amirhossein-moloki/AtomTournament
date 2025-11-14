@@ -40,11 +40,11 @@ def send_otp_service(identifier=None):
                 "No user found with this email. Please sign up with your phone number first."
             )
 
+        plain_message = f"Your verification code is: {otp_code}"
         send_email_notification.delay(
-            identifier,
-            "Your Verification Code",
-            "notifications/email/login_verification_email.html",
-            {"code": otp_code},
+            subject="Your Verification Code",
+            message=plain_message,
+            recipient_list=[identifier],
         )
     else:
         send_sms_notification.delay(identifier, {"code": otp_code})

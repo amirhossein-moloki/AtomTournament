@@ -52,25 +52,31 @@ def send_sms_notification(self, phone_number, context):
     retry_kwargs={"max_retries": 4},
     ignore_result=True,
 )
-def send_email_notification(self, email, subject, template_name, context):
+def send_email_notification(
+    self, subject, message, recipient_list, html_message=None
+):
     """
-    Sends an email notification using a specified template.
+    Sends an email notification. It can be plain text, HTML, or both.
     """
-    logger.info(f"Attempting to send email to {email} with subject '{subject}'")
+    if not isinstance(recipient_list, list):
+        recipient_list = [recipient_list]
+
+    logger.info(
+        f"Attempting to send email to {recipient_list} with subject '{subject}'"
+    )
     try:
-        html_message = render_to_string(template_name, context)
         send_mail(
             subject,
-            None,  # Plain text message, can be empty if HTML message is provided
+            message,
             settings.EMAIL_HOST_USER,
-            [email],
+            recipient_list,
             fail_silently=False,
             html_message=html_message,
         )
-        logger.info(f"Successfully sent email to {email}")
+        logger.info(f"Successfully sent email to {recipient_list}")
     except Exception as e:
         logger.error(
-            f"Failed to send email to {email} with subject '{subject}'. Error: {e}",
+            f"Failed to send email to {recipient_list} with subject '{subject}'. Error: {e}",
             exc_info=True,
         )
         # Re-raise the exception to allow Celery to handle retries
@@ -105,11 +111,20 @@ def send_tournament_credentials(tournament_id):
                 }
 
                 if p.email:
+                    # The content generation is now handled here, before calling the task.
+                    html_message = render_to_string(
+                        "notifications/email/tournament_joined.html", context
+                    )
+                    plain_message = (
+                        f"You have joined the tournament: {tournament.name}.\n"
+                        f"Room ID: {context.get('room_id', 'N/A')}\n"
+                        f"Password: {context.get('password', 'N/A')}"
+                    )
                     send_email_notification.delay(
-                        p.email,
-                        "Your Tournament Match Credentials",
-                        "notifications/email/tournament_joined.html",
-                        context,
+                        subject="Your Tournament Match Credentials",
+                        message=plain_message,
+                        recipient_list=[p.email],
+                        html_message=html_message,
                     )
                 if p.phone_number:
                     send_sms_notification.delay(str(p.phone_number), context)
