@@ -16,8 +16,9 @@ logger = logging.getLogger(__name__)
     retry_backoff_max=300,
     retry_jitter=True,
     retry_kwargs={"max_retries": 5},
-    rate_limit="20/m",
+    rate_limit="10/m",
     ignore_result=True,
+    queue='high_priority'
 )
 def send_sms_notification(self, phone_number, context):
     """
@@ -51,6 +52,7 @@ def send_sms_notification(self, phone_number, context):
     retry_jitter=True,
     retry_kwargs={"max_retries": 4},
     ignore_result=True,
+    queue='high_priority'
 )
 def send_email_notification(
     self, subject, message, recipient_list, html_message=None

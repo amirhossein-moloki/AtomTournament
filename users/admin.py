@@ -73,7 +73,13 @@ class InGameIDAdmin(ModelAdmin):
 
 @admin.register(OTP)
 class OTPAdmin(ModelAdmin):
-    list_display = ("user", "code", "created_at", "is_active")
-    search_fields = ("user__username",)
-    list_filter = ("is_active",)
+    list_display = ("identifier", "code", "created_at", "expires_at", "is_used", "is_expired_display")
+    search_fields = ("identifier", "user__username")
+    list_filter = ("is_used",)
     autocomplete_fields = ("user",)
+    readonly_fields = ("created_at", "expires_at", "is_expired_display")
+
+    def is_expired_display(self, obj):
+        return obj.is_expired
+    is_expired_display.boolean = True
+    is_expired_display.short_description = 'Is Expired?'

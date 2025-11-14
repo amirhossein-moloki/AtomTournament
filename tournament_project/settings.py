@@ -431,21 +431,22 @@ ZIBAL_MERCHANT_ID = os.environ.get("ZIBAL_MERCHANT_ID", "zibal")
 
 # Celery Configuration
 CELERY_BROKER_URL = REDIS_URL
-CELERY_RESULT_BACKEND = "django-db"
+CELERY_RESULT_BACKEND = REDIS_URL
 
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
-CELERY_TIMEZONE = "UTC"
+CELERY_TIMEZONE = "Asia/Tehran"
 CELERY_TASK_DEFAULT_QUEUE = "default"
 CELERY_TASK_QUEUES = (
+    Queue("high_priority", Exchange("high_priority"), routing_key="high_priority"),
     Queue("default", Exchange("default"), routing_key="default"),
-    Queue("long-running", Exchange("long-running"), routing_key="long-running"),
+    Queue("low_priority", Exchange("low_priority"), routing_key="low_priority"),
 )
 CELERY_TASK_ROUTES = {
     "tournaments.tasks.run_seed_data_task": {
-        "queue": "long-running",
-        "routing_key": "long-running",
+        "queue": "low_priority",
+        "routing_key": "low_priority",
     }
 }
 CELERY_TASK_ACKS_LATE = True
@@ -460,7 +461,7 @@ CELERY_BROKER_TRANSPORT_OPTIONS = {
     "visibility_timeout": int(os.environ.get("CELERY_VISIBILITY_TIMEOUT", "1200"))
 }
 CELERY_RESULT_EXPIRES = timedelta(
-    hours=int(os.environ.get("CELERY_RESULT_EXPIRES_HOURS", "1"))
+    hours=int(os.environ.get("CELERY_RESULT_EXPIRES_HOURS", "24"))
 )
 if "test" in sys.argv:
     CELERY_TASK_ALWAYS_EAGER = True
