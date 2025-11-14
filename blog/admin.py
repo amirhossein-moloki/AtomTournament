@@ -1,8 +1,10 @@
 from django.contrib import admin
+from django_summernote.admin import SummernoteModelAdmin
 from .models import (
     AuthorProfile, Category, Tag, Post, PostTag, Series, Media, Revision,
     Comment, Reaction, Page, Menu, MenuItem
 )
+from .forms import AuthorProfileForm
 
 
 @admin.register(Media)
@@ -14,6 +16,7 @@ class MediaAdmin(admin.ModelAdmin):
 
 @admin.register(AuthorProfile)
 class AuthorProfileAdmin(admin.ModelAdmin):
+    form = AuthorProfileForm
     list_display = ('display_name', 'user')
     search_fields = ('display_name', 'user__username')
 
@@ -46,7 +49,8 @@ class PostTagInline(admin.TabularInline):
 
 
 @admin.register(Post)
-class PostAdmin(admin.ModelAdmin):
+class PostAdmin(SummernoteModelAdmin):
+    summernote_fields = ('content',)
     list_display = ('title', 'slug', 'author', 'category', 'status', 'published_at')
     list_filter = ('status', 'visibility', 'category', 'author')
     search_fields = ('title', 'content')
