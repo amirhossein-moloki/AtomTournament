@@ -13,9 +13,6 @@ from .models import (
     InGameID,
     OTP,
     Role,
-    Team,
-    TeamInvitation,
-    TeamMembership,
     User,
 )
 
@@ -25,12 +22,6 @@ class InGameIDInline(TabularInline):
     model = InGameID
     extra = 1
     autocomplete_fields = ("game",)
-    classes = ["collapse"]
-
-class TeamMembershipInline(TabularInline):
-    model = TeamMembership
-    extra = 1
-    autocomplete_fields = ("user", "team")
     classes = ["collapse"]
 
 
@@ -78,34 +69,6 @@ class InGameIDAdmin(ModelAdmin):
     list_display = ("user", "game", "player_id")
     search_fields = ("user__username", "game__name", "player_id")
     autocomplete_fields = ("user", "game")
-
-
-@admin.register(Team)
-class TeamAdmin(SimpleHistoryAdmin, ModelAdmin):
-    list_display = ("name", "captain", "max_members")
-    search_fields = ("name", "captain__username")
-    autocomplete_fields = ("captain",)
-    inlines = [TeamMembershipInline]
-
-    # The 'members' field was removed from fieldsets to fix the SystemCheckError
-    fieldsets = (
-        ("Team Info", {"fields": ("name", "team_picture", "captain", "max_members")}),
-    )
-
-
-@admin.register(TeamMembership)
-class TeamMembershipAdmin(ModelAdmin):
-    list_display = ("user", "team", "date_joined")
-    search_fields = ("user__username", "team__name")
-    autocomplete_fields = ("user", "team")
-
-
-@admin.register(TeamInvitation)
-class TeamInvitationAdmin(ModelAdmin):
-    list_display = ("from_user", "to_user", "team", "status", "timestamp")
-    search_fields = ("from_user__username", "to_user__username", "team__name")
-    list_filter = ("status",)
-    autocomplete_fields = ("from_user", "to_user", "team")
 
 
 @admin.register(OTP)

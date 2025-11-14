@@ -7,7 +7,8 @@ from rest_framework.exceptions import PermissionDenied
 
 from notifications.services import send_notification
 from notifications.tasks import send_email_notification, send_sms_notification
-from users.models import Team, User
+from teams.models import Team
+from users.models import User
 from verification.models import Verification
 from wallet.services import process_transaction, process_token_transaction
 from .exceptions import ApplicationError

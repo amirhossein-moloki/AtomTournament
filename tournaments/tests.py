@@ -12,7 +12,8 @@ from PIL import Image
 from rest_framework.test import APIClient, APITestCase
 
 from tournament_project.celery import app as celery_app
-from users.models import Team, TeamMembership, User
+from teams.models import Team, TeamMembership
+from users.models import User
 from verification.models import Verification
 
 from .models import (Game, GameManager, Match, Report, Tournament, TournamentColor,

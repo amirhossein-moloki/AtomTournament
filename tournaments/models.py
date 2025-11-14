@@ -147,7 +147,7 @@ class Tournament(models.Model):
     participants = models.ManyToManyField(
         "users.User", through="Participant", related_name="tournaments", blank=True
     )
-    teams = models.ManyToManyField("users.Team", related_name="tournaments", blank=True)
+    teams = models.ManyToManyField("teams.Team", related_name="tournaments", blank=True)
     creator = models.ForeignKey(
         "users.User",
         on_delete=models.CASCADE,
@@ -175,7 +175,7 @@ class Tournament(models.Model):
         "users.User", related_name="top_placements", blank=True
     )
     top_teams = models.ManyToManyField(
-        "users.Team", related_name="top_placements", blank=True
+        "teams.Team", related_name="top_placements", blank=True
     )
 
     def clean(self):
@@ -248,14 +248,14 @@ class Match(models.Model):
         blank=True,
     )
     participant1_team = models.ForeignKey(
-        "users.Team",
+        "teams.Team",
         on_delete=models.CASCADE,
         related_name="matches_as_participant1",
         null=True,
         blank=True,
     )
     participant2_team = models.ForeignKey(
-        "users.Team",
+        "teams.Team",
         on_delete=models.CASCADE,
         related_name="matches_as_participant2",
         null=True,
@@ -269,7 +269,7 @@ class Match(models.Model):
         blank=True,
     )
     winner_team = models.ForeignKey(
-        "users.Team",
+        "teams.Team",
         on_delete=models.CASCADE,
         related_name="won_matches",
         null=True,
