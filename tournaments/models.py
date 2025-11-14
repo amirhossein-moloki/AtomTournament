@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 
 
 class Rank(models.Model):
@@ -200,6 +201,16 @@ class Tournament(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def status(self):
+        now = timezone.now()
+        if self.start_date > now:
+            return "Upcoming"
+        elif self.start_date <= now < self.end_date:
+            return "Ongoing"
+        else:
+            return "Finished"
 
 
 class Participant(models.Model):
