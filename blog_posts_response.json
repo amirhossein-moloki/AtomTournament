@@ -1,0 +1,132 @@
+[
+  {
+    "id": 1,
+    "slug": "welcome-to-atom-game-blog",
+    "canonical_url": "https://atom-game.ir/blog/welcome-to-atom-game-blog",
+    "title": "به وبلاگ اتم گیم خوش آمدید!",
+    "excerpt": "در این پست، ما شما را با وبلاگ جدید اتم گیم آشنا می‌کنیم و به شما می‌گوییم که چه انتظاراتی می‌توانید از ما داشته باشید.",
+    "content": "<p>سلام به همه گیمرهای عزیز!</p><p>ما در اتم گیم بسیار هیجان‌زده‌ایم که وبلاگ جدید خود را راه‌اندازی کرده‌ایم. اینجا جایی است که ما آخرین اخبار دنیای بازی، تحلیل‌های عمیق، راهنماهای بازی و خیلی چیزهای دیگر را با شما به اشتراک می‌گذاریم.</p><p>منتظر مطالب جذاب ما باشید!</p>",
+    "reading_time_sec": 120,
+    "status": "published",
+    "visibility": "public",
+    "published_at": "2024-10-26T10:00:00Z",
+    "scheduled_at": null,
+    "author": {
+      "user": 1,
+      "display_name": "تیم اتم گیم",
+      "bio": "تیم رسمی اتم گیم، ناشر اخبار و به‌روزرسانی‌های پلتفرم.",
+      "avatar": {
+        "id": 1,
+        "url": "https://cdn.atom-game.ir/media/avatars/atom-game-team.png",
+        "alt_text": "آواتار تیم اتم گیم"
+      },
+      "social_links": {
+        "twitter": "https://twitter.com/atomgame",
+        "instagram": "https://instagram.com/atomgame"
+      }
+    },
+    "category": {
+      "id": 1,
+      "slug": "announcements",
+      "name": "اطلاعیه‌ها",
+      "description": "آخرین اخبار و اطلاعیه‌های رسمی از تیم اتم گیم."
+    },
+    "series": null,
+    "cover_media": {
+      "id": 2,
+      "url": "https://cdn.atom-game.ir/media/post-covers/welcome-banner.jpg",
+      "alt_text": "بنر خوش‌آمدگویی وبلاگ اتم گیم"
+    },
+    "seo_title": "وبلاگ اتم گیم | اخبار و راهنماهای دنیای بازی",
+    "seo_description": "به وبلاگ اتم گیم بپیوندید تا از آخرین اخبار، تحلیل‌ها و راهنماهای دنیای بازی مطلع شوید.",
+    "og_image": {
+      "id": 3,
+      "url": "https://cdn.atom-game.ir/media/og-images/welcome-og.jpg",
+      "alt_text": "تصویر Open Graph برای پست خوش‌آمدگویی"
+    },
+    "views_count": 1523,
+    "likes_count": 256,
+    "comments_count": 32,
+    "tags": [
+      {
+        "id": 1,
+        "slug": "general",
+        "name": "عمومی",
+        "description": "موضوعات عمومی و کلی."
+      },
+      {
+        "id": 2,
+        "slug": "updates",
+        "name": "به‌روزرسانی‌ها",
+        "description": "آخرین به‌روزرسانی‌های پلتفرم اتم گیم."
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "slug": "top-5-strategy-games-2024",
+    "canonical_url": "https://atom-game.ir/blog/top-5-strategy-games-2024",
+    "title": "۵ بازی استراتژیک برتر سال ۲۰۲۴ که باید تجربه کنید",
+    "excerpt": "در این مقاله، ما به معرفی و بررسی ۵ تا از بهترین بازی‌های سبک استراتژی که در سال ۲۰۲۴ منتشر شده‌اند می‌پردازیم.",
+    "content": "<h2>مقدمه</h2><p>سال ۲۰۲۴ سالی پر از شگفتی برای طرفداران بازی‌های استراتژیک بود. در ادامه به معرفی ۵ بازی برتر این سبک می‌پردازیم:</p><h3>۱. بازی اول</h3><p>توضیحات بازی اول...</p><h3>۲. بازی دوم</h3><p>توضیحات بازی دوم...</p>",
+    "reading_time_sec": 350,
+    "status": "published",
+    "visibility": "public",
+    "published_at": "2024-11-10T14:30:00Z",
+    "scheduled_at": null,
+    "author": {
+      "user": 2,
+      "display_name": "علی رضایی",
+      "bio": "منتقد و تحلیل‌گر بازی‌های ویدیویی، با تمرکز بر سبک استراتژی و نقش‌آفرینی.",
+      "avatar": {
+        "id": 4,
+        "url": "https://cdn.atom-game.ir/media/avatars/ali-rezaei.png",
+        "alt_text": "آواتار علی رضایی"
+      },
+      "social_links": {
+        "linkedin": "https://linkedin.com/in/alirezaei"
+      }
+    },
+    "category": {
+      "id": 2,
+      "slug": "reviews",
+      "name": "نقد و بررسی",
+      "description": "بررسی و تحلیل جدیدترین بازی‌های روز دنیا."
+    },
+    "series": {
+        "id": 1,
+        "slug": "top-games-2024",
+        "title": "برترین بازی‌های ۲۰۲۴",
+        "description": "مجموعه‌ای از مقالات که به معرفی بهترین بازی‌های سال ۲۰۲۴ در سبک‌های مختلف می‌پردازد."
+    },
+    "cover_media": {
+      "id": 5,
+      "url": "https://cdn.atom-game.ir/media/post-covers/strategy-games-2024.jpg",
+      "alt_text": "تصویر کاور برای مقاله بازی‌های استراتژیک"
+    },
+    "seo_title": "بهترین بازی‌های استراتژیک ۲۰۲۴",
+    "seo_description": "با بهترین بازی‌های استراتژیک سال ۲۰۲۴ آشنا شوید و ببینید کدام عناوین ارزش تجربه کردن را دارند.",
+    "og_image": {
+      "id": 6,
+      "url": "https://cdn.atom-game.ir/media/og-images/strategy-games-2024-og.jpg",
+      "alt_text": "تصویر Open Graph برای بازی‌های استراتژیک"
+    },
+    "views_count": 874,
+    "likes_count": 142,
+    "comments_count": 15,
+    "tags": [
+      {
+        "id": 3,
+        "slug": "strategy",
+        "name": "استراتژی",
+        "description": "بازی‌هایی که نیاز به تفکر و برنامه‌ریزی دارند."
+      },
+      {
+        "id": 4,
+        "slug": "top-list",
+        "name": "لیست برترین‌ها",
+        "description": "مقالات لیستی و معرفی برترین‌ها."
+      }
+    ]
+  }
+]
