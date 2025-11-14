@@ -26,7 +26,7 @@ ENV LC_ALL fa_IR.UTF-8
 
 # Install dependencies
 COPY requirements.txt /app/
-RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
+RUN pip install --no-cache-dir --default-timeout=600 -i https://mirrors.aliyun.com/pypi/simple -r requirements.txt
 
 # Copy project
 COPY . /app/
