@@ -14,7 +14,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from notifications.tasks import send_tournament_credentials
-from users.serializers import TeamSerializer
+from teams.serializers import TeamSerializer
 from wallet.models import Transaction
 
 from .exceptions import ApplicationError

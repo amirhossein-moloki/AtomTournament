@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 from verification.serializers import VerificationSerializer
 
-from .models import InGameID, Role, Team, TeamInvitation, User, Referral
+from .models import InGameID, Role, User, Referral
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -125,17 +125,6 @@ class UserSerializer(serializers.ModelSerializer):
         return instance
 
 
-class TeamSerializer(serializers.ModelSerializer):
-    """Serializer for the Team model."""
-
-    members = UserReadOnlySerializer(many=True, read_only=True)
-
-    class Meta:
-        model = Team
-        fields = ("id", "name", "captain", "members", "team_picture")
-        read_only_fields = ("captain", "members")
-
-
 class RoleSerializer(serializers.ModelSerializer):
     """Serializer for the Role model."""
 
@@ -146,28 +135,12 @@ class RoleSerializer(serializers.ModelSerializer):
         fields = ("id", "name", "description", "is_default")
 
 
-class TeamInvitationSerializer(serializers.ModelSerializer):
-    """Serializer for the TeamInvitation model."""
-
-    class Meta:
-        model = TeamInvitation
-        fields = ("id", "from_user", "to_user", "team", "status", "timestamp")
-
-
 class TopPlayerSerializer(serializers.ModelSerializer):
     total_winnings = serializers.DecimalField(max_digits=10, decimal_places=2)
 
     class Meta:
         model = User
         fields = ("id", "username", "total_winnings")
-
-
-class TopTeamSerializer(serializers.ModelSerializer):
-    total_winnings = serializers.DecimalField(max_digits=10, decimal_places=2)
-
-    class Meta:
-        model = Team
-        fields = ("id", "name", "total_winnings")
 
 
 class TopPlayerByRankSerializer(serializers.ModelSerializer):

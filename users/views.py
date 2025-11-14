@@ -15,23 +15,19 @@ from tournaments.serializers import (TournamentListSerializer,
                                      TournamentReadOnlySerializer)
 from wallet.models import Transaction
 from wallet.serializers import TransactionSerializer
-
-from .models import Role, Team, TeamInvitation, TeamMembership, User
-from .permissions import (IsAdminUser, IsCaptain, IsCaptainOrReadOnly,
-                          IsOwnerOrReadOnly)
+from teams.models import Team
+from .models import Role, User
+from .permissions import (IsAdminUser, IsOwnerOrReadOnly)
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from .serializers import CustomTokenObtainPairSerializer
 
 from .serializers import (RoleSerializer,
-                          TeamInvitationSerializer, TeamSerializer,
                           TopPlayerByRankSerializer, TopPlayerSerializer,
-                          TopTeamSerializer, UserCreateSerializer,
+                          UserCreateSerializer,
                           UserReadOnlySerializer, UserSerializer)
-from .services import (ApplicationError, invite_member_service,
-                       leave_team_service, remove_member_service,
-                       respond_to_invitation_service, send_otp_service,
+from .services import (ApplicationError, send_otp_service,
                        verify_otp_service)
 
 
@@ -153,130 +149,6 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class TeamViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for managing teams.
-    """
-
-    queryset = Team.objects.all().select_related("captain").prefetch_related("members")
-    serializer_class = TeamSerializer
-    permission_classes = [IsCaptainOrReadOnly]
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ["name", "captain"]
-
-    def get_permissions(self):
-        if self.action in ["list", "retrieve"]:
-            return [AllowAny()]
-        return super().get_permissions()
-
-    def perform_create(self, serializer):
-        team = serializer.save(captain=self.request.user)
-        TeamMembership.objects.create(user=self.request.user, team=team)
-
-    @action(
-        detail=True,
-        methods=["post"],
-        permission_classes=[IsCaptain],
-        url_path="add-member",
-    )
-    def invite_member(self, request, pk=None):
-        """
-        Invite a member to a team.
-        """
-        team = self.get_object()
-        user_id = request.data.get("user_id")
-        if not user_id:
-            return Response(
-                {"error": "User ID is required."}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        try:
-            invite_member_service(team=team, from_user=request.user, to_user_id=user_id)
-            return Response(
-                {"message": "Invitation sent successfully."}, status=status.HTTP_200_OK
-            )
-        except ApplicationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(
-        detail=False,
-        methods=["get"],
-        permission_classes=[IsAuthenticated],
-        url_path="invitations",
-    )
-    def invitations(self, request):
-        """
-        List all pending invitations for the current user.
-        """
-        invitations = TeamInvitation.objects.filter(
-            to_user=request.user, status="pending"
-        )
-        serializer = TeamInvitationSerializer(invitations, many=True)
-        return Response(serializer.data)
-
-    @action(
-        detail=False,
-        methods=["post"],
-        permission_classes=[IsAuthenticated],
-        url_path="respond-invitation",
-    )
-    def respond_invitation(self, request):
-        """
-        Respond to a team invitation.
-        """
-        invitation_id = request.data.get("invitation_id")
-        status_action = request.data.get("status")
-        if not invitation_id or not status_action:
-            return Response(
-                {"error": "Invitation ID and status are required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            respond_to_invitation_service(
-                invitation_id=invitation_id, user=request.user, status=status_action
-            )
-            return Response(
-                {"message": f"Invitation {status_action}."}, status=status.HTTP_200_OK
-            )
-        except (ApplicationError, ValidationError) as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
-    def leave_team(self, request, pk=None):
-        """
-        Leave a team.
-        """
-        team = self.get_object()
-        try:
-            leave_team_service(team=team, user=request.user)
-            return Response(
-                {"message": "You have left the team."}, status=status.HTTP_200_OK
-            )
-        except ApplicationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(detail=True, methods=["post"], permission_classes=[IsCaptain])
-    def remove_member(self, request, pk=None):
-        """
-        Remove a member from a team.
-        """
-        team = self.get_object()
-        user_id = request.data.get("user_id")
-        if not user_id:
-            return Response(
-                {"error": "User ID is required."}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        try:
-            remove_member_service(team=team, captain=request.user, member_id=user_id)
-            return Response(
-                {"message": "Member removed successfully."}, status=status.HTTP_200_OK
-            )
-        except ApplicationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-
 class DashboardView(APIView):
     """
     API view for user dashboard.
@@ -378,23 +250,6 @@ class TopPlayersByRankView(APIView):
         return Response(serializer.data)
 
 
-class TopTeamsView(APIView):
-    """
-    API view for getting top teams by prize money.
-    """
-    permission_classes = [AllowAny]
-
-    def get(self, request):
-        teams = Team.objects.annotate(
-            total_winnings=models.Sum(
-                "members__wallet__transactions__amount",
-                filter=models.Q(members__wallet__transactions__transaction_type="prize"),
-            )
-        ).order_by("-total_winnings")
-        serializer = TopTeamSerializer(teams, many=True)
-        return Response(serializer.data)
-
-
 from django.db.models import Q
 from rest_framework import generics
 from tournaments.models import Match
@@ -427,21 +282,6 @@ class UserMatchHistoryView(generics.ListAPIView):
             | Q(participant2_user__id=user_id)
             | Q(participant1_team__members__id=user_id)
             | Q(participant2_team__members__id=user_id)
-        ).distinct()
-
-
-class TeamMatchHistoryView(generics.ListAPIView):
-    """
-    API view to list match history for a specific team.
-    """
-
-    serializer_class = MatchReadOnlySerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        team_id = self.kwargs["pk"]
-        return Match.objects.filter(
-            Q(participant1_team__id=team_id) | Q(participant2_team__id=team_id)
         ).distinct()
 
 

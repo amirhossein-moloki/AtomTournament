@@ -97,63 +97,6 @@ class InGameID(models.Model):
         unique_together = ("user", "game")
 
 
-class Team(models.Model):
-    name = models.CharField(max_length=100)
-    captain = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="captained_teams"
-    )
-    members = models.ManyToManyField(
-        User, through="TeamMembership", related_name="teams"
-    )
-    team_picture = models.ImageField(upload_to="team_pictures/", null=True, blank=True)
-    max_members = models.PositiveIntegerField(default=5)
-
-    def __str__(self):
-        return self.name
-
-
-def validate_user_team_limit(user):
-    if user.teams.count() >= 10:
-        raise ValidationError("A user cannot be in more than 10 teams.")
-
-
-class TeamMembership(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    team = models.ForeignKey(Team, on_delete=models.CASCADE)
-    date_joined = models.DateField(auto_now_add=True)
-
-    class Meta:
-        unique_together = ("user", "team")
-
-    def save(self, *args, **kwargs):
-        validate_user_team_limit(self.user)
-        if self.team.members.count() >= self.team.max_members:
-            raise ValidationError("This team is already full.")
-        super().save(*args, **kwargs)
-
-
-class TeamInvitation(models.Model):
-    INVITATION_STATUS_CHOICES = (
-        ("pending", "Pending"),
-        ("accepted", "Accepted"),
-        ("rejected", "Rejected"),
-    )
-    from_user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="sent_invitations"
-    )
-    to_user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="received_invitations"
-    )
-    team = models.ForeignKey(Team, on_delete=models.CASCADE)
-    status = models.CharField(
-        max_length=20, choices=INVITATION_STATUS_CHOICES, default="pending"
-    )
-    timestamp = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        unique_together = ("from_user", "to_user", "team")
-
-
 class OTP(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     code = models.CharField(max_length=6)

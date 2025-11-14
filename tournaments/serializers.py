@@ -1,7 +1,8 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from users.serializers import TeamSerializer, UserReadOnlySerializer
+from teams.serializers import TeamSerializer
+from users.serializers import UserReadOnlySerializer
 
 from .models import (Game, GameImage, GameManager, Match, Participant, Rank,
                      Report, Scoring, Tournament, TournamentColor,
