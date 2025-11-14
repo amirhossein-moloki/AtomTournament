@@ -4,6 +4,8 @@ from django.db import models
 from django.db.models import Prefetch
 from django.http import FileResponse, Http404
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
@@ -37,6 +39,7 @@ from .services import (approve_winner_submission_service, confirm_match_result,
                        dispute_match_result, generate_matches, join_tournament,
                        reject_report_service, reject_winner_submission_service,
                        resolve_report_service)
+from .tasks import generate_matches_task, approve_winner_submission_task
 
 
 class StandardResultsSetPagination(PageNumberPagination):
@@ -135,9 +138,9 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
         """
         tournament = self.get_object()
         try:
-            generate_matches(tournament)
-            return Response({"message": "Matches generated successfully."})
-        except ValidationError as e:
+            generate_matches_task.delay(tournament.id)
+            return Response({"message": "Match generation has been started."})
+        except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
@@ -398,8 +401,8 @@ class WinnerSubmissionViewSet(viewsets.ModelViewSet):
         Approve a winner submission and pay the prize.
         """
         submission = self.get_object()
-        approve_winner_submission_service(submission)
-        return Response({"message": "Submission approved and prize paid."})
+        approve_winner_submission_task.delay(submission.id)
+        return Response({"message": "Submission approval process has been started."})
 
     @action(detail=True, methods=["post"], permission_classes=[IsTournamentCreatorOrAdmin])
     def reject(self, request, pk=None):
@@ -450,6 +453,7 @@ class TopTournamentsView(APIView):
 
     permission_classes = [AllowAny]
 
+    @method_decorator(cache_page(60 * 15))
     def get(self, request):
         past_tournaments = Tournament.objects.filter(
             end_date__lt=timezone.now()
@@ -480,6 +484,7 @@ class TotalPrizeMoneyView(APIView):
 
     permission_classes = [AllowAny]
 
+    @method_decorator(cache_page(60 * 15))
     def get(self, request):
         total_prize_money = (
             Transaction.objects.filter(transaction_type="prize").aggregate(

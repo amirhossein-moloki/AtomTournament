@@ -1,0 +1,47 @@
+from celery import shared_task
+import logging
+from notifications.tasks import send_email_notification
+
+logger = logging.getLogger(__name__)
+
+
+@shared_task
+def process_media_image(media_id):
+    """
+    Celery task to process an uploaded image (e.g., create thumbnails).
+    """
+    from .models import Media
+    try:
+        media = Media.objects.get(id=media_id)
+        # In a real-world scenario, you would use a library like Pillow
+        # to open media.file, generate a thumbnail, and save it.
+        # For this example, we'll just log the action.
+        logger.info(f"Processing image for media: {media.title}")
+        # Example: generate_thumbnail(media.file.path)
+    except Media.DoesNotExist:
+        logger.error(f"Media with id {media_id} not found for processing.")
+
+
+@shared_task
+def notify_author_on_new_comment(comment_id):
+    """
+    Celery task to send a notification to the post author about a new comment.
+    """
+    from .models import Comment
+    try:
+        comment = Comment.objects.select_related('post', 'post__author', 'post__author__user').get(id=comment_id)
+        post_author = comment.post.author.user
+
+        if post_author.email:
+            send_email_notification.delay(
+                recipient_email=post_author.email,
+                subject=f"New comment on your post '{comment.post.title}'",
+                template_name="notifications/email/new_comment_notification.html",
+                context={
+                    "post_title": comment.post.title,
+                    "commenter_name": comment.author_name or "An anonymous user",
+                    "comment_content": comment.content,
+                },
+            )
+    except Comment.DoesNotExist:
+        logger.error(f"Comment with id {comment_id} not found for notification task.")
