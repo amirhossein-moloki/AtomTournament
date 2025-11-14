@@ -28,7 +28,7 @@ class AuthorProfile(models.Model):
     display_name = models.CharField(max_length=255)
     bio = models.TextField(blank=True)
     avatar = models.ForeignKey(Media, on_delete=models.SET_NULL, null=True, blank=True)
-    social_links = models.JSONField(default=dict)
+    social_links = models.JSONField(default=dict, blank=True)
 
     def __str__(self):
         return self.display_name
