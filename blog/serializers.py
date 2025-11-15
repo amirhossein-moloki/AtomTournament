@@ -14,7 +14,7 @@ class MediaSerializer(serializers.ModelSerializer):
 class AuthorProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = AuthorProfile
-        fields = '__all__'
+        fields = ('user', 'display_name', 'bio', 'avatar')
 
 
 class CategorySerializer(serializers.ModelSerializer):
