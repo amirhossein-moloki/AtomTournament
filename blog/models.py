@@ -142,7 +142,7 @@ class Comment(models.Model):
         ('spam', 'Spam'),
         ('removed', 'Removed'),
     )
-    post = models.ForeignKey(Post, on_delete=models.CASCADE)
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
     author_name = models.CharField(max_length=255)

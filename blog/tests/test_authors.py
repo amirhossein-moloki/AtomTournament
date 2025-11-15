@@ -49,7 +49,7 @@ class AuthorProfileAPITest(BaseAPITestCase):
         Ensures we can update an author profile.
         """
         self._authenticate_as_staff()
-        author_profile = AuthorProfileFactory()
+        author_profile = self.staff_author_profile # Use the staff's own profile
         url = reverse('authorprofile-detail', kwargs={'pk': author_profile.pk})
         data = {'display_name': 'Updated Name'}
         response = self.client.patch(url, data, format='json')
@@ -62,7 +62,7 @@ class AuthorProfileAPITest(BaseAPITestCase):
         Ensures we can delete an author profile.
         """
         self._authenticate_as_staff()
-        author_profile = AuthorProfileFactory()
+        author_profile = self.staff_author_profile # Use the staff's own profile
         url = reverse('authorprofile-detail', kwargs={'pk': author_profile.pk})
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
