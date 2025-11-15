@@ -52,6 +52,8 @@ from rest_framework import status
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from .pagination import CustomCursorPagination
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -122,32 +124,44 @@ class PostViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='related', serializer_class=PostListSerializer)
     def related(self, request, slug=None):
         """
-        Returns a list of related posts based on common tags.
+        Returns a list of related posts based on content similarity using TF-IDF.
         """
-        post = self.get_object()
-        tags = post.tags.all()
-        if not tags.exists():
-            return Response([])
+        try:
+            current_post = self.get_object()
+            published_posts = Post.objects.filter(status='published').exclude(pk=current_post.pk)
 
-        # Find posts with at least one common tag
-        related_posts = Post.objects.filter(
-            tags__in=tags,
-            status='published'
-        ).exclude(pk=post.pk)
+            if not published_posts.exists():
+                return Response([])
 
-        # Annotate with the count of common tags
-        related_posts = related_posts.annotate(
-            common_tags_count=models.Count('tags', filter=models.Q(tags__in=tags))
-        )
+            # Prepare documents for TF-IDF
+            documents = [f"{post.title} {post.excerpt} {post.content}" for post in published_posts]
+            current_document = f"{current_post.title} {current_post.excerpt} {current_post.content}"
 
-        # Order by the number of common tags and then by publish date
-        related_posts = related_posts.order_by('-common_tags_count', '-published_at').distinct()
+            # Prepend the current post's document to the list to ensure it's part of the matrix
+            documents.insert(0, current_document)
 
-        # Limit to 5 results
-        top_related_posts = related_posts[:5]
+            # Create TF-IDF matrix
+            vectorizer = TfidfVectorizer(stop_words='english', max_df=0.85, min_df=2)
+            tfidf_matrix = vectorizer.fit_transform(documents)
 
-        serializer = self.get_serializer(top_related_posts, many=True)
-        return Response(serializer.data)
+            # Calculate cosine similarity between the current post and all others
+            cosine_similarities = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:]).flatten()
+
+            # Get indices of the top 5 most similar posts
+            # We add 1 to the indices because we are comparing with the matrix slice that excludes the first element
+            related_indices = cosine_similarities.argsort()[-5:][::-1]
+
+            # Get the actual Post objects
+            related_posts = [published_posts[i] for i in related_indices]
+
+            serializer = self.get_serializer(related_posts, many=True)
+            return Response(serializer.data)
+        except Post.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            # Log the exception for debugging
+            print(f"Error in related posts action: {e}")
+            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class SeriesViewSet(viewsets.ModelViewSet):

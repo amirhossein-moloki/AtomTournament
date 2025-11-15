@@ -52,6 +52,7 @@ aiohttp==3.12.15
 smsir-python==1.0.8
 pillow==11.3.0
 pyopenssl
+scikit-learn
 
 # Admin Enhancements
 django-unfold

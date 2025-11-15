@@ -27,6 +27,7 @@ class UserFactory(factory.django.DjangoModelFactory):
 class AuthorProfileFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = AuthorProfile
+        django_get_or_create = ('user',)
 
     user = factory.SubFactory(UserFactory)
     display_name = factory.LazyAttribute(lambda o: o.user.get_full_name())

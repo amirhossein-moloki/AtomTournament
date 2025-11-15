@@ -7,22 +7,28 @@ from blog.tests.base import BaseAPITestCase
 
 
 class AuthorProfileAPITest(BaseAPITestCase):
-    def test_create_author_profile(self):
+    def test_update_own_author_profile(self):
         """
-        Ensures we can create a new author profile.
+        Ensures a user can update their own author profile.
         """
-        self._authenticate_as_staff()
-        user = UserFactory()
-        url = reverse('authorprofile-list')
-        data = {
-            'user': user.id,
-            'display_name': 'Test Author',
-            'bio': 'A test bio.'
-        }
-        response = self.client.post(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(AuthorProfile.objects.count(), 3)
-        self.assertEqual(AuthorProfile.objects.latest('user_id').display_name, 'Test Author')
+        self._authenticate() # Authenticate as the normal user
+        url = reverse('authorprofile-detail', kwargs={'pk': self.author_profile.pk})
+        data = {'display_name': 'New Display Name'}
+        response = self.client.patch(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.author_profile.refresh_from_db()
+        self.assertEqual(self.author_profile.display_name, 'New Display Name')
+
+    def test_cannot_update_other_author_profile(self):
+        """
+        Ensures a user cannot update another user's author profile.
+        """
+        self._authenticate() # Authenticate as the normal user
+        # Try to update the staff user's profile
+        url = reverse('authorprofile-detail', kwargs={'pk': self.staff_author_profile.pk})
+        data = {'display_name': 'Should Not Work'}
+        response = self.client.patch(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_list_author_profiles(self):
         """
