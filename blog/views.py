@@ -17,7 +17,7 @@ class MediaViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save()
-        if 'image' in instance.file.content_type:
+        if 'image' in instance.mime:
             process_media_image.delay(instance.id)
 
 
