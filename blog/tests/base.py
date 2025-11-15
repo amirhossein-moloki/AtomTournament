@@ -1,16 +1,17 @@
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from blog.factories import UserFactory, AuthorProfileFactory
+from blog.factories import UserFactory
+from blog.models import AuthorProfile
 
 
 class BaseAPITestCase(APITestCase):
     def setUp(self):
         super().setUp()
         self.user = UserFactory()
-        self.author_profile = AuthorProfileFactory(user=self.user)
+        self.author_profile = AuthorProfile.objects.get(user=self.user)
         self.staff_user = UserFactory(is_staff=True)
-        self.staff_author_profile = AuthorProfileFactory(user=self.staff_user)
+        self.staff_author_profile = AuthorProfile.objects.get(user=self.staff_user)
 
     def _get_jwt_token(self, user):
         refresh = RefreshToken.for_user(user)
