@@ -43,6 +43,9 @@ class PostTagSerializer(serializers.ModelSerializer):
 
 class PostSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
+    tag_ids = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Tag.objects.all(), source='tags', write_only=True
+    )
 
     class Meta:
         model = Post
