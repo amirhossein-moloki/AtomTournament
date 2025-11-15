@@ -1,5 +1,7 @@
 from django.urls import reverse
 from rest_framework import status
+from django.utils import timezone
+from datetime import timedelta
 
 from blog.factories import PostFactory, CategoryFactory, TagFactory
 from blog.models import Post
@@ -38,8 +40,9 @@ class PostAPITest(BaseAPITestCase):
         self.assertEqual(len(response.data), 3)
 
     def test_retrieve_post(self):
-        post = PostFactory()
-        url = reverse('post-detail', kwargs={'pk': post.pk})
+        yesterday = timezone.now() - timedelta(days=1)
+        post = PostFactory(status='published', published_at=yesterday)
+        url = reverse('post-detail', kwargs={'slug': post.slug})
         response = self.client.get(url, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['title'], post.title)
@@ -47,7 +50,7 @@ class PostAPITest(BaseAPITestCase):
     def test_update_post(self):
         self._authenticate_as_staff()
         post = PostFactory(author=self.staff_author_profile)
-        url = reverse('post-detail', kwargs={'pk': post.pk})
+        url = reverse('post-detail', kwargs={'slug': post.slug})
         data = {'title': 'Updated Title'}
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -57,7 +60,7 @@ class PostAPITest(BaseAPITestCase):
     def test_delete_post(self):
         self._authenticate_as_staff()
         post = PostFactory(author=self.staff_author_profile)
-        url = reverse('post-detail', kwargs={'pk': post.pk})
+        url = reverse('post-detail', kwargs={'slug': post.slug})
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Post.objects.filter(pk=post.pk).exists())
