@@ -36,6 +36,7 @@ boto3==1.40.10
 # Testing
 fakeredis==2.30.3
 coverage==7.10.3
+factory-boy
 
 # Code Quality
 black==25.1.0
