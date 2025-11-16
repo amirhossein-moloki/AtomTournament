@@ -223,6 +223,8 @@ jmespath==1.0.1
     # via
     #   boto3
     #   botocore
+joblib==1.5.2
+    # via scikit-learn
 jsonschema==4.25.0
     # via drf-spectacular
 jsonschema-specifications==2025.4.1
@@ -237,6 +239,10 @@ multidict==6.6.4
     #   yarl
 mypy-extensions==1.1.0
     # via black
+numpy==2.3.4
+    # via
+    #   scikit-learn
+    #   scipy
 oauthlib==3.3.1
     # via
     #   requests-oauthlib
@@ -329,6 +335,10 @@ rpds-py==0.27.0
     #   referencing
 s3transfer==0.13.1
     # via boto3
+scikit-learn==1.7.2
+    # via -r requirements.in
+scipy==1.16.3
+    # via scikit-learn
 service-identity==24.2.0
     # via twisted
 shortuuid==1.0.11
@@ -349,6 +359,8 @@ sqlparse==0.5.3
     #   django-silk
 tablib==3.8.0
     # via django-import-export
+threadpoolctl==3.6.0
+    # via scikit-learn
 twilio==9.7.0
     # via -r requirements.in
 twisted[tls]==25.5.0
@@ -393,8 +405,3 @@ zope-interface==7.2
 # The following packages are considered to be unsafe in a requirements file:
 # pip
 # setuptools
-pytest
-pytest-django
-pytest-cov
-factory-boy
-freezegun
