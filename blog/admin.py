@@ -65,15 +65,15 @@ class RevisionAdmin(admin.ModelAdmin):
 
 @admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):
-    list_display = ('author_name', 'post', 'status', 'created_at')
+    list_display = ('user', 'post', 'status', 'created_at')
     list_filter = ('status',)
-    search_fields = ('author_name', 'author_email', 'content')
+    search_fields = ('user__username', 'content')
 
 
 @admin.register(Reaction)
 class ReactionAdmin(admin.ModelAdmin):
-    list_display = ('target_type', 'target_id', 'reaction', 'user', 'created_at')
-    list_filter = ('target_type', 'reaction')
+    list_display = ('user', 'reaction', 'content_object', 'created_at')
+    list_filter = ('reaction',)
 
 
 @admin.register(Page)

@@ -43,6 +43,7 @@ class CommentAPITest(BaseAPITestCase):
         self.assertTrue(Comment.objects.filter(parent=parent_comment).exists())
 
     def test_list_comments_for_post(self):
+        self._authenticate()
         post = PostFactory()
         CommentFactory.create_batch(3, post=post)
         url = reverse('comment-list') + f'?post={post.pk}'

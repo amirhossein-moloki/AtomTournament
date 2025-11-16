@@ -102,8 +102,6 @@ class CommentFactory(factory.django.DjangoModelFactory):
 
     post = factory.SubFactory(PostFactory)
     user = factory.SubFactory(UserFactory)
-    author_name = factory.LazyAttribute(lambda o: o.user.get_full_name())
-    author_email = factory.LazyAttribute(lambda o: o.user.email)
     content = factory.LazyAttribute(lambda _: fake.paragraph())
     status = 'approved'
 
@@ -134,17 +132,19 @@ class RevisionFactory(factory.django.DjangoModelFactory):
     change_note = factory.LazyAttribute(lambda _: fake.sentence())
 
 
+from django.contrib.contenttypes.models import ContentType
+
 class ReactionFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Reaction
 
-    target_type = 'post'
-    target_id = factory.SelfAttribute('post.id')
     user = factory.SubFactory(UserFactory)
     reaction = 'like'
-
-    class Params:
-        post = factory.SubFactory(PostFactory)
+    content_type = factory.LazyAttribute(
+        lambda o: ContentType.objects.get_for_model(o.content_object)
+    )
+    object_id = factory.SelfAttribute('content_object.id')
+    content_object = factory.SubFactory(PostFactory)
 
 
 class TagFactory(factory.django.DjangoModelFactory):
