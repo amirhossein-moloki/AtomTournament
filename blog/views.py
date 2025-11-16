@@ -1,3 +1,4 @@
+import logging
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from .permissions import IsOwnerOrReadOnly, IsAdminUserOrReadOnly
@@ -5,6 +6,8 @@ from .models import (
     AuthorProfile, Category, Tag, Post, Series, Media, Revision,
     Comment, Reaction, Page, Menu, MenuItem
 )
+
+logger = logging.getLogger(__name__)
 from .serializers import (
     AuthorProfileSerializer, CategorySerializer, TagSerializer,
     PostListSerializer, PostDetailSerializer,
@@ -52,8 +55,6 @@ from rest_framework import status
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from .pagination import CustomCursorPagination
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -97,15 +98,12 @@ class PostViewSet(viewsets.ModelViewSet):
         return queryset.filter(status='published', published_at__lte=timezone.now())
 
     def perform_create(self, serializer):
-        """Set the author of the post to the current user."""
-        try:
-            author_profile = AuthorProfile.objects.get(user=self.request.user)
-            serializer.save(author=author_profile)
-        except AuthorProfile.DoesNotExist:
-            # Handle cases where the user does not have an author profile
-            # This might involve creating one or raising a validation error
-            from rest_framework.exceptions import ValidationError
-            raise ValidationError("Authenticated user does not have an associated AuthorProfile.")
+        """Set the author of the post to the current user, creating an author profile if it doesn't exist."""
+        author_profile, created = AuthorProfile.objects.get_or_create(
+            user=self.request.user,
+            defaults={'display_name': self.request.user.username}
+        )
+        serializer.save(author=author_profile)
 
     @action(detail=True, methods=['post'], permission_classes=[IsOwnerOrReadOnly])
     def publish(self, request, pk=None):
@@ -124,44 +122,36 @@ class PostViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='related', serializer_class=PostListSerializer)
     def related(self, request, slug=None):
         """
-        Returns a list of related posts based on content similarity using TF-IDF.
+        Returns a list of related posts based on shared tags.
         """
         try:
             current_post = self.get_object()
-            published_posts = Post.objects.filter(status='published').exclude(pk=current_post.pk)
+            tag_ids = current_post.tags.values_list('id', flat=True)
 
-            if not published_posts.exists():
+            if not tag_ids:
                 return Response([])
 
-            # Prepare documents for TF-IDF
-            documents = [f"{post.title} {post.excerpt} {post.content}" for post in published_posts]
-            current_document = f"{current_post.title} {current_post.excerpt} {current_post.content}"
+            # Find posts that share at least one tag, excluding the current post
+            related_posts = Post.objects.filter(
+                status='published',
+                tags__in=tag_ids
+            ).exclude(pk=current_post.pk).distinct()
 
-            # Prepend the current post's document to the list to ensure it's part of the matrix
-            documents.insert(0, current_document)
+            # Annotate with the count of common tags
+            related_posts = related_posts.annotate(
+                common_tags=models.Count('tags', filter=models.Q(tags__in=tag_ids))
+            )
 
-            # Create TF-IDF matrix
-            vectorizer = TfidfVectorizer(stop_words='english', max_df=0.85, min_df=2)
-            tfidf_matrix = vectorizer.fit_transform(documents)
-
-            # Calculate cosine similarity between the current post and all others
-            cosine_similarities = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:]).flatten()
-
-            # Get indices of the top 5 most similar posts
-            # We add 1 to the indices because we are comparing with the matrix slice that excludes the first element
-            related_indices = cosine_similarities.argsort()[-5:][::-1]
-
-            # Get the actual Post objects
-            related_posts = [published_posts[i] for i in related_indices]
+            # Order by the number of common tags and then by publication date
+            related_posts = related_posts.order_by('-common_tags', '-published_at')[:5]
 
             serializer = self.get_serializer(related_posts, many=True)
             return Response(serializer.data)
         except Post.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Post not found."}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            # Log the exception for debugging
-            print(f"Error in related posts action: {e}")
-            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.error(f"Error in 'related' action for post {slug}: {e}", exc_info=True)
+            return Response({"error": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class SeriesViewSet(viewsets.ModelViewSet):
@@ -176,10 +166,11 @@ class RevisionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
 
 
+from rest_framework.permissions import IsAuthenticated
 class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
 
     def get_queryset(self):
         """
@@ -206,16 +197,11 @@ class CommentViewSet(viewsets.ModelViewSet):
         """
         Set the commenter to the current user and populate author details.
         """
-        if self.request.user.is_authenticated:
-            serializer.save(
-                user=self.request.user,
-                author_name=self.request.user.get_full_name() or self.request.user.username,
-                author_email=self.request.user.email
-            )
-        else:
-            # For anonymous users, name and email should be provided in the request
-            serializer.save()
-
+        serializer.save(
+            user=self.request.user,
+            author_name=self.request.user.get_full_name() or self.request.user.username,
+            author_email=self.request.user.email
+        )
         notify_author_on_new_comment.delay(serializer.instance.id)
 
 
