@@ -54,7 +54,7 @@ class CommentForPostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ('id', 'user', 'author_name', 'content', 'created_at', 'parent')
+        fields = ('id', 'user', 'content', 'created_at', 'parent')
 
 
 class PostListSerializer(serializers.ModelSerializer):
@@ -63,6 +63,8 @@ class PostListSerializer(serializers.ModelSerializer):
     category = serializers.StringRelatedField()
     cover_media = MediaSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
+    likes_count = serializers.SerializerMethodField()
+    comments_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
@@ -71,6 +73,12 @@ class PostListSerializer(serializers.ModelSerializer):
             'visibility', 'published_at', 'author', 'category', 'cover_media',
             'views_count', 'likes_count', 'comments_count', 'tags'
         )
+
+    def get_likes_count(self, obj):
+        return obj.reactions.filter(reaction='like').count()
+
+    def get_comments_count(self, obj):
+        return obj.comments.count()
 
 
 class PostDetailSerializer(serializers.ModelSerializer):
@@ -86,11 +94,19 @@ class PostDetailSerializer(serializers.ModelSerializer):
         many=True, queryset=Tag.objects.all(), source='tags', write_only=True,
         help_text="List of Tag IDs to associate with the post."
     )
+    likes_count = serializers.SerializerMethodField()
+    comments_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
         fields = '__all__'
-        read_only_fields = ('author', 'views_count', 'likes_count', 'comments_count')
+        read_only_fields = ('author', 'views_count')
+
+    def get_likes_count(self, obj):
+        return obj.reactions.filter(reaction='like').count()
+
+    def get_comments_count(self, obj):
+        return obj.comments.count()
 
 
 # Let's keep the original PostSerializer for creation/update, or adapt the DetailSerializer.
@@ -105,15 +121,32 @@ class RevisionSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(read_only=True)
+
     class Meta:
         model = Comment
-        fields = '__all__'
+        fields = ('id', 'post', 'user', 'parent', 'content', 'created_at', 'status')
+        read_only_fields = ('status',)
 
+
+from django.contrib.contenttypes.models import ContentType
 
 class ReactionSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(read_only=True)
+
     class Meta:
         model = Reaction
-        fields = '__all__'
+        fields = ('id', 'user', 'reaction', 'content_type', 'object_id', 'created_at')
+
+    def validate(self, attrs):
+        content_type = attrs['content_type']
+        object_id = attrs['object_id']
+        ModelClass = content_type.model_class()
+
+        if not ModelClass.objects.filter(pk=object_id).exists():
+            raise serializers.ValidationError("The target object does not exist.")
+
+        return attrs
 
 
 class PageSerializer(serializers.ModelSerializer):

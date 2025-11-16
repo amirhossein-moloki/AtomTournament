@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.models import ContentType
 
 User = get_user_model()
 
@@ -105,9 +107,8 @@ class Post(models.Model):
     seo_description = models.TextField(blank=True)
     og_image = models.ForeignKey(Media, on_delete=models.SET_NULL, null=True, blank=True, related_name='post_og_images')
     views_count = models.PositiveIntegerField(default=0)
-    likes_count = models.PositiveIntegerField(default=0)
-    comments_count = models.PositiveIntegerField(default=0)
     tags = models.ManyToManyField(Tag, through='PostTag')
+    reactions = GenericRelation('Reaction', object_id_field='object_id', content_type_field='content_type')
 
     def __str__(self):
         return self.title
@@ -143,34 +144,34 @@ class Comment(models.Model):
         ('removed', 'Removed'),
     )
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
-    author_name = models.CharField(max_length=255)
-    author_email = models.EmailField()
     content = models.TextField()
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
     ip = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.CharField(max_length=255, blank=True)
+    reactions = GenericRelation('Reaction', object_id_field='object_id', content_type_field='content_type')
 
     def __str__(self):
-        return f"Comment by {self.author_name} on {self.post.title}"
+        return f"Comment by {self.user} on {self.post.title}"
 
 
 class Reaction(models.Model):
-    TARGET_TYPE_CHOICES = (
-        ('post', 'Post'),
-        ('comment', 'Comment'),
-    )
-    target_type = models.CharField(max_length=10, choices=TARGET_TYPE_CHOICES)
-    target_id = models.PositiveIntegerField()
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     reaction = models.CharField(max_length=50)  # like|emoji_code
     created_at = models.DateTimeField(auto_now_add=True)
-    ip = models.GenericIPAddressField(null=True, blank=True)
+
+    # Generic Foreign Key setup
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+    class Meta:
+        unique_together = ('user', 'content_type', 'object_id', 'reaction')
 
     def __str__(self):
-        return f"{self.reaction} on {self.target_type} {self.target_id}"
+        return f"{self.user}'s {self.reaction} on {self.content_object}"
 
 
 class Page(models.Model):

@@ -1,7 +1,10 @@
 from django.urls import reverse
 from rest_framework import status
 
-from blog.factories import RevisionFactory, ReactionFactory, PostFactory, CommentFactory
+from django.contrib.contenttypes.models import ContentType
+
+from blog.factories import RevisionFactory, PostFactory, CommentFactory
+from blog.models import Post, Comment
 from blog.tests.base import BaseAPITestCase
 
 
@@ -20,9 +23,10 @@ class ReactionAPITest(BaseAPITestCase):
         self._authenticate()
         post = PostFactory()
         url = reverse('reaction-list')
+        content_type = ContentType.objects.get_for_model(Post)
         data = {
-            'target_type': 'post',
-            'target_id': post.pk,
+            'content_type': content_type.pk,
+            'object_id': post.pk,
             'reaction': 'like',
         }
         response = self.client.post(url, data, format='json')
@@ -32,9 +36,10 @@ class ReactionAPITest(BaseAPITestCase):
         self._authenticate()
         comment = CommentFactory()
         url = reverse('reaction-list')
+        content_type = ContentType.objects.get_for_model(Comment)
         data = {
-            'target_type': 'comment',
-            'target_id': comment.pk,
+            'content_type': content_type.pk,
+            'object_id': comment.pk,
             'reaction': 'thumbs_up',
         }
         response = self.client.post(url, data, format='json')
