@@ -1,10 +1,28 @@
 from django.conf import settings
 from django.db import models
+from django.db.models import Count
+from django.db.models.functions import Coalesce
+from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 
 User = get_user_model()
+
+
+class PostManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset()\
+            .select_related('author', 'category')\
+            .prefetch_related('tags')\
+            .annotate(
+                comment_count=Coalesce(
+                    Count('comments', filter=models.Q(comments__is_approved=True)), 0
+                )
+            )
+
+    def published(self):
+        return self.get_queryset().filter(is_published=True)
 
 
 class Media(models.Model):
@@ -74,6 +92,9 @@ class Series(models.Model):
     def __str__(self):
         return self.title
 
+    def get_absolute_url(self):
+        return reverse('post_detail', kwargs={'slug': self.slug})
+
 
 class Post(models.Model):
     STATUS_CHOICES = (
@@ -108,9 +129,11 @@ class Post(models.Model):
     og_image = models.ForeignKey(Media, on_delete=models.SET_NULL, null=True, blank=True, related_name='post_og_images')
     views_count = models.PositiveIntegerField(default=0)
     likes_count = models.PositiveIntegerField(default=0)
-    comments_count = models.PositiveIntegerField(default=0)
+    is_published = models.BooleanField(default=False)
     tags = models.ManyToManyField(Tag, through='PostTag')
     reactions = GenericRelation('Reaction', object_id_field='object_id', content_type_field='content_type')
+
+    objects = PostManager()
 
     def __str__(self):
         return self.title
@@ -150,6 +173,7 @@ class Comment(models.Model):
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
     content = models.TextField()
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    is_approved = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     ip = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.CharField(max_length=255, blank=True)

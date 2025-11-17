@@ -402,7 +402,7 @@ else:
 # We disable this during tests as the test client makes plain HTTP requests.
 is_testing = "test" in sys.argv or 'pytest' in sys.modules
 
-SECURE_SSL_REDIRECT = not DEBUG and not is_testing
+SECURE_SSL_REDIRECT = False
 # In production, use secure cookies.
 SESSION_COOKIE_SECURE = not DEBUG and not is_testing
 CSRF_COOKIE_SECURE = not DEBUG and not is_testing
