@@ -100,7 +100,7 @@ class PostDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = '__all__'
-        read_only_fields = ('author', 'views_count')
+        read_only_fields = ('author', 'views_count', 'created_at', 'updated_at')
 
     def get_likes_count(self, obj):
         return obj.reactions.filter(reaction='like').count()

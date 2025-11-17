@@ -111,6 +111,8 @@ class Post(models.Model):
     comments_count = models.PositiveIntegerField(default=0)
     tags = models.ManyToManyField(Tag, through='PostTag')
     reactions = GenericRelation('Reaction', object_id_field='object_id', content_type_field='content_type')
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
 
     def __str__(self):
         return self.title
