@@ -116,7 +116,7 @@ class Post(models.Model):
     title = models.CharField(max_length=255)
     excerpt = models.TextField()
     content = models.TextField()  # Assuming RichText or Markdown is handled on the frontend
-    reading_time_sec = models.PositiveIntegerField(null=True, blank=True)
+    reading_time_sec = models.PositiveIntegerField(default=0)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='draft')
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default='public')
     published_at = models.DateTimeField(null=True, blank=True)
@@ -144,6 +144,8 @@ class Post(models.Model):
             word_count = len(words)
             reading_time_minutes = word_count / 200  # Average reading speed
             self.reading_time_sec = int(reading_time_minutes * 60)
+        else:
+            self.reading_time_sec = 0
         super().save(*args, **kwargs)
 
 

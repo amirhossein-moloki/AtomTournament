@@ -38,7 +38,7 @@ class AuthorProfileAPITest(BaseAPITestCase):
         url = reverse('authorprofile-list')
         response = self.client.get(url, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 5)
+        self.assertEqual(len(response.data), 6)
 
     def test_retrieve_author_profile(self):
         """

@@ -95,10 +95,14 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = (
-            'title', 'excerpt', 'content', 'reading_time_sec', 'status',
-            'visibility', 'published_at', 'scheduled_at', 'category_id', 'series',
-            'cover_media', 'seo_title', 'seo_description', 'og_image', 'tag_ids',
-            'slug', 'canonical_url'
+            'title', 'excerpt', 'content', 'status', 'visibility',
+            'published_at', 'scheduled_at', 'category_id', 'series',
+            'cover_media', 'seo_title', 'seo_description', 'og_image',
+            'tag_ids', 'slug', 'canonical_url', 'likes_count', 'views_count',
+            'reading_time_sec'
+        )
+        read_only_fields = (
+            'likes_count', 'views_count', 'reading_time_sec'
         )
         extra_kwargs = {
             'slug': {'required': False}
