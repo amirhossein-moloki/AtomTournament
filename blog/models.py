@@ -17,12 +17,12 @@ class PostManager(models.Manager):
             .prefetch_related('tags')\
             .annotate(
                 comment_count=Coalesce(
-                    Count('comments', filter=models.Q(comments__is_approved=True)), 0
+                    Count('comments', filter=models.Q(comments__status='approved')), 0
                 )
             )
 
     def published(self):
-        return self.get_queryset().filter(is_published=True)
+        return self.get_queryset().filter(status='published')
 
 
 class Media(models.Model):
@@ -171,7 +171,6 @@ class Comment(models.Model):
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
     content = models.TextField()
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
-    is_approved = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     ip = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.CharField(max_length=255, blank=True)
