@@ -34,7 +34,7 @@ class Media(models.Model):
     width = models.PositiveIntegerField(null=True, blank=True)
     height = models.PositiveIntegerField(null=True, blank=True)
     duration = models.PositiveIntegerField(null=True, blank=True)  # in seconds
-    size_bytes = models.PositiveIntegerField()
+    size_bytes = models.PositiveIntegerField(default=0)
     alt_text = models.CharField(max_length=255, blank=True)
     title = models.CharField(max_length=255, blank=True)
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
@@ -129,6 +129,7 @@ class Post(models.Model):
     seo_description = models.TextField(blank=True)
     og_image = models.ForeignKey(Media, on_delete=models.SET_NULL, null=True, blank=True, related_name='post_og_images')
     views_count = models.PositiveIntegerField(default=0)
+    likes_count = models.PositiveIntegerField(default=0)
     tags = models.ManyToManyField(Tag, through='PostTag')
     reactions = GenericRelation('Reaction', object_id_field='object_id', content_type_field='content_type')
 
