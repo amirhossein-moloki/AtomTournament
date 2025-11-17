@@ -355,7 +355,12 @@ REST_FRAMEWORK = {
         "anon": "100/day",
         "user": "1000/day",
     },
+    'EXCEPTION_HANDLER': 'blog.exceptions.custom_exception_handler',
 }
+
+if 'test' in sys.argv:
+    REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = []
+    REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {}
 
 SPECTACULAR_SETTINGS = {
     "TITLE": f"{SITE_NAME} API",
