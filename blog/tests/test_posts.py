@@ -64,3 +64,9 @@ class PostAPITest(BaseAPITestCase):
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Post.objects.filter(pk=post.pk).exists())
+
+    def test_unique_slug_generation(self):
+        self._authenticate_as_staff()
+        post1 = PostFactory(title='My test post', author=self.staff_author_profile)
+        post2 = PostFactory(title='My test post', author=self.staff_author_profile)
+        self.assertNotEqual(post1.slug, post2.slug)

@@ -4,6 +4,7 @@ from django.db import models
 from django.db.models import Count
 from django.db.models.functions import Coalesce
 from django.urls import reverse
+from django.utils.text import slugify
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
@@ -111,7 +112,7 @@ class Post(models.Model):
         ('unlisted', 'Unlisted'),
     )
 
-    slug = models.SlugField(unique=True)
+    slug = models.SlugField(unique=True, blank=True)
     canonical_url = models.URLField(null=True, blank=True)
     title = models.CharField(max_length=255)
     excerpt = models.TextField()
@@ -139,6 +140,20 @@ class Post(models.Model):
         return self.title
 
     def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.title)
+
+        original_slug = self.slug
+        queryset = Post.objects.all()
+        if self.pk:
+            queryset = queryset.exclude(pk=self.pk)
+
+        # Ensure slug is unique
+        counter = 1
+        while queryset.filter(slug=self.slug).exists():
+            self.slug = f'{original_slug}-{counter}'
+            counter += 1
+
         if self.content:
             words = re.findall(r'\w+', self.content)
             word_count = len(words)
