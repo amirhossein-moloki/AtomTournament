@@ -142,7 +142,9 @@ ASGI_APPLICATION = "tournament_project.asgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-if "test" in sys.argv:
+is_testing_db = "test" in sys.argv or "pytest" in sys.modules
+
+if is_testing_db:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -525,34 +527,10 @@ CACHES = {
     #     "LOCATION": "instant-expiration",
     # },
 }
-if "test" in sys.argv:
+if "test" in sys.argv or "pytest" in sys.modules:
     CACHES = {
         "default": {
-            "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": f"{REDIS_URL}/1",
-            "OPTIONS": {
-                "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            },
-        },
-        "connection-errors": {
-            "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": f"{REDIS_URL}/1",
-            "OPTIONS": {
-                "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            },
-        },
-        "connection-errors-redis": {
-            "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": f"{REDIS_URL}/1",
-            "OPTIONS": {
-                "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            },
-        },
-        "instant-expiration": {
-            "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": f"{REDIS_URL}/1",
-            "OPTIONS": {
-                "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            },
-        },
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "unique-snowflake",
+        }
     }
