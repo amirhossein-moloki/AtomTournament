@@ -19,7 +19,6 @@ class PostAPITest(BaseAPITestCase):
             'slug': 'new-post',
             'excerpt': 'An excerpt.',
             'content': 'Some content.',
-            'reading_time_sec': 120,
             'status': 'draft',
             'visibility': 'private',
             'author': self.staff_author_profile.pk,
@@ -31,6 +30,7 @@ class PostAPITest(BaseAPITestCase):
         self.assertTrue(Post.objects.filter(slug='new-post').exists())
         new_post = Post.objects.get(slug='new-post')
         self.assertEqual(new_post.tags.count(), 2)
+        self.assertIsNotNone(new_post.reading_time_sec)
 
     def test_list_posts(self):
         PostFactory.create_batch(3)
