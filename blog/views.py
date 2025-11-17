@@ -121,29 +121,23 @@ class PostViewSet(viewsets.ModelViewSet):
         """
         Returns a list of related posts based on shared tags.
         """
-        try:
-            current_post = self.get_object()
-            tag_ids = current_post.tags.values_list('id', flat=True)
+        current_post = self.get_object()
+        tag_ids = current_post.tags.values_list('id', flat=True)
 
-            if not tag_ids:
-                return Response([])
+        if not tag_ids:
+            return Response([])
 
-            related_posts = Post.objects.filter(
-                status='published',
-                tags__in=tag_ids
-            ).exclude(pk=current_post.pk).distinct()
+        related_posts = Post.objects.filter(
+            status='published',
+            tags__in=tag_ids
+        ).exclude(pk=current_post.pk).distinct()
 
-            related_posts = related_posts.annotate(
-                common_tags=models.Count('tags', filter=models.Q(tags__in=tag_ids))
-            ).order_by('-common_tags', '-published_at')[:5]
+        related_posts = related_posts.annotate(
+            common_tags=models.Count('tags', filter=models.Q(tags__in=tag_ids))
+        ).order_by('-common_tags', '-published_at')[:5]
 
-            serializer = self.get_serializer(related_posts, many=True)
-            return Response(serializer.data)
-        except Post.DoesNotExist:
-            return Response({"error": "Post not found."}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            # Proper logging should be implemented here
-            return Response({"error": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        serializer = self.get_serializer(related_posts, many=True)
+        return Response(serializer.data)
 
 
 class SeriesViewSet(viewsets.ModelViewSet):
