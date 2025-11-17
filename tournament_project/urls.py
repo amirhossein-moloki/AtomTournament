@@ -58,6 +58,7 @@ urlpatterns = [
     path("api/management/", include("management_dashboard.urls")),
     path("api/atomgamebot/", include("atomgamebot.urls")),
     path("api/blog/", include("blog.urls")),
+    path("blog/", include("blog.ssr_urls")),
     path("summernote/", include("django_summernote.urls")),
 ]
 
