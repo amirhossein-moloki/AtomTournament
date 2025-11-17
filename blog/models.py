@@ -1,3 +1,4 @@
+import re
 from django.conf import settings
 from django.db import models
 from django.db.models import Count
@@ -115,7 +116,7 @@ class Post(models.Model):
     title = models.CharField(max_length=255)
     excerpt = models.TextField()
     content = models.TextField()  # Assuming RichText or Markdown is handled on the frontend
-    reading_time_sec = models.PositiveIntegerField()
+    reading_time_sec = models.PositiveIntegerField(null=True, blank=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='draft')
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default='public')
     published_at = models.DateTimeField(null=True, blank=True)
@@ -135,6 +136,14 @@ class Post(models.Model):
 
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        if self.content:
+            words = re.findall(r'\w+', self.content)
+            word_count = len(words)
+            reading_time_minutes = word_count / 200  # Average reading speed
+            self.reading_time_sec = int(reading_time_minutes * 60)
+        super().save(*args, **kwargs)
 
 
 class PostTag(models.Model):
