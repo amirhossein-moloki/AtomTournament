@@ -13,7 +13,7 @@ class PostAPITest(BaseAPITestCase):
         self._authenticate_as_staff()
         category = CategoryFactory()
         tags = TagFactory.create_batch(2)
-        url = reverse('post-list')
+        url = reverse('post-list-create')
         data = {
             'title': 'New Post',
             'slug': 'new-post',
@@ -34,7 +34,7 @@ class PostAPITest(BaseAPITestCase):
 
     def test_list_posts(self):
         PostFactory.create_batch(3)
-        url = reverse('post-list')
+        url = reverse('post-list-create')
         response = self.client.get(url, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 3)

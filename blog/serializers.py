@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import (
-    AuthorProfile, Category, Tag, Post, PostTag, Series, Media, Revision,
-    Comment, Reaction, Page, Menu, MenuItem
+    AuthorProfile, Category, Tag, Post, Series, Media,
+    Comment, Reaction, Page, Menu, MenuItem, Revision
 )
 
 
@@ -17,16 +17,24 @@ class AuthorProfileSerializer(serializers.ModelSerializer):
         fields = ('user', 'display_name', 'bio', 'avatar')
 
 
+class AuthorForPostSerializer(serializers.ModelSerializer):
+    avatar = MediaSerializer(read_only=True)
+
+    class Meta:
+        model = AuthorProfile
+        fields = ('display_name', 'avatar')
+
+
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = '__all__'
+        fields = ('slug', 'name', 'parent')
 
 
 class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
-        fields = '__all__'
+        fields = ('slug', 'name')
 
 
 class SeriesSerializer(serializers.ModelSerializer):
@@ -35,22 +43,8 @@ class SeriesSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class PostTagSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PostTag
-        fields = '__all__'
-
-
-class AuthorForPostSerializer(serializers.ModelSerializer):
-    """Abbreviated Author serializer for nested display inside Post."""
-    class Meta:
-        model = AuthorProfile
-        fields = ('display_name', 'avatar')
-
-
 class CommentForPostSerializer(serializers.ModelSerializer):
-    """Abbreviated Comment serializer for nested display."""
-    user = serializers.StringRelatedField() # Display user's string representation
+    user = serializers.StringRelatedField()
 
     class Meta:
         model = Comment
@@ -58,60 +52,57 @@ class CommentForPostSerializer(serializers.ModelSerializer):
 
 
 class PostListSerializer(serializers.ModelSerializer):
-    """Serializer for listing posts - less detail."""
     author = AuthorForPostSerializer(read_only=True)
     category = serializers.StringRelatedField()
     cover_media = MediaSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     likes_count = serializers.SerializerMethodField()
-    comments_count = serializers.SerializerMethodField()
+    comments_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Post
         fields = (
-            'id', 'slug', 'title', 'excerpt', 'reading_time_sec', 'status',
-            'visibility', 'published_at', 'author', 'category', 'cover_media',
+            'slug', 'title', 'excerpt', 'reading_time_sec', 'status',
+            'published_at', 'author', 'category', 'cover_media',
             'views_count', 'likes_count', 'comments_count', 'tags'
         )
 
     def get_likes_count(self, obj):
         return obj.reactions.filter(reaction='like').count()
 
-    def get_comments_count(self, obj):
-        return obj.comments.count()
 
-
-class PostDetailSerializer(serializers.ModelSerializer):
-    """Serializer for a single post - full detail."""
-    author = AuthorForPostSerializer(read_only=True)
-    category = CategorySerializer(read_only=True)
+class PostDetailSerializer(PostListSerializer):
     series = SeriesSerializer(read_only=True)
-    cover_media = MediaSerializer(read_only=True)
     og_image = MediaSerializer(read_only=True)
-    tags = TagSerializer(many=True, read_only=True)
-    comments = CommentForPostSerializer(many=True, read_only=True) # Assuming a related_name='comments' on Post model for Comments
+    comments = CommentForPostSerializer(many=True, read_only=True)
+    content = serializers.CharField()
+
+    class Meta(PostListSerializer.Meta):
+        fields = PostListSerializer.Meta.fields + (
+            'content', 'canonical_url', 'series', 'seo_title',
+            'seo_description', 'og_image', 'comments'
+        )
+
+
+class PostCreateUpdateSerializer(serializers.ModelSerializer):
     tag_ids = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=Tag.objects.all(), source='tags', write_only=True,
-        help_text="List of Tag IDs to associate with the post."
+        many=True, queryset=Tag.objects.all(), source='tags', required=False
     )
-    likes_count = serializers.SerializerMethodField()
-    comments_count = serializers.SerializerMethodField()
+    category_id = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(), source='category', required=False
+    )
 
     class Meta:
         model = Post
-        fields = '__all__'
-        read_only_fields = ('author', 'views_count')
-
-    def get_likes_count(self, obj):
-        return obj.reactions.filter(reaction='like').count()
-
-    def get_comments_count(self, obj):
-        return obj.comments.count()
-
-
-# Let's keep the original PostSerializer for creation/update, or adapt the DetailSerializer.
-# For simplicity, we can use the detail serializer for write operations and just control read_only fields.
-PostSerializer = PostDetailSerializer
+        fields = (
+            'title', 'excerpt', 'content', 'reading_time_sec', 'status',
+            'visibility', 'published_at', 'scheduled_at', 'category_id', 'series',
+            'cover_media', 'seo_title', 'seo_description', 'og_image', 'tag_ids',
+            'slug', 'canonical_url'
+        )
+        extra_kwargs = {
+            'slug': {'required': False}
+        }
 
 
 class RevisionSerializer(serializers.ModelSerializer):
@@ -126,7 +117,6 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ('id', 'post', 'user', 'parent', 'content', 'created_at', 'status')
-        read_only_fields = ('status',)
 
 
 from django.contrib.contenttypes.models import ContentType
