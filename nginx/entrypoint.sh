@@ -16,8 +16,15 @@ if [ ! -f "$le_path/fullchain.pem" ]; then
         -subj "/CN=localhost"
 fi
 
-# Start a process that reloads Nginx every 12 hours in the background
-(while true; do sleep 12h; echo "### Reloading Nginx to pick up new certificates..."; nginx -s reload; done) &
+# Start a background process to reload Nginx once the real certificate is issued
+(
+  echo "### Waiting for certificate for $domain..."
+  while ! openssl x509 -in "$le_path/fullchain.pem" -text -noout | grep -q "CN=$domain"; do
+    sleep 5
+  done
+  echo "### Certificate for $domain found, reloading Nginx..."
+  nginx -s reload
+) &
 
 # Start Nginx in the foreground
 echo "### Starting Nginx..."

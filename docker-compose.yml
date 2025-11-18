@@ -96,27 +96,18 @@ services:
 
   certbot:
     image: certbot/certbot
-    entrypoint: ["/bin/sh", "-c"]
     volumes:
       - certbot_data:/etc/letsencrypt
       - webroot_data:/var/www/certbot
+    entrypoint: ["/bin/sh", "-c"]
     command: >
-      "
-        sleep 10 &&
-        if [ ! -f /etc/letsencrypt/live/atom-game.ir/fullchain.pem ]; then
-          echo 'Requesting new certificate...'
-          certbot certonly --webroot -w /var/www/certbot \
-            --non-interactive --text --agree-tos \
-            --email dev@atom-game.ir \
-            -d atom-game.ir -d www.atom-game.ir \
-            --rsa-key-size 4096 --verbose;
+      '
+        sleep 10;
+        if ! certbot certificates | grep -q "atom-game.ir"; then
+          certbot certonly --webroot -w /var/www/certbot --non-interactive --agree-tos --email dev@atom-game.ir -d atom-game.ir -d www.atom-game.ir --rsa-key-size 4096 --verbose;
         fi;
-        echo 'Starting renewal loop...'
-        while true; do
-          sleep 12h;
-          certbot renew --quiet;
-        done;
-      "
+        while true; do certbot renew --quiet; sleep 12h; done;
+      '
 
 volumes:
   postgres_data:
