@@ -45,9 +45,10 @@ class TicketMessageViewSet(viewsets.ModelViewSet):
             raise PermissionDenied(
                 "You do not have permission to add messages to this ticket."
             )
+
+        uploaded_files = serializer.validated_data.pop("uploaded_files", [])
         message = serializer.save(user=self.request.user, ticket=ticket)
-        files_data = self.request.FILES.getlist("files")
-        for file_data in files_data:
+        for file_data in uploaded_files:
             TicketAttachment.objects.create(ticket_message=message, file=file_data)
 
 

@@ -11,7 +11,7 @@ class TicketAttachmentSerializer(serializers.ModelSerializer):
 
 class TicketMessageSerializer(serializers.ModelSerializer):
     attachments = TicketAttachmentSerializer(many=True, read_only=True)
-    files = serializers.ListField(
+    uploaded_files = serializers.ListField(
         child=serializers.FileField(), write_only=True, required=False
     )
 
@@ -24,14 +24,9 @@ class TicketMessageSerializer(serializers.ModelSerializer):
             "message",
             "created_at",
             "attachments",
-            "files",
+            "uploaded_files",
         )
         read_only_fields = ("id", "user", "created_at", "ticket")
-
-    def create(self, validated_data):
-        validated_data.pop("files", None)
-        return super().create(validated_data)
-
 
 class TicketSerializer(serializers.ModelSerializer):
     messages = TicketMessageSerializer(many=True, read_only=True)
