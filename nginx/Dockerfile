@@ -1,4 +1,4 @@
-FROM nginx:stable-alpine
+FROM mirror.gcr.io/library/nginx:stable-alpine
 
 RUN apk add --no-cache openssl
 
