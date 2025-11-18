@@ -82,22 +82,44 @@ services:
       - ./frontend:/var/www/frontend:ro
       - static_volume:/app/staticfiles
       - media_volume:/app/media
-      - /etc/letsencrypt:/etc/letsencrypt:ro    # مسیر واقعی SSL
+      - certbot_data:/etc/letsencrypt
+      - webroot_data:/var/www/certbot
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - /var/www/certbot:/var/www/certbot       # برای Certbot challenge
     ports:
       - "80:80"
       - "443:443"
     depends_on:
       - web
+      - certbot
+    entrypoint:
+      - /app/nginx/entrypoint.sh
 
   certbot:
     image: certbot/certbot
     volumes:
-      - /etc/letsencrypt:/etc/letsencrypt
-      - /var/www/certbot:/var/www/certbot
+      - certbot_data:/etc/letsencrypt
+      - webroot_data:/var/www/certbot
+    command: >
+      sh -c "
+        sleep 10 &&
+        if [ ! -f /etc/letsencrypt/live/atom-game.ir/fullchain.pem ]; then
+          echo 'Requesting new certificate...'
+          certbot certonly --webroot -w /var/www/certbot \
+            --non-interactive --text --agree-tos \
+            --email dev@atom-game.ir \
+            -d atom-game.ir -d www.atom-game.ir \
+            --rsa-key-size 4096 --verbose;
+        fi;
+        echo 'Starting renewal loop...'
+        while true; do
+          sleep 12h;
+          certbot renew --quiet;
+        done;
+      "
 
 volumes:
   postgres_data:
   static_volume:
   media_volume:
+  certbot_data:
+  webroot_data:
