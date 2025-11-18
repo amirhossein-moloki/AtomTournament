@@ -19,7 +19,7 @@ fi
 # Start a background process to reload Nginx once the real certificate is issued
 (
   echo "### Waiting for certificate for $domain..."
-  while ! openssl x509 -in "$le_path/fullchain.pem" -text -noout | grep -q "CN=$domain"; do
+  while ! openssl x509 -in "$le_path/fullchain.pem" -noout -issuer | grep -q "Let's Encrypt"; do
     sleep 5
   done
   echo "### Certificate for $domain found, reloading Nginx..."
