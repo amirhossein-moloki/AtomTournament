@@ -13,7 +13,7 @@ services:
       - redis
 
   db:
-    image: mirror.gcr.io/library/postgres:14
+    image: postgres:14
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     environment:
@@ -22,7 +22,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 
   redis:
-    image: mirror.gcr.io/library/redis:8.2-alpine
+    image: redis:8.2-alpine
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 1s
@@ -95,7 +95,7 @@ services:
       - /app/nginx/entrypoint.sh
 
   certbot:
-    image: mirror.gcr.io/certbot/certbot
+    image: certbot/certbot
     entrypoint: ["/bin/sh", "-c"]
     volumes:
       - certbot_data:/etc/letsencrypt
