@@ -527,10 +527,3 @@ CACHES = {
     #     "LOCATION": "instant-expiration",
     # },
 }
-if "test" in sys.argv or "pytest" in sys.modules:
-    CACHES = {
-        "default": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "unique-snowflake",
-        }
-    }

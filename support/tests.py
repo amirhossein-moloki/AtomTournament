@@ -22,7 +22,7 @@ class SupportTicketAPITests(APITestCase):
         file = SimpleUploadedFile(
             "test_file.jpg", b"file_content", content_type="image/jpeg"
         )
-        data = {"message": "This is a test message with an attachment.", "files": [file]}
+        data = {"message": "This is a test message with an attachment.", "uploaded_files": [file]}
         response = self.client.post(url, data, format="multipart")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(TicketMessage.objects.count(), 1)
