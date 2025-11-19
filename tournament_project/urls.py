@@ -21,7 +21,8 @@ urlpatterns = [
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     # --- Admin Panel ---
-    path("admin/", admin.site.urls),   # اصلاح شد (از زیر api جدا شد)
+    path("admin/", admin.site.urls),
+    path("admin/summernote/", include("django_summernote.urls")),
 
     # --- Third-party integrations ---
     path("api/select2/", include("django_select2.urls")),
@@ -59,7 +60,6 @@ urlpatterns = [
     path("api/atomgamebot/", include("atomgamebot.urls")),
     path("api/blog/", include("blog.urls")),
     path("blog/", include("blog.ssr_urls")),
-    path("summernote/", include("django_summernote.urls")),
 ]
 
 # --- Debug Tools & Static/Media ---
