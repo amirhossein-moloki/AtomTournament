@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.http import Http404
 from rest_framework.exceptions import APIException, NotAuthenticated, PermissionDenied, NotFound
+from django.conf import settings
 
 
 def custom_exception_handler(exc, context):
@@ -35,7 +36,7 @@ def custom_exception_handler(exc, context):
     else:
         # برای خطاهای پیش‌بینی نشده (خطاهای داخلی سرور)
         # در حالت DEBUG، جزئیات خطا را نمایش می‌دهیم تا به دیباگ کمک کند
-        if context['view'].settings.DEBUG:
+        if settings.DEBUG:
             detail = f"خطای داخلی سرور: {str(exc)}"
         else:
             detail = "یک خطای پیش‌بینی نشده در سرور رخ داده است. لطفاً بعداً تلاش کنید."

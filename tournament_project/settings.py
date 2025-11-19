@@ -360,7 +360,7 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'blog.exceptions.custom_exception_handler',
 }
 
-if 'test' in sys.argv:
+if is_testing_db:
     REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = []
     REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {}
 
@@ -530,5 +530,5 @@ CACHES = {
 }
 
 SUMMERNOTE_CONFIG = {
-    'attachment_model': 'blog.attachments.CustomAttachment',
+    'attachment_model': 'blog.CustomAttachment',
 }

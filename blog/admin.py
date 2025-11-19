@@ -6,11 +6,38 @@ from .models import (
 )
 
 
+from django.core.files.storage import default_storage
+from .forms import MediaAdminForm
+
 @admin.register(Media)
 class MediaAdmin(admin.ModelAdmin):
-    list_display = ('storage_key', 'type', 'mime', 'size_bytes', 'created_at')
+    form = MediaAdminForm
+    list_display = ('title', 'type', 'mime', 'size_bytes', 'created_at')
     list_filter = ('type', 'mime')
-    search_fields = ('storage_key', 'title', 'alt_text')
+    search_fields = ('title', 'alt_text')
+    readonly_fields = ('storage_key', 'url', 'type', 'mime', 'size_bytes', 'uploaded_by', 'created_at')
+
+    def save_model(self, request, obj, form, change):
+        uploaded_file = form.cleaned_data.get('file')
+        if uploaded_file:
+            storage_key = default_storage.save(uploaded_file.name, uploaded_file)
+            file_url = default_storage.url(storage_key)
+
+            obj.storage_key = storage_key
+            obj.url = file_url
+            obj.mime = uploaded_file.content_type
+            obj.size_bytes = uploaded_file.size
+            if 'image' in obj.mime:
+                obj.type = 'image'
+            elif 'video' in obj.mime:
+                obj.type = 'video'
+            else:
+                obj.type = 'file'
+
+        if not obj.pk:  # If creating a new object
+            obj.uploaded_by = request.user
+
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(AuthorProfile)

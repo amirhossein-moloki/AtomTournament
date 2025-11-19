@@ -1,14 +1,55 @@
 from rest_framework import serializers
+from django.contrib.auth import get_user_model
 from .models import (
     AuthorProfile, Category, Tag, Post, Series, Media,
     Comment, Reaction, Page, Menu, MenuItem, Revision
 )
 
+User = get_user_model()
 
-class MediaSerializer(serializers.ModelSerializer):
+
+from django.core.files.storage import default_storage
+
+class MediaDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Media
-        fields = '__all__'
+        fields = (
+            'id', 'storage_key', 'url', 'type', 'mime',
+            'width', 'height', 'duration', 'size_bytes',
+            'alt_text', 'title', 'uploaded_by', 'created_at'
+        )
+
+class MediaCreateSerializer(serializers.ModelSerializer):
+    file = serializers.FileField(write_only=True)
+
+    class Meta:
+        model = Media
+        fields = ('file', 'alt_text', 'title')
+
+    def create(self, validated_data):
+        uploaded_file = validated_data.pop('file')
+
+        # Save the file to the default storage
+        storage_key = default_storage.save(uploaded_file.name, uploaded_file)
+        file_url = default_storage.url(storage_key)
+
+        # Populate model fields
+        validated_data['storage_key'] = storage_key
+        validated_data['url'] = file_url
+        validated_data['mime'] = uploaded_file.content_type
+        validated_data['size_bytes'] = uploaded_file.size
+
+        # Determine the 'type' based on the mime type
+        if 'image' in validated_data['mime']:
+            validated_data['type'] = 'image'
+        elif 'video' in validated_data['mime']:
+            validated_data['type'] = 'video'
+        else:
+            validated_data['type'] = 'file'
+
+        # The 'uploaded_by' field is passed from the view
+        media = Media.objects.create(**validated_data)
+        return media
 
 
 class AuthorProfileSerializer(serializers.ModelSerializer):
@@ -18,7 +59,7 @@ class AuthorProfileSerializer(serializers.ModelSerializer):
 
 
 class AuthorForPostSerializer(serializers.ModelSerializer):
-    avatar = MediaSerializer(read_only=True)
+    avatar = MediaDetailSerializer(read_only=True)
 
     class Meta:
         model = AuthorProfile
@@ -54,7 +95,7 @@ class CommentForPostSerializer(serializers.ModelSerializer):
 class PostListSerializer(serializers.ModelSerializer):
     author = AuthorForPostSerializer(read_only=True)
     category = serializers.StringRelatedField()
-    cover_media = MediaSerializer(read_only=True)
+    cover_media = MediaDetailSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     likes_count = serializers.SerializerMethodField()
     comments_count = serializers.IntegerField(read_only=True)
@@ -73,7 +114,7 @@ class PostListSerializer(serializers.ModelSerializer):
 
 class PostDetailSerializer(PostListSerializer):
     series = SeriesSerializer(read_only=True)
-    og_image = MediaSerializer(read_only=True)
+    og_image = MediaDetailSerializer(read_only=True)
     comments = CommentForPostSerializer(many=True, read_only=True)
     content = serializers.CharField()
 

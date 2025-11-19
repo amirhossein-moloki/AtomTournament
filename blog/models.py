@@ -1,6 +1,7 @@
 import re
 from django.conf import settings
 from django.db import models
+from .attachments import CustomAttachment
 from django.db.models import Count
 from django.db.models.functions import Coalesce
 from django.urls import reverse

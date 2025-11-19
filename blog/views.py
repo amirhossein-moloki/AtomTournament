@@ -15,7 +15,7 @@ from .models import (
 from .serializers import (
     PostListSerializer, PostDetailSerializer, PostCreateUpdateSerializer,
     AuthorProfileSerializer, CategorySerializer, TagSerializer, SeriesSerializer,
-    MediaSerializer, RevisionSerializer, CommentSerializer, ReactionSerializer,
+    MediaDetailSerializer, MediaCreateSerializer, RevisionSerializer, CommentSerializer, ReactionSerializer,
     PageSerializer, MenuSerializer, MenuItemSerializer
 )
 from .pagination import CustomCursorPagination
@@ -139,8 +139,17 @@ def related_posts(request, slug):
 
 class MediaViewSet(viewsets.ModelViewSet):
     queryset = Media.objects.all()
-    serializer_class = MediaSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+    pagination_class = CustomCursorPagination
+    ordering = ['-created_at']
+
+    def get_queryset(self):
+        return Media.objects.select_related('uploaded_by').all()
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return MediaCreateSerializer
+        return MediaDetailSerializer
 
     def perform_create(self, serializer):
         instance = serializer.save(uploaded_by=self.request.user)
