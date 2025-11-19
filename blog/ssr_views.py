@@ -1,3 +1,4 @@
+from django.contrib import messages
 from django.shortcuts import redirect
 from django.views.generic import ListView, DetailView
 from .models import Post
@@ -10,7 +11,11 @@ class PostListView(ListView):
     context_object_name = 'posts'
 
     def get_queryset(self):
-        return Post.objects.published().order_by('-published_at')
+        try:
+            return Post.objects.published().order_by('-published_at')
+        except Exception as e:
+            messages.error(self.request, "خطایی در هنگام بارگذاری لیست پست‌ها رخ داد.")
+            return Post.objects.none()
 
 
 class PostDetailView(DetailView):
@@ -28,14 +33,25 @@ class PostDetailView(DetailView):
         return context
 
     def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        form = CommentForm(request.POST)
-        if form.is_valid():
-            comment = form.save(commit=False)
-            comment.post = self.object
-            comment.user = request.user
-            comment.save()
-            return redirect(self.object.get_absolute_url())
+        try:
+            self.object = self.get_object()
+            form = CommentForm(request.POST)
+            if form.is_valid():
+                comment = form.save(commit=False)
+                comment.post = self.object
+                comment.user = request.user
+                comment.save()
+                messages.success(request, "نظر شما با موفقیت ثبت شد و پس از تایید نمایش داده خواهد شد.")
+                return redirect(self.object.get_absolute_url())
+            else:
+                # اگر فرم نامعتبر بود، پیام خطا را نمایش بده
+                error_message = "خطا در ثبت نظر: " + " ".join([f"{field}: {', '.join(errors)}" for field, errors in form.errors.items()])
+                messages.error(request, error_message)
+
+        except Exception as e:
+            messages.error(self.request, f"یک خطای پیش‌بینی نشده در هنگام ثبت نظر رخ داد: {e}")
+
+        # در صورت خطا یا نامعتبر بودن فرم، به همان صفحه برگرد
         context = self.get_context_data()
-        context['form'] = form
+        context['form'] = form if 'form' in locals() else CommentForm()
         return self.render_to_response(context)
