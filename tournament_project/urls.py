@@ -15,6 +15,9 @@ from rest_framework_simplejwt.views import (
 )
 
 from tournaments.views import private_media_view
+from .views import page_not_found_view
+
+handler404 = page_not_found_view
 
 urlpatterns = [
     # --- JWT Token Authentication ---
