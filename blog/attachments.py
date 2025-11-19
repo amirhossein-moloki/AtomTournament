@@ -20,7 +20,7 @@ class CustomAttachment(Attachment):
         media = Media(
             storage_key=storage_key,
             url=file_url,
-            type='image',  # Assuming all attachments are images for now
+            type='image' if 'image' in self.file.file.content_type else 'video' if 'video' in self.file.file.content_type else 'file',
             mime=self.file.file.content_type,
             size_bytes=self.file.size,
             title=self.name,

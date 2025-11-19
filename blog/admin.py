@@ -9,7 +9,7 @@ from .attachments import CustomAttachment
 
 
 from django.core.files.storage import default_storage
-from .forms import MediaAdminForm
+from .forms import MediaAdminForm, PostAdminForm
 
 @admin.register(Media)
 class MediaAdmin(admin.ModelAdmin):
@@ -77,6 +77,7 @@ class PostTagInline(admin.TabularInline):
 
 @admin.register(Post)
 class PostAdmin(SummernoteModelAdmin):
+    form = PostAdminForm
     summernote_fields = ('content',)
     list_display = ('title', 'slug', 'author', 'category', 'status', 'published_at')
     list_filter = ('status', 'visibility', 'category', 'author')
