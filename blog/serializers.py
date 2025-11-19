@@ -127,20 +127,31 @@ class PostDetailSerializer(PostListSerializer):
 
 class PostCreateUpdateSerializer(serializers.ModelSerializer):
     tag_ids = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=Tag.objects.all(), source='tags', required=False
+        many=True, queryset=Tag.objects.all(), source='tags', required=False, write_only=True
     )
     category_id = serializers.PrimaryKeyRelatedField(
-        queryset=Category.objects.all(), source='category', required=False
+        queryset=Category.objects.all(), source='category', required=False, write_only=True
     )
+    cover_media_id = serializers.PrimaryKeyRelatedField(
+        queryset=Media.objects.all(), source='cover_media', required=False, allow_null=True, write_only=True
+    )
+    og_image_id = serializers.PrimaryKeyRelatedField(
+        queryset=Media.objects.all(), source='og_image', required=False, allow_null=True, write_only=True
+    )
+
+    cover_media = MediaDetailSerializer(read_only=True)
+    og_image = MediaDetailSerializer(read_only=True)
+    tags = TagSerializer(many=True, read_only=True)
+    category = CategorySerializer(read_only=True)
 
     class Meta:
         model = Post
         fields = (
             'title', 'excerpt', 'content', 'status', 'visibility',
-            'published_at', 'scheduled_at', 'category_id', 'series',
+            'published_at', 'scheduled_at', 'category', 'series',
             'cover_media', 'seo_title', 'seo_description', 'og_image',
-            'tag_ids', 'slug', 'canonical_url', 'likes_count', 'views_count',
-            'reading_time_sec'
+            'tags', 'slug', 'canonical_url', 'likes_count', 'views_count',
+            'reading_time_sec', 'tag_ids', 'category_id', 'cover_media_id', 'og_image_id'
         )
         read_only_fields = (
             'likes_count', 'views_count', 'reading_time_sec'
