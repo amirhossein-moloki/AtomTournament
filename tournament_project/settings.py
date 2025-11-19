@@ -427,12 +427,8 @@ CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "False").lower
     "1",
     "t",
 )
-ZIBAL_PAYMENT_SUCCESS_URL = os.environ.get(
-    "ZIBAL_PAYMENT_SUCCESS_URL", f"{FRONTEND_URL}/payment/success"
-)
-ZIBAL_PAYMENT_FAILED_URL = os.environ.get(
-    "ZIBAL_PAYMENT_FAILED_URL", f"{FRONTEND_URL}/payment/failed"
-)
+ZIBAL_PAYMENT_SUCCESS_URL = "https://atom-game.ir/payment/success.html"
+ZIBAL_PAYMENT_FAILED_URL = "https://atom-game.ir/payment/failed.html"
 
 MINIMUM_WITHDRAWAL_AMOUNT = int(
     os.environ.get("MINIMUM_WITHDRAWAL_AMOUNT", "1000000")
