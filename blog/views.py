@@ -2,6 +2,7 @@ from django.db.models import Count, Q
 from django.utils import timezone
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.exceptions import PermissionDenied, NotFound
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
@@ -20,6 +21,15 @@ from .serializers import (
 from .pagination import CustomCursorPagination
 from .permissions import IsOwnerOrReadOnly, IsAdminUserOrReadOnly
 from .tasks import process_media_image, notify_author_on_new_comment
+from .exceptions import custom_exception_handler
+from rest_framework.views import APIView
+
+class BaseBlogAPIView(APIView):
+    def handle_exception(self, exc):
+        """
+        Handle any exception that occurs, by delegating to the custom exception handler.
+        """
+        return custom_exception_handler(exc, self.get_exception_handler_context())
 
 
 class PostListCreateAPIView(generics.ListCreateAPIView):
@@ -85,14 +95,17 @@ def publish_post(request, slug):
     try:
         post = Post.objects.get(slug=slug)
     except Post.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+        raise NotFound('پستی با این مشخصات یافت نشد.')
 
     # Check object-level permission
     if post.author.user != request.user and not request.user.is_staff:
-        return Response(status=status.HTTP_403_FORBIDDEN)
+        raise PermissionDenied('شما اجازه‌ی انتشار این پست را ندارید.')
 
     if post.status != 'draft':
-        return Response({'error': 'Only draft posts can be published.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {'detail': 'تنها پست‌های پیش‌نویس را می‌توان منتشر کرد.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
     post.status = 'published'
     post.published_at = timezone.now()
@@ -106,7 +119,7 @@ def related_posts(request, slug):
     try:
         current_post = Post.objects.get(slug=slug)
     except Post.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+        raise NotFound('پست مورد نظر برای یافتن پست‌های مرتبط پیدا نشد.')
 
     tag_ids = current_post.tags.values_list('id', flat=True)
     if not tag_ids:

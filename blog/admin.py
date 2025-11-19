@@ -1,4 +1,4 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django_summernote.admin import SummernoteModelAdmin
 from .models import (
     AuthorProfile, Category, Tag, Post, PostTag, Series, Media, Revision,
@@ -54,6 +54,17 @@ class PostAdmin(SummernoteModelAdmin):
     search_fields = ('title', 'content')
     prepopulated_fields = {'slug': ('title',)}
     inlines = [PostTagInline]
+
+    def save_model(self, request, obj, form, change):
+        try:
+            super().save_model(request, obj, form, change)
+        except Exception as e:
+            messages.set_level(request, messages.ERROR)
+            self.message_user(
+                request,
+                f"خطایی در هنگام ذخیره پست رخ داد: {e}",
+                level=messages.ERROR
+            )
 
 
 @admin.register(Revision)
