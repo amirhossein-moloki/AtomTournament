@@ -1,9 +1,11 @@
 from django.contrib import admin, messages
 from django_summernote.admin import SummernoteModelAdmin
+from django_summernote.models import Attachment
 from .models import (
     AuthorProfile, Category, Tag, Post, PostTag, Series, Media, Revision,
     Comment, Reaction, Page, Menu, MenuItem
 )
+from .attachments import CustomAttachment
 
 
 from django.core.files.storage import default_storage
@@ -150,3 +152,29 @@ class MenuAdmin(admin.ModelAdmin):
     list_display = ('name', 'location')
     list_filter = ('location',)
     inlines = [MenuItemInline]
+
+
+class CustomAttachmentAdmin(admin.ModelAdmin):
+    list_display = ['name', 'file', 'uploaded']
+    search_fields = ['name']
+    list_filter = ['uploaded']
+    actions = ['delete_selected']
+
+    def save_model(self, request, obj, form, change):
+        obj.save(request=request)
+
+
+# Unregister the default Attachment admin if it's registered
+try:
+    admin.site.unregister(Attachment)
+except admin.sites.NotRegistered:
+    pass
+
+# Unregister the CustomAttachment model if it's already registered
+try:
+    admin.site.unregister(CustomAttachment)
+except admin.sites.NotRegistered:
+    pass
+
+# Register the CustomAttachment model with the custom admin
+admin.site.register(CustomAttachment, CustomAttachmentAdmin)
