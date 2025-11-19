@@ -37,6 +37,7 @@ boto3==1.40.10
 fakeredis==2.30.3
 coverage==7.10.3
 factory-boy
+Faker
 
 # Code Quality
 black==25.1.0
@@ -52,6 +53,7 @@ twilio==9.7.0
 aiohttp==3.12.15
 smsir-python==1.0.8
 pillow==11.3.0
+requests
 pyopenssl
 scikit-learn
 
