@@ -86,7 +86,7 @@ class PostAdmin(SummernoteModelAdmin):
             'fields': ('title', 'slug', 'author', 'content', 'excerpt')
         }),
         ('Metadata', {
-            'fields': ('category', 'series', 'tags')
+            'fields': ('category', 'series')
         }),
         ('Media', {
             'fields': ('cover_media', 'og_image')
