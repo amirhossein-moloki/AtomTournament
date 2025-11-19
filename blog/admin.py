@@ -8,9 +8,9 @@ from .models import (
 
 @admin.register(Media)
 class MediaAdmin(admin.ModelAdmin):
-    list_display = ('title', 'type', 'mime', 'size_bytes', 'created_at')
+    list_display = ('storage_key', 'type', 'mime', 'size_bytes', 'created_at')
     list_filter = ('type', 'mime')
-    search_fields = ('title', 'alt_text')
+    search_fields = ('storage_key', 'title', 'alt_text')
 
 
 @admin.register(AuthorProfile)
@@ -54,6 +54,24 @@ class PostAdmin(SummernoteModelAdmin):
     search_fields = ('title', 'content')
     prepopulated_fields = {'slug': ('title',)}
     inlines = [PostTagInline]
+    fieldsets = (
+        (None, {
+            'fields': ('title', 'slug', 'author', 'content', 'excerpt')
+        }),
+        ('Metadata', {
+            'fields': ('category', 'series', 'tags')
+        }),
+        ('Media', {
+            'fields': ('cover_media', 'og_image')
+        }),
+        ('Status & Visibility', {
+            'fields': ('status', 'visibility', 'published_at', 'scheduled_at')
+        }),
+        ('SEO', {
+            'classes': ('collapse',),
+            'fields': ('seo_title', 'seo_description', 'canonical_url')
+        }),
+    )
 
     def save_model(self, request, obj, form, change):
         try:
