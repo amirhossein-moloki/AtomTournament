@@ -528,3 +528,7 @@ CACHES = {
     #     "LOCATION": "instant-expiration",
     # },
 }
+
+SUMMERNOTE_CONFIG = {
+    'attachment_model': 'blog.attachments.CustomAttachment',
+}
