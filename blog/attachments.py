@@ -5,6 +5,10 @@ from django.utils.translation import gettext_lazy as _
 
 class CustomAttachment(Attachment):
     def save(self, *args, **kwargs):
+        request = kwargs.pop('request', None)
+        if request is None:
+            raise ValueError("The request object is required to save a CustomAttachment.")
+
         from blog.models import Media
         from django.core.files.storage import default_storage
 
@@ -20,7 +24,7 @@ class CustomAttachment(Attachment):
             mime=self.file.file.content_type,
             size_bytes=self.file.size,
             title=self.name,
-            uploaded_by=self.uploaded_by,
+            uploaded_by=request.user,
         )
         media.save()
 
