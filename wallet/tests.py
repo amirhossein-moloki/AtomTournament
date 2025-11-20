@@ -63,7 +63,7 @@ class ZibalServiceTests(SimpleTestCase):
         mock_post.return_value = mock_response
 
         service = ZibalService()
-        result = service.verify_payment(track_id=12345)
+        result = service.verify_payment(track_id=12345, amount=10000)
 
         self.assertEqual(result, expected_response)
         mock_post.assert_called_once()
@@ -350,39 +350,42 @@ class VerifyDepositAPITests(APITestCase):
         )
         self.verify_url = "/api/wallet/verify-deposit/"
 
-    @patch("wallet.views.ZibalService.verify_payment")
-    def test_verify_deposit_successful(self, mock_verify_payment):
+    @patch("wallet.views.verify_deposit_task.delay")
+    def test_verify_deposit_enqueues_task_successfully(self, mock_delay):
         """
-        Test successful deposit verification.
+        Test that successful verification callback enqueues the Celery task.
         """
-        mock_verify_payment.return_value = {
-            "result": 100,
-            "paidAt": "2023-11-20T12:00:00Z",
-            "refNumber": "test-ref-number",
-        }
-        initial_balance = self.wallet.total_balance
-
         response = self.client.get(
             self.verify_url,
             {"trackId": "test-track-id", "success": "1", "orderId": "test-order-id"},
         )
 
         self.assertEqual(response.status_code, status.HTTP_302_FOUND)
-        self.transaction.refresh_from_db()
-        self.wallet.refresh_from_db()
-        self.assertEqual(self.transaction.status, "success")
-        self.assertEqual(self.transaction.ref_number, "test-ref-number")
-        self.assertEqual(
-            self.wallet.total_balance, initial_balance + self.transaction.amount
+        mock_delay.assert_called_once_with(
+            track_id="test-track-id", order_id="test-order-id"
         )
 
-    @patch("wallet.views.ZibalService.verify_payment")
-    def test_verify_deposit_failed_by_user_cancellation(self, mock_verify_payment):
+    @patch("wallet.views.verify_deposit_task.delay")
+    def test_verify_deposit_enqueues_task_on_failure(self, mock_delay):
         """
-        Test deposit verification when the user cancels the payment (success=0).
+        Test that a failed verification callback still enqueues the Celery task for logging.
+        """
+        response = self.client.get(
+            self.verify_url,
+            {"trackId": "test-track-id", "success": "1", "orderId": "test-order-id"},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+        mock_delay.assert_called_once_with(
+            track_id="test-track-id", order_id="test-order-id"
+        )
+
+    @patch("wallet.views.verify_deposit_task.delay")
+    def test_verify_deposit_user_cancellation_updates_status(self, mock_delay):
+        """
+        Test that user cancelling the payment updates the transaction status and does not enqueue a task.
         """
         initial_balance = self.wallet.total_balance
-
         response = self.client.get(
             self.verify_url,
             {"trackId": "test-track-id", "success": "0", "orderId": "test-order-id"},
@@ -393,27 +396,70 @@ class VerifyDepositAPITests(APITestCase):
         self.wallet.refresh_from_db()
         self.assertEqual(self.transaction.status, "failed")
         self.assertEqual(self.wallet.total_balance, initial_balance)
-        # Verify that verify_payment was not even called
-        mock_verify_payment.assert_not_called()
+        mock_delay.assert_not_called()
 
-    @patch("wallet.views.ZibalService.verify_payment")
-    def test_verify_deposit_failed_bad_result(self, mock_verify_payment):
-        """
-        Test deposit verification fails if 'result' is not 100.
-        """
+
+from .tasks import verify_deposit_task
+
+
+class CeleryTaskTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="testuser",
+            password="password",
+            phone_number="+98123456789",
+            email="test@example.com",
+        )
+        self.wallet = self.user.wallet
+        self.transaction = Transaction.objects.create(
+            wallet=self.wallet,
+            amount=Decimal("50000.00"),
+            transaction_type="deposit",
+            authority="test-track-id",
+            order_id="test-order-id",
+            status="pending",
+        )
+
+    @patch("wallet.tasks.ZibalService.verify_payment")
+    def test_verify_deposit_task_successful(self, mock_verify_payment):
+        """Test the Celery task for a successful deposit verification."""
         mock_verify_payment.return_value = {
-            "result": 102,
-            "message": "Verification failed",
+            "result": 100,
+            "refNumber": "test-ref-123",
+            "description": "Success",
         }
         initial_balance = self.wallet.total_balance
 
-        response = self.client.get(
-            self.verify_url,
-            {"trackId": "test-track-id", "success": "1", "orderId": "test-order-id"},
-        )
+        verify_deposit_task(track_id="test-track-id", order_id="test-order-id")
 
-        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
         self.transaction.refresh_from_db()
         self.wallet.refresh_from_db()
+
+        self.assertEqual(self.transaction.status, "success")
+        self.assertEqual(self.transaction.ref_number, "test-ref-123")
+        self.assertEqual(
+            self.wallet.total_balance, initial_balance + self.transaction.amount
+        )
+        mock_verify_payment.assert_called_once_with(
+            track_id="test-track-id", amount=int(self.transaction.amount)
+        )
+
+    @patch("wallet.tasks.ZibalService.verify_payment")
+    def test_verify_deposit_task_failed(self, mock_verify_payment):
+        """Test the Celery task for a failed deposit verification."""
+        mock_verify_payment.return_value = {
+            "result": 202,
+            "message": "Transaction failed",
+        }
+        initial_balance = self.wallet.total_balance
+
+        verify_deposit_task(track_id="test-track-id", order_id="test-order-id")
+
+        self.transaction.refresh_from_db()
+        self.wallet.refresh_from_db()
+
         self.assertEqual(self.transaction.status, "failed")
         self.assertEqual(self.wallet.total_balance, initial_balance)
+        mock_verify_payment.assert_called_once_with(
+            track_id="test-track-id", amount=int(self.transaction.amount)
+        )

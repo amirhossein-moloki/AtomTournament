@@ -25,7 +25,7 @@ def verify_deposit_task(track_id, order_id):
         return
 
     zibal = ZibalService()
-    verification_response = zibal.verify_payment(track_id=track_id)
+    verification_response = zibal.verify_payment(track_id=track_id, amount=int(tx.amount))
     result = verification_response.get("result")
 
     if result == 100:  # Success
