@@ -31,9 +31,13 @@ class ZibalService:
         except requests.exceptions.RequestException as e:
             return {"error": str(e)}
 
-    def verify_payment(self, track_id):
+    def verify_payment(self, track_id, amount):
         url = f"{self.api_base_url}/verify"
-        payload = {"merchant": self.merchant_id, "trackId": track_id}
+        payload = {
+            "merchant": self.merchant_id,
+            "trackId": track_id,
+            "amount": amount,
+        }
         try:
             response = requests.post(url, json=payload)
             response.raise_for_status()
