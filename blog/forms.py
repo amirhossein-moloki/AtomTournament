@@ -29,10 +29,6 @@ class PostAdminForm(forms.ModelForm):
     class Meta:
         model = Post
         fields = '__all__'
-        widgets = {
-            'cover_media': ImagePreviewWidget(),
-            'og_image': ImagePreviewWidget(),
-        }
 
 
 class MediaAdminForm(forms.ModelForm):
