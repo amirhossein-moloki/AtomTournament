@@ -83,6 +83,7 @@ class PostAdmin(SummernoteModelAdmin):
     list_filter = ('status', 'visibility', 'category', 'author')
     search_fields = ('title', 'content')
     prepopulated_fields = {'slug': ('title',)}
+    raw_id_fields = ('cover_media', 'og_image')
     inlines = [PostTagInline]
     fieldsets = (
         (None, {
