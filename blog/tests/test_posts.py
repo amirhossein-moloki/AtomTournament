@@ -3,7 +3,7 @@ from rest_framework import status
 from django.utils import timezone
 from datetime import timedelta
 
-from blog.factories import PostFactory, CategoryFactory, TagFactory
+from blog.factories import PostFactory, CategoryFactory, TagFactory, SeriesFactory
 from blog.models import Post
 from blog.tests.base import BaseAPITestCase
 
@@ -37,7 +37,61 @@ class PostAPITest(BaseAPITestCase):
         url = reverse('post-list-create')
         response = self.client.get(url, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 3)
+        self.assertEqual(len(response.data['results']), 3)
+
+    def test_post_pagination(self):
+        PostFactory.create_batch(15)
+        url = reverse('post-list-create')
+        response = self.client.get(url, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 10)
+        self.assertIn('next', response.data)
+        self.assertIsNotNone(response.data['next'])
+
+    def test_post_filtering(self):
+        series = SeriesFactory()
+        category = CategoryFactory()
+        tag1 = TagFactory()
+        tag2 = TagFactory()
+
+        PostFactory(series=series, visibility='private', category=category, tags=[tag1])
+        PostFactory.create_batch(2, visibility='public', tags=[tag2])
+        url = reverse('post-list-create')
+
+        # Filter by series
+        response = self.client.get(url, {'series': series.pk}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+
+        # Filter by visibility
+        response = self.client.get(url, {'visibility': 'public'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 2)
+
+        # Filter by category
+        response = self.client.get(url, {'category': category.slug}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+
+        # Filter by tags
+        response = self.client.get(url, {'tags': tag1.slug}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+
+        response = self.client.get(url, {'tags': tag2.slug}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 2)
+
+    def test_post_date_filtering(self):
+        PostFactory(published_at=timezone.now() - timedelta(days=5))
+        PostFactory(published_at=timezone.now() - timedelta(days=15))
+        url = reverse('post-list-create')
+
+        # Filter by published_after
+        after_date = (timezone.now() - timedelta(days=10)).isoformat()
+        response = self.client.get(url, {'published_after': after_date}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
 
     def test_retrieve_post(self):
         yesterday = timezone.now() - timedelta(days=1)

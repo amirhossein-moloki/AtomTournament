@@ -21,17 +21,19 @@ class Command(BaseCommand):
         fake = Faker()
 
         # Get or create a user
-        users = list(User.objects.all())
-        if not users:
-            self.stdout.write(self.style.WARNING('No users found. Creating a default user.'))
+        authors = list(AuthorProfile.objects.all())
+        if not authors:
+            self.stdout.write(self.style.WARNING('No authors found. Creating a default user and author profile.'))
             default_user = User.objects.create_user(username='testuser', password='password')
-            users.append(default_user)
+            author_profile, _ = AuthorProfile.objects.get_or_create(user=default_user)
+            authors.append(author_profile)
 
         for i in range(count):
             self.stdout.write(f'Creating post {i + 1}/{count}...')
 
             # 1. Select a random author
-            random_user = random.choice(users)
+            author_profile = random.choice(authors)
+            random_user = author_profile.user
             author_profile, _ = AuthorProfile.objects.get_or_create(
                 user=random_user,
                 defaults={'display_name': random_user.username}

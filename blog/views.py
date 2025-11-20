@@ -18,7 +18,8 @@ from .serializers import (
     MediaDetailSerializer, MediaCreateSerializer, RevisionSerializer, CommentSerializer, ReactionSerializer,
     PageSerializer, MenuSerializer, MenuItemSerializer
 )
-from .pagination import CustomCursorPagination
+from .filters import PostFilter
+from .pagination import CustomPageNumberPagination
 from .permissions import IsOwnerOrReadOnly, IsAdminUserOrReadOnly
 from .tasks import process_media_image, notify_author_on_new_comment
 from .exceptions import custom_exception_handler
@@ -33,10 +34,10 @@ class BaseBlogAPIView(APIView):
 
 
 class PostListCreateAPIView(generics.ListCreateAPIView):
-    queryset = Post.objects.all()
-    pagination_class = CustomCursorPagination
+    queryset = Post.objects.all().order_by('-published_at')
+    pagination_class = CustomPageNumberPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['category__slug', 'tags__slug', 'status', 'author__user__username']
+    filterset_class = PostFilter
     search_fields = ['title', 'content', 'excerpt']
     ordering_fields = ['published_at', 'views_count']
 
@@ -138,9 +139,9 @@ def related_posts(request, slug):
 
 
 class MediaViewSet(viewsets.ModelViewSet):
-    queryset = Media.objects.all()
+    queryset = Media.objects.all().order_by('-created_at')
     permission_classes = [IsAuthenticatedOrReadOnly]
-    pagination_class = CustomCursorPagination
+    pagination_class = CustomPageNumberPagination
     ordering = ['-created_at']
 
     def get_queryset(self):
