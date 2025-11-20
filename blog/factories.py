@@ -1,10 +1,11 @@
 import factory
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from faker import Faker
 
 from blog.models import (
     AuthorProfile, Category, Tag, Media, Post, Comment, Revision, Reaction,
-    Page, Menu, MenuItem
+    Page, Menu, MenuItem, Series
 )
 
 fake = Faker()
@@ -41,6 +42,15 @@ class CategoryFactory(factory.django.DjangoModelFactory):
     name = factory.LazyAttribute(lambda _: fake.word())
     slug = factory.Sequence(lambda n: f'{fake.slug()}-{n}')
     description = factory.LazyAttribute(lambda _: fake.sentence())
+
+
+class SeriesFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Series
+
+    title = factory.LazyAttribute(lambda _: fake.sentence())
+    slug = factory.LazyAttribute(lambda o: fake.slug(o.title))
+    description = factory.LazyAttribute(lambda _: fake.paragraph())
 
 
 class PageFactory(factory.django.DjangoModelFactory):
@@ -81,6 +91,9 @@ class PostFactory(factory.django.DjangoModelFactory):
     reading_time_sec = factory.LazyAttribute(lambda _: fake.random_int(min=60, max=600))
     status = 'published'
     visibility = 'public'
+    published_at = factory.LazyAttribute(
+        lambda o: timezone.now() if o.status == 'published' else None
+    )
     author = factory.SubFactory(AuthorProfileFactory)
     category = factory.SubFactory(CategoryFactory)
 

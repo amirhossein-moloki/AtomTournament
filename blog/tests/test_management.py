@@ -4,6 +4,7 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 
+from blog.factories import UserFactory
 from blog.models import Post, Category, Tag, AuthorProfile, Media
 
 User = get_user_model()
@@ -62,7 +63,7 @@ class CreateRandomPostsTest(TestCase):
 
     def test_command_uses_existing_users(self):
         """Test that the command uses existing users to create posts."""
-        user1 = User.objects.create_user(username='user1', password='password')
+        user1 = UserFactory()
         # The AuthorProfile is created by a signal, so we get it instead of creating it.
         author_profile = AuthorProfile.objects.get(user=user1)
         author_profile.display_name = 'User One'
