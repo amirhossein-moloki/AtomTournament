@@ -1,12 +1,15 @@
 import requests
 from decimal import Decimal
 from datetime import timedelta
+import logging
 
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
 from .models import Transaction, Wallet
+
+logger = logging.getLogger(__name__)
 
 
 class ZibalService:
@@ -130,6 +133,72 @@ def process_transaction(
         return None, "User wallet not found."
     except Exception as e:
         return None, str(e)
+
+
+def verify_and_process_deposit(track_id, order_id):
+    """
+    Verifies a deposit with Zibal and updates the wallet synchronously.
+    This function is designed to be idempotent.
+    """
+    try:
+        tx = Transaction.objects.get(order_id=order_id, authority=track_id)
+        if tx.status != "pending":
+            logger.warning(
+                f"Verification skipped for already processed transaction {tx.id} with status {tx.status}"
+            )
+            return
+    except Transaction.DoesNotExist:
+        logger.error(
+            f"Transaction not found for order_id={order_id} and track_id={track_id}."
+        )
+        return
+
+    zibal = ZibalService()
+    verification_response = zibal.verify_payment(
+        track_id=track_id, amount=int(tx.amount)
+    )
+    result = verification_response.get("result")
+
+    if result in [100, 201]:
+        try:
+            with transaction.atomic():
+                tx_inside_atomic = Transaction.objects.select_for_update().get(id=tx.id)
+                if tx_inside_atomic.status != "pending":
+                    logger.warning(
+                        f"Transaction {tx.id} was already processed. Skipping update."
+                    )
+                    return
+
+                wallet = Wallet.objects.select_for_update().get(
+                    id=tx_inside_atomic.wallet.id
+                )
+
+                wallet.total_balance += tx_inside_atomic.amount
+                wallet.withdrawable_balance += tx_inside_atomic.amount
+                wallet.save()
+
+                tx_inside_atomic.status = "success"
+                tx_inside_atomic.ref_number = verification_response.get("refNumber")
+                tx_inside_atomic.description = verification_response.get(
+                    "description", "Payment successful"
+                )
+                tx_inside_atomic.save()
+            logger.info(
+                f"Successfully verified and processed deposit for transaction {tx.id}"
+            )
+        except Exception as e:
+            logger.error(
+                f"Error processing successful deposit for transaction {tx.id}: {e}"
+            )
+    else:
+        tx.status = "failed"
+        tx.description = verification_response.get(
+            "message", "Payment verification failed."
+        )
+        tx.save()
+        logger.error(
+            f"Zibal verification failed for tx {tx.id} (trackId: {track_id}): {tx.description}"
+        )
 
 
 def process_token_transaction(
