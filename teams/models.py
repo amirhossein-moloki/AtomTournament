@@ -2,6 +2,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from common.fields import WebPImageField
+
 
 class Team(models.Model):
     name = models.CharField(max_length=100)
@@ -11,7 +13,7 @@ class Team(models.Model):
     members = models.ManyToManyField(
         settings.AUTH_USER_MODEL, through="TeamMembership", related_name="teams"
     )
-    team_picture = models.ImageField(upload_to="team_pictures/", null=True, blank=True)
+    team_picture = WebPImageField(upload_to="team_pictures/", null=True, blank=True)
     max_members = models.PositiveIntegerField(default=5)
 
     def __str__(self):
