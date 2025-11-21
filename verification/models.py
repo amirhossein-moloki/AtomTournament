@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.db import models
 
+from common.fields import WebPImageField
+
 
 class Verification(models.Model):
     LEVEL_CHOICES = (
@@ -11,10 +13,10 @@ class Verification(models.Model):
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     level = models.IntegerField(choices=LEVEL_CHOICES, default=1)
-    id_card_image = models.ImageField(
+    id_card_image = WebPImageField(
         upload_to="verification_images/", blank=True, null=True
     )
-    selfie_image = models.ImageField(
+    selfie_image = WebPImageField(
         upload_to="verification_images/", blank=True, null=True
     )
     video = models.FileField(upload_to="verification_videos/", blank=True, null=True)
