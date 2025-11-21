@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     "phonenumber_field",
     "drf_spectacular",  # Required for drf-spectacular
     "users",
+    "common",
     "teams",
     "tournaments",
     "wallet",

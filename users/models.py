@@ -37,6 +37,15 @@ class User(AbstractUser):
             self.rank = new_rank
             self.save()
 
+    def save(self, *args, **kwargs):
+        if self.profile_picture and hasattr(self.profile_picture, "file"):
+            if not self.profile_picture.name.lower().endswith(".webp"):
+                from common.utils.images import convert_image_to_webp
+                converted = convert_image_to_webp(self.profile_picture)
+                self.profile_picture.save(converted.name, converted, save=False)
+
+        super().save(*args, **kwargs)
+
 
 class Role(models.Model):
     """
