@@ -5,10 +5,12 @@ from django.db import models
 from django.db.models.signals import post_save
 from phonenumber_field.modelfields import PhoneNumberField
 
+from common.fields import WebPImageField
+
 
 class User(AbstractUser):
     phone_number = PhoneNumberField(unique=True)
-    profile_picture = models.ImageField(
+    profile_picture = WebPImageField(
         upload_to="profile_pictures/", null=True, blank=True
     )
     score = models.IntegerField(default=0)
@@ -36,15 +38,6 @@ class User(AbstractUser):
         if new_rank and self.rank != new_rank:
             self.rank = new_rank
             self.save()
-
-    def save(self, *args, **kwargs):
-        if self.profile_picture and hasattr(self.profile_picture, "file"):
-            if not self.profile_picture.name.lower().endswith(".webp"):
-                from common.utils.images import convert_image_to_webp
-                converted = convert_image_to_webp(self.profile_picture)
-                self.profile_picture.save(converted.name, converted, save=False)
-
-        super().save(*args, **kwargs)
 
 
 class Role(models.Model):
