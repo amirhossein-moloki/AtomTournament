@@ -341,7 +341,7 @@ class Report(models.Model):
     )
     match = models.ForeignKey(Match, on_delete=models.CASCADE)
     description = models.TextField()
-    evidence = models.FileField(upload_to="report_evidence/", null=True, blank=True)
+    evidence = WebPImageField(upload_to="report_evidence/", null=True, blank=True)
     status = models.CharField(
         max_length=20, choices=REPORT_STATUS_CHOICES, default="pending"
     )

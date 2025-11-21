@@ -1,3 +1,5 @@
+import io
+from PIL import Image
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
@@ -19,11 +21,23 @@ class SupportTicketAPITests(APITestCase):
 
     def test_create_ticket_message_with_attachment(self):
         url = reverse("ticket-messages-list", kwargs={"ticket_pk": self.ticket.pk})
+
+        # Create a valid, tiny image in memory to simulate a real file upload
+        image_io = io.BytesIO()
+        image = Image.new("RGB", (1, 1), color="red")
+        image.save(image_io, "jpeg")
+        image_io.seek(0)
+
         file = SimpleUploadedFile(
-            "test_file.jpg", b"file_content", content_type="image/jpeg"
+            "test_file.jpg", image_io.read(), content_type="image/jpeg"
         )
-        data = {"message": "This is a test message with an attachment.", "uploaded_files": [file]}
+
+        data = {
+            "message": "This is a test message with an attachment.",
+            "uploaded_files": [file],
+        }
         response = self.client.post(url, data, format="multipart")
+
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(TicketMessage.objects.count(), 1)
         self.assertEqual(
@@ -33,4 +47,5 @@ class SupportTicketAPITests(APITestCase):
         self.assertTrue(
             attachment.file.name.startswith("support_attachments/test_file")
         )
-        self.assertTrue(attachment.file.name.endswith(".jpg"))
+        # The file should be converted to .webp
+        self.assertTrue(attachment.file.name.endswith(".webp"))
