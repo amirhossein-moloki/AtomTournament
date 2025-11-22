@@ -85,13 +85,19 @@ COPY --from=builder /lib/libz.so.1 /lib/
 COPY --from=builder /usr/lib/libssl.so.3 /usr/lib/
 COPY --from=builder /usr/lib/libcrypto.so.3 /usr/lib/
 
+# نصب gettext برای envsubst
+RUN apk add --no-cache gettext
+
 # ساختن دایرکتوری‌های لازم (اگر وجود نداشتند)
 RUN mkdir -p /var/cache/nginx /var/log/nginx /var/run/nginx
 
 # کپی کردن کانفیگ پروژه و entrypoint
 # توجه: nginx رسمی از /etc/nginx/nginx.conf و /etc/nginx/conf.d/*.conf استفاده می‌کند
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf.template /etc/nginx/conf.d/default.conf.template
+COPY ssl_params.conf /etc/nginx/ssl_params.conf
+COPY proxy_params.conf /etc/nginx/proxy_params.conf
 COPY entrypoint.sh /app/nginx/entrypoint.sh
+
 
 RUN chmod +x /app/nginx/entrypoint.sh
 

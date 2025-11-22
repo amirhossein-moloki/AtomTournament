@@ -6,10 +6,26 @@ upstream django_server {
 # Rate limit zone for API requests
 limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
 
-# Server configuration for redirecting HTTP to HTTPS
+# Server configuration for redirecting non-www to www (HTTP)
 server {
     listen 80;
-    server_name atom-game.ir www.atom-game.ir;
+    server_name ${DOMAIN};
+
+    # For Let's Encrypt renewal on the bare domain
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://www.${DOMAIN}$request_uri;
+    }
+}
+
+
+# Server configuration for redirecting HTTP to HTTPS for www
+server {
+    listen 80;
+    server_name www.${DOMAIN};
 
     # Location for Let's Encrypt certificate renewal challenges
     location /.well-known/acme-challenge/ {
@@ -25,38 +41,18 @@ server {
 # Server configuration for HTTPS
 server {
     listen 443 ssl http2;
-    server_name atom-game.ir www.atom-game.ir;
+    server_name www.${DOMAIN};
 
     # Root & index for frontend
     root /var/www/frontend;
     index index.html;
 
     # SSL Certificate paths (managed by Certbot)
-    ssl_certificate /etc/letsencrypt/live/atom-game.ir/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/atom-game.ir/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
 
-    # Modern SSL configuration for improved security
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers 'TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:ECDHE-RSA-AES128-GCM-SHA256';
-    ssl_prefer_server_ciphers off;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 1d;
-    ssl_session_tickets off;
-
-    # OCSP Stapling for faster TLS handshake
-    ssl_stapling on;
-    ssl_stapling_verify on;
-    resolver 1.1.1.1 1.0.0.1 valid=300s;
-    resolver_timeout 5s;
-
-    # Security Headers
-    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header Referrer-Policy "origin-when-cross-origin" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:;" always;
-    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+    # Include SSL parameters and security headers
+    include /etc/nginx/ssl_params.conf;
 
     # General performance and security settings
     client_max_body_size 20M;
@@ -64,6 +60,7 @@ server {
     proxy_connect_timeout 75s;
 
     # Compression strategy
+    gzip_static on;
     gzip on;
     gzip_disable "msie6";
     gzip_vary on;
@@ -82,6 +79,7 @@ server {
         application/ld+json;
 
     # Brotli Compression (if module is available)
+    brotli_static on;
     brotli on;
     brotli_comp_level 5;
     brotli_types
@@ -121,13 +119,7 @@ server {
     # Location for Django Admin
     location /admin/ {
         proxy_pass http://django_server;
-        proxy_http_version 1.1;
-        proxy_set_header Connection "";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto https;
-        proxy_set_header Accept-Encoding ""; # Avoid gzipping already gzipped content
+        include /etc/nginx/proxy_params.conf;
     }
 
     # Location for proxying API and other Django-handled paths
@@ -135,13 +127,7 @@ server {
         limit_req zone=api_limit burst=20 nodelay;
         proxy_intercept_errors off; # Let Django handle 404s for the API
         proxy_pass http://django_server;
-        proxy_http_version 1.1;
-        proxy_set_header Connection "";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto https;
-        proxy_set_header Accept-Encoding "";
+        include /etc/nginx/proxy_params.conf;
     }
 
     # Location for serving the static frontend application (SPA) - Must be last
