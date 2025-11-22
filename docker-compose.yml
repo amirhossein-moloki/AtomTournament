@@ -88,6 +88,11 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     depends_on:
       - web
     entrypoint:
@@ -101,12 +106,14 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command: >
       '
-        sleep 10;
         if ! certbot certificates | grep -q "atom-game.ir"; then
           certbot certonly --webroot -w /var/www/certbot --non-interactive --agree-tos --email dev@atom-game.ir -d atom-game.ir -d www.atom-game.ir --rsa-key-size 4096 --verbose;
         fi;
         while true; do certbot renew --quiet; sleep 12h; done;
       '
+    depends_on:
+      nginx:
+        condition: service_healthy
 
 volumes:
   postgres_data:
