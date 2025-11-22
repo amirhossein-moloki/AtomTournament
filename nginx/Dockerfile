@@ -29,10 +29,9 @@ RUN apk add --no-cache \
 
 # گرفتن سورس Nginx (با چک کردن خطای HTTP)
 RUN set -eux; \
-    curl -fSL "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" -o nginx.tar.gz; \
-    tar -xzf nginx.tar.gz; \
-    mv "nginx-${NGINX_VERSION}" /usr/src/nginx; \
-    rm nginx.tar.gz
+    mkdir -p /usr/src/nginx; \
+    curl -fSL "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" \
+    | tar -xzC /usr/src/nginx --strip-components=1
 
 # کلون کردن Brotli (طبق چیزی که خودت داشتی)
 RUN git clone --depth=1 --branch="${BROTLI_COMMIT}" https://github.com/google/brotli.git /usr/src/brotli
