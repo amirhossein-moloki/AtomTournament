@@ -4,10 +4,10 @@
 # Stage 0: Build arguments
 ##############################
 
-# می‌تونی موقع build این‌ها رو override کنی
-ARG NGINX_VERSION=1.26.1
-# v1.1.0 وجود نداره؛ از master استفاده می‌کنیم
-ARG BROTLI_COMMIT=master
+# نسخه‌ای از Nginx که با ngx_brotli تست‌شده و پایدارتره
+ARG NGINX_VERSION=1.25.3
+# یک commit شناخته‌شده از google/ngx_brotli
+ARG BROTLI_COMMIT=6e975bc
 
 ##############################
 # Stage 1: Build Nginx + Brotli
@@ -34,10 +34,10 @@ RUN set -eux; \
     curl -fSL "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" \
     | tar -xzC /usr/src/nginx --strip-components=1
 
-# کلون کردن ماژول ngx_brotli و submoduleهای آن
-# عمداً --depth=1 را حذف کردیم تا submoduleها بدون مشکل clone شوند
-RUN git clone --branch="${BROTLI_COMMIT}" https://github.com/google/ngx_brotli.git /usr/src/brotli \
+# کلون کردن ماژول ngx_brotli و submoduleهای آن روی یک commit ثابت
+RUN git clone https://github.com/google/ngx_brotli.git /usr/src/brotli \
     && cd /usr/src/brotli \
+    && git checkout "${BROTLI_COMMIT}" \
     && git submodule update --init --recursive
 
 # رفتن داخل سورس Nginx
