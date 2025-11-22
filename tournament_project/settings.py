@@ -55,6 +55,7 @@ ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", f"localhost,127.0.0.1,{DOMAIN}")
 # Application definition
 
 INSTALLED_APPS = [
+    "django_summernote",
     "unfold",
     "unfold.contrib.filters",
     "unfold.contrib.forms",
@@ -97,7 +98,6 @@ INSTALLED_APPS = [
     "management_dashboard",
     "atomgamebot",
     "blog",
-    "django_summernote",
 ]
 
 AUTHENTICATION_BACKENDS = [
