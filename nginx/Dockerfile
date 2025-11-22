@@ -14,7 +14,7 @@ ARG BROTLI_COMMIT=6e975bc
 ##############################
 FROM alpine:3.19 AS builder
 
-# باید دوباره داخل این stage تعریف بشن تا تو RUN قابل استفاده باشن
+# دوباره تعریف برای استفاده داخل این stage
 ARG NGINX_VERSION
 ARG BROTLI_COMMIT
 
@@ -28,7 +28,7 @@ RUN apk add --no-cache \
     pcre2-dev \
     zlib-dev
 
-# گرفتن سورس Nginx (با چک کردن خطای HTTP)
+# گرفتن سورس Nginx
 RUN set -eux; \
     mkdir -p /usr/src/nginx; \
     curl -fSL "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" \
@@ -76,26 +76,25 @@ RUN set -eux; \
 ##############################
 # Stage 2: Final runtime image
 ##############################
-FROM nginx:stable-alpine
+FROM alpine:3.19
 
-# nginx رسمی خودش user و ساختار /etc/nginx رو داره
+# لایبرری‌های لازم در runtime
+RUN apk add --no-cache \
+    pcre2 \
+    zlib \
+    openssl \
+    gettext \
+    ca-certificates
 
-# باینری Nginx کامپایل‌شده رو از stage قبل بیار
+# کپی کردن کانفیگ Nginx و باینری از استیج build
+COPY --from=builder /etc/nginx /etc/nginx
 COPY --from=builder /usr/sbin/nginx /usr/sbin/nginx
 
-# کتابخانه‌های لازم (همون‌هایی که خودت کپی می‌کردی)
-COPY --from=builder /lib/libpcre2-8.so.0 /lib/
-COPY --from=builder /lib/libz.so.1 /lib/
-COPY --from=builder /usr/lib/libssl.so.3 /usr/lib/
-COPY --from=builder /usr/lib/libcrypto.so.3 /usr/lib/
-
-# نصب gettext برای envsubst
-RUN apk add --no-cache gettext
-
-# ساختن دایرکتوری‌های لازم (اگر وجود نداشتند)
-RUN mkdir -p /var/cache/nginx /var/log/nginx /var/run/nginx
+# ساختن دایرکتوری‌های لازم
+RUN mkdir -p /var/cache/nginx /var/log/nginx /var/run/nginx /etc/nginx/conf.d /app/nginx
 
 # کپی کردن کانفیگ پروژه و entrypoint
+COPY nginx.conf /etc/nginx/nginx.conf
 COPY nginx.conf.template /etc/nginx/conf.d/default.conf.template
 COPY ssl_params.conf /etc/nginx/ssl_params.conf
 COPY proxy_params.conf /etc/nginx/proxy_params.conf
