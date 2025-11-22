@@ -528,6 +528,43 @@ CACHES = {
     # },
 }
 
+SUMMERNOTE_THEME = "lite"
+
+# Load Summernote assets exclusively from collected static files to avoid CDN
+# dependencies and ensure compatibility with the Unfold admin skin.
 SUMMERNOTE_CONFIG = {
-    'attachment_model': 'blog.CustomAttachment',
+    # Ensure Summernote bundles and the Unfold admin share the same jQuery
+    # instance to prevent the editor from rendering a blank surface.
+    "base_js": (
+        "admin/js/vendor/jquery/jquery.js",
+        "admin/js/jquery.init.js",
+        "summernote/ResizeSensor.js",
+        "summernote/summernote-lite.min.js",
+    ),
+    "base_css": (
+        "summernote/summernote-lite.min.css",
+        "summernote/django_summernote.css",
+    ),
+    # A sensible, professional toolbar preset for the blog post content field.
+    "toolbar": [
+        [
+            "style",
+            [
+                "style",
+                "bold",
+                "italic",
+                "underline",
+                "clear",
+                "forecolor",
+                "backcolor",
+            ],
+        ],
+        ["font", ["superscript", "subscript", "strikethrough", "fontname", "fontsize"]],
+        ["para", ["ul", "ol", "paragraph", "height"]],
+        ["insert", ["link", "picture", "video", "table", "hr"]],
+        ["misc", ["fullscreen", "codeview", "undo", "redo", "help"]],
+    ],
+    "width": "100%",
+    "height": "450",
+    "attachment_model": "blog.CustomAttachment",
 }
