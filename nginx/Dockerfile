@@ -1,9 +1,7 @@
 FROM fholzer/nginx-brotli:latest
 
 # Install utilities we rely on in the entrypoint
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends openssl wget \
-    && rm -rf /var/lib/apt/lists/* \
+RUN apk add --no-cache openssl wget \
     && mkdir -p /etc/nginx/modules
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
