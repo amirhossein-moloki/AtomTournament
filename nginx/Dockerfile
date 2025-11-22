@@ -6,7 +6,8 @@
 
 # می‌تونی موقع build این‌ها رو override کنی
 ARG NGINX_VERSION=1.26.1
-ARG BROTLI_COMMIT=v1.1.0
+# v1.1.0 وجود نداره؛ از master استفاده می‌کنیم
+ARG BROTLI_COMMIT=master
 
 ##############################
 # Stage 1: Build Nginx + Brotli
@@ -36,13 +37,12 @@ RUN set -eux; \
 # کلون کردن ماژول ngx_brotli و submoduleهای آن
 RUN git clone --depth=1 --branch="${BROTLI_COMMIT}" https://github.com/google/ngx_brotli.git /usr/src/brotli \
     && cd /usr/src/brotli \
-    && git submodule update --init
+    && git submodule update --init --recursive
 
 # رفتن داخل سورس Nginx
 WORKDIR /usr/src/nginx
 
 # کانفیگ، کامپایل و نصب Nginx با ماژول Brotli
-# توجه: مسیر --add-module=/usr/src/brotli صحیح است (بدون /c)
 RUN set -eux; \
     ./configure \
         --prefix=/etc/nginx \
@@ -95,12 +95,10 @@ RUN apk add --no-cache gettext
 RUN mkdir -p /var/cache/nginx /var/log/nginx /var/run/nginx
 
 # کپی کردن کانفیگ پروژه و entrypoint
-# توجه: nginx رسمی از /etc/nginx/nginx.conf و /etc/nginx/conf.d/*.conf استفاده می‌کند
 COPY nginx.conf.template /etc/nginx/conf.d/default.conf.template
 COPY ssl_params.conf /etc/nginx/ssl_params.conf
 COPY proxy_params.conf /etc/nginx/proxy_params.conf
 COPY entrypoint.sh /app/nginx/entrypoint.sh
-
 
 RUN chmod +x /app/nginx/entrypoint.sh
 
