@@ -33,13 +33,16 @@ RUN set -eux; \
     curl -fSL "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" \
     | tar -xzC /usr/src/nginx --strip-components=1
 
-# کلون کردن Brotli (طبق چیزی که خودت داشتی)
-RUN git clone --depth=1 --branch="${BROTLI_COMMIT}" https://github.com/google/brotli.git /usr/src/brotli
+# کلون کردن ماژول ngx_brotli و submoduleهای آن
+RUN git clone --depth=1 --branch="${BROTLI_COMMIT}" https://github.com/google/ngx_brotli.git /usr/src/brotli \
+    && cd /usr/src/brotli \
+    && git submodule update --init
 
 # رفتن داخل سورس Nginx
 WORKDIR /usr/src/nginx
 
 # کانفیگ، کامپایل و نصب Nginx با ماژول Brotli
+# توجه: مسیر --add-module=/usr/src/brotli صحیح است (بدون /c)
 RUN set -eux; \
     ./configure \
         --prefix=/etc/nginx \
@@ -65,7 +68,7 @@ RUN set -eux; \
         --with-http_gunzip_module \
         --with-http_gzip_static_module \
         --with-http_stub_status_module \
-        --add-module=/usr/src/brotli/c \
+        --add-module=/usr/src/brotli \
     && make \
     && make install
 
