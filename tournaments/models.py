@@ -2,12 +2,10 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
-from common.fields import WebPImageField
-
 
 class Rank(models.Model):
     name = models.CharField(max_length=100)
-    image = WebPImageField(upload_to="ranks/")
+    image = models.ImageField(upload_to="ranks/")
     required_score = models.IntegerField()
 
     def __str__(self):
@@ -67,7 +65,7 @@ class GameImage(models.Model):
     )
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="images")
     image_type = models.CharField(max_length=20, choices=IMAGE_TYPE_CHOICES)
-    image = WebPImageField(upload_to="game_images/")
+    image = models.ImageField(upload_to="game_images/")
 
     def __str__(self):
         return f"{self.game.name} - {self.get_image_type_display()}"
@@ -75,7 +73,7 @@ class GameImage(models.Model):
 
 class TournamentImage(models.Model):
     name = models.CharField(max_length=100, unique=True)
-    image = WebPImageField(upload_to="tournament_images/")
+    image = models.ImageField(upload_to="tournament_images/")
 
     def __str__(self):
         return self.name
@@ -288,7 +286,7 @@ class Match(models.Model):
         null=True,
         blank=True,
     )
-    result_proof = WebPImageField(
+    result_proof = models.ImageField(
         upload_to="private_result_proofs/", null=True, blank=True
     )
     is_confirmed = models.BooleanField(default=False)
@@ -341,7 +339,7 @@ class Report(models.Model):
     )
     match = models.ForeignKey(Match, on_delete=models.CASCADE)
     description = models.TextField()
-    evidence = WebPImageField(upload_to="report_evidence/", null=True, blank=True)
+    evidence = models.ImageField(upload_to="report_evidence/", null=True, blank=True)
     status = models.CharField(
         max_length=20, choices=REPORT_STATUS_CHOICES, default="pending"
     )
