@@ -6,7 +6,7 @@
 
 # می‌تونی موقع build این‌ها رو override کنی
 ARG NGINX_VERSION=1.26.1
-ARG BROTLI_COMMIT=v1.1.0
+ARG BROTLI_COMMIT=v1.0.0rc
 
 ##############################
 # Stage 1: Build Nginx + Brotli
