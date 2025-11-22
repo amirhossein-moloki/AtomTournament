@@ -1,49 +1,36 @@
-# Defining the upstream server for the Django application
 upstream django_server {
+    # Django application server
     server web:8000;
 }
 
-# Rate limit zone for API requests
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+set $acme_challenge_root /var/www/certbot;
+
 limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
 
-# Server configuration for redirecting non-www to www (HTTP)
 server {
     listen 80;
-    server_name ${DOMAIN};
+    server_name ${DOMAIN} www.${DOMAIN};
 
-    # For Let's Encrypt renewal on the bare domain
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
+    location ^~ /.well-known/acme-challenge/ {
+        root $acme_challenge_root;
     }
 
-    location / {
+    if ($host = ${DOMAIN}) {
         return 301 https://www.${DOMAIN}$request_uri;
     }
+
+    return 301 https://$host$request_uri;
 }
 
-
-# Server configuration for redirecting HTTP to HTTPS for www
-server {
-    listen 80;
-    server_name www.${DOMAIN};
-
-    # Location for Let's Encrypt certificate renewal challenges
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-
-    # Redirect all other HTTP traffic to HTTPS
-    location / {
-        return 301 https://$host$request_uri;
-    }
-}
-
-# Server configuration for HTTPS
 server {
     listen 443 ssl http2;
     server_name www.${DOMAIN};
 
-    # Root & index for frontend
     root /var/www/frontend;
     index index.html;
 

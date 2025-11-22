@@ -1,39 +1,54 @@
 #!/bin/sh
 
-set -e
+set -eu
 
-# Use environment variable for domain, with a default value
 DOMAIN=${DOMAIN:-atom-game.ir}
+CONFIG_TEMPLATE=/etc/nginx/conf.d/default.conf.template
+CONFIG_PATH=/etc/nginx/conf.d/default.conf
+LE_PATH="/etc/letsencrypt/live/$DOMAIN"
 
-# Replace placeholders in the template to create the final config
-# We only want to substitute ${DOMAIN}, not other shell variables like $host
-export DOLLAR='$'
-envsubst '${DOMAIN}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf
+log() {
+    printf '%s %s\n' "[nginx-entrypoint]" "$*"
+}
 
+render_config() {
+    export DOLLAR='$'
+    envsubst '${DOMAIN}' < "$CONFIG_TEMPLATE" > "$CONFIG_PATH"
+}
 
-# Paths
-le_path="/etc/letsencrypt/live/$DOMAIN"
+ensure_dummy_cert() {
+    if [ -f "$LE_PATH/fullchain.pem" ]; then
+        return
+    fi
 
-# Create dummy cert if it doesn't exist, to allow nginx to start
-if [ ! -f "$le_path/fullchain.pem" ]; then
-    echo "### Creating dummy certificate for $DOMAIN ..."
-    mkdir -p "$le_path"
+    log "Creating dummy certificate for $DOMAIN ..."
+    mkdir -p "$LE_PATH"
     openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
-        -keyout "$le_path/privkey.pem" \
-        -out "$le_path/fullchain.pem" \
+        -keyout "$LE_PATH/privkey.pem" \
+        -out "$LE_PATH/fullchain.pem" \
         -subj "/CN=localhost"
-fi
+}
 
-# Start a background process to reload Nginx once the real certificate is issued
-(
-  echo "### Waiting for certificate for $DOMAIN..."
-  while ! openssl x509 -in "$le_path/fullchain.pem" -noout -issuer | grep -q "Let's Encrypt"; do
-    sleep 5
-  done
-  echo "### Certificate for $DOMAIN found, reloading Nginx..."
-  nginx -s reload
-) &
+wait_for_real_cert_and_reload() {
+    log "Waiting for certificate for $DOMAIN ..."
+    while ! openssl x509 -in "$LE_PATH/fullchain.pem" -noout -issuer 2>/dev/null | grep -q "Let's Encrypt"; do
+        sleep 5
+    done
 
-# Start Nginx in the foreground
-echo "### Starting Nginx..."
-nginx -g "daemon off;"
+    log "Certificate for $DOMAIN found, reloading Nginx ..."
+    nginx -s reload
+}
+
+start_nginx() {
+    log "Starting Nginx ..."
+    nginx -g "daemon off;"
+}
+
+main() {
+    render_config
+    ensure_dummy_cert
+    wait_for_real_cert_and_reload &
+    start_nginx
+}
+
+main "$@"
