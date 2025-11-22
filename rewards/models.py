@@ -1,6 +1,5 @@
 from django.db import models
 
-from common.fields import WebPImageField
 from tournaments.models import Rank
 from users.models import User
 
@@ -16,7 +15,7 @@ class Wheel(models.Model):
 class Prize(models.Model):
     wheel = models.ForeignKey(Wheel, on_delete=models.CASCADE, related_name="prizes")
     name = models.CharField(max_length=100)
-    image = WebPImageField(upload_to="prizes/")
+    image = models.ImageField(upload_to="prizes/")
     chance = models.FloatField()
 
     def __str__(self):

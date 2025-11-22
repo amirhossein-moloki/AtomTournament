@@ -5,12 +5,10 @@ from django.db import models
 from django.db.models.signals import post_save
 from phonenumber_field.modelfields import PhoneNumberField
 
-from common.fields import WebPImageField
-
 
 class User(AbstractUser):
     phone_number = PhoneNumberField(unique=True)
-    profile_picture = WebPImageField(
+    profile_picture = models.ImageField(
         upload_to="profile_pictures/", null=True, blank=True
     )
     score = models.IntegerField(default=0)
@@ -71,9 +69,6 @@ def assign_default_role_and_referral_code(sender, instance, created, **kwargs):
         if not instance.referral_code:
             instance.referral_code = shortuuid.uuid()
             instance.save()
-
-
-post_save.connect(assign_default_role_and_referral_code, sender=User)
 
 
 class Referral(models.Model):

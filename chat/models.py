@@ -1,6 +1,5 @@
 from django.db import models
-
-from common.fields import WebPImageField
+from django.db.models import ImageField
 from support.models import Ticket
 from users.models import User
 
@@ -45,7 +44,7 @@ class Attachment(models.Model):
     message = models.ForeignKey(
         Message, on_delete=models.CASCADE, related_name="attachments"
     )
-    file = WebPImageField(upload_to="attachments/")
+    file = ImageField(upload_to="attachments/")
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
