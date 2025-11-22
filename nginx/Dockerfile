@@ -1,7 +1,68 @@
+# Stage 1: Build Nginx with the Brotli module from source
+ARG NGINX_VERSION=1.26.1
+ARG BROTLI_COMMIT=v1.1.0
+
+FROM alpine:3.19 as builder
+
+RUN apk add --no-cache \
+    build-base \
+    curl \
+    git \
+    linux-headers \
+    openssl-dev \
+    pcre2-dev \
+    zlib-dev
+
+# Download Nginx source code
+RUN curl -L "http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" | tar -xz && \
+    mv nginx-${NGINX_VERSION} /usr/src/nginx
+
+# Clone the Brotli repository
+RUN git clone --depth=1 --branch=${BROTLI_COMMIT} https://github.com/google/brotli.git /usr/src/brotli
+
+# Configure, compile, and install Nginx with the Brotli module
+WORKDIR /usr/src/nginx
+RUN ./configure \
+        --prefix=/etc/nginx \
+        --sbin-path=/usr/sbin/nginx \
+        --modules-path=/usr/lib/nginx/modules \
+        --conf-path=/etc/nginx/nginx.conf \
+        --error-log-path=/var/log/nginx/error.log \
+        --http-log-path=/var/log/nginx/access.log \
+        --pid-path=/var/run/nginx.pid \
+        --lock-path=/var/run/nginx.lock \
+        --http-client-body-temp-path=/var/cache/nginx/client_temp \
+        --http-proxy-temp-path=/var/cache/nginx/proxy_temp \
+        --http-fastcgi-temp-path=/var/cache/nginx/fastcgi_temp \
+        --http-uwsgi-temp-path=/var/cache/nginx/uwsgi_temp \
+        --http-scgi-temp-path=/var/cache/nginx/scgi_temp \
+        --with-threads \
+        --with-file-aio \
+        --with-http_ssl_module \
+        --with-http_v2_module \
+        --with-http_realip_module \
+        --with-http_addition_module \
+        --with-http_sub_module \
+        --with-http_gunzip_module \
+        --with-http_gzip_static_module \
+        --with-http_stub_status_module \
+        --add-module=/usr/src/brotli/c \
+    && make \
+    && make install
+
+# Stage 2: Create the final, lean production image
 FROM nginx:stable-alpine
 
-RUN apk add --no-cache openssl
+# Copy the compiled Nginx binary from the builder stage
+COPY --from=builder /usr/sbin/nginx /usr/sbin/nginx
 
+# Copy necessary shared libraries from the builder stage to avoid runtime mismatches
+COPY --from=builder /lib/libpcre2-8.so.0 /lib/
+COPY --from=builder /lib/libz.so.1 /lib/
+COPY --from=builder /usr/lib/libssl.so.3 /usr/lib/
+COPY --from=builder /usr/lib/libcrypto.so.3 /usr/lib/
+
+# Copy the project's Nginx configuration and entrypoint script
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY entrypoint.sh /app/nginx/entrypoint.sh
 
