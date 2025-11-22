@@ -35,7 +35,8 @@ RUN set -eux; \
     | tar -xzC /usr/src/nginx --strip-components=1
 
 # کلون کردن ماژول ngx_brotli و submoduleهای آن
-RUN git clone --depth=1 --branch="${BROTLI_COMMIT}" https://github.com/google/ngx_brotli.git /usr/src/brotli \
+# عمداً --depth=1 را حذف کردیم تا submoduleها بدون مشکل clone شوند
+RUN git clone --branch="${BROTLI_COMMIT}" https://github.com/google/ngx_brotli.git /usr/src/brotli \
     && cd /usr/src/brotli \
     && git submodule update --init --recursive
 
