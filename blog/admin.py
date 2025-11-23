@@ -1,6 +1,4 @@
 from django.contrib import admin, messages
-from django_summernote.admin import SummernoteModelAdmin
-from django_summernote.models import Attachment
 from .models import (
     AuthorProfile, Category, Tag, Post, PostTag, Series, Media, Revision,
     Comment, Reaction, Page, Menu, MenuItem
@@ -9,7 +7,7 @@ from .attachments import CustomAttachment
 
 
 from django.core.files.storage import default_storage
-from .forms import MediaAdminForm, PostAdminForm
+from .forms import MediaAdminForm, PageAdminForm, PostAdminForm
 
 @admin.register(Media)
 class MediaAdmin(admin.ModelAdmin):
@@ -76,9 +74,8 @@ class PostTagInline(admin.TabularInline):
 
 
 @admin.register(Post)
-class PostAdmin(SummernoteModelAdmin):
+class PostAdmin(admin.ModelAdmin):
     form = PostAdminForm
-    summernote_fields = ('content',)
     list_display = ('title', 'slug', 'author', 'category', 'status', 'published_at')
     list_filter = ('status', 'visibility', 'category', 'author')
     search_fields = ('title', 'content')
@@ -138,6 +135,7 @@ class ReactionAdmin(admin.ModelAdmin):
 
 @admin.register(Page)
 class PageAdmin(admin.ModelAdmin):
+    form = PageAdminForm
     list_display = ('title', 'slug', 'status', 'published_at')
     list_filter = ('status',)
     search_fields = ('title', 'content')
@@ -166,17 +164,4 @@ class CustomAttachmentAdmin(admin.ModelAdmin):
         obj.save(request=request)
 
 
-# Unregister the default Attachment admin if it's registered
-try:
-    admin.site.unregister(Attachment)
-except admin.sites.NotRegistered:
-    pass
-
-# Unregister the CustomAttachment model if it's already registered
-try:
-    admin.site.unregister(CustomAttachment)
-except admin.sites.NotRegistered:
-    pass
-
-# Register the CustomAttachment model with the custom admin
 admin.site.register(CustomAttachment, CustomAttachmentAdmin)

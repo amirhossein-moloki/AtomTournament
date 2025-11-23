@@ -67,4 +67,4 @@ django-select2
 django-tempus-dominus
 django-formtools
 django-jalali-date
-django-summernote
+django-ckeditor-5
