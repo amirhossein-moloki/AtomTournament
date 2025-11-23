@@ -7,12 +7,15 @@ from common.utils.images import convert_image_to_webp
 
 class CustomAttachment(models.Model):
     file = models.FileField(upload_to="attachments/")
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, blank=True)
     url = models.URLField(blank=True)
     uploaded = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, request=None, **kwargs):
         file_obj = self.file
+
+        if not self.name:
+            self.name = getattr(file_obj, "name", "") or "attachment"
 
         content_type = getattr(getattr(file_obj, "file", None), "content_type", None)
         if content_type is None:
