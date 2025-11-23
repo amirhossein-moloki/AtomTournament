@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>پنل چت</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link
+      rel="preconnect"
+      href="https://fonts.googleapis.com"
+    />
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-icon">💬</div>
+          <div>
+            <p class="brand-title">اتاق گفتگو</p>
+            <p class="brand-subtitle">پیام‌رسان داخلی</p>
+          </div>
+        </div>
+        <section class="panel">
+          <h3>ورود</h3>
+          <form id="login-form" class="stack" autocomplete="off">
+            <label class="field">
+              <span>نام کاربری</span>
+              <input type="text" id="username" required />
+            </label>
+            <label class="field">
+              <span>رمز عبور</span>
+              <input type="password" id="password" required />
+            </label>
+            <button type="submit" class="primary">دریافت توکن</button>
+            <p class="hint">توکن در حافظه مرورگر نگه‌داری می‌شود.</p>
+          </form>
+          <div class="token-row">
+            <button id="logout-btn" class="ghost">خروج</button>
+            <button id="reload-conversations" class="ghost">تازه‌سازی لیست</button>
+          </div>
+          <div class="user-indicator" id="user-indicator">وضعیت ورود: نامشخص</div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h3>مکالمات</h3>
+            <span class="badge" id="conversation-count">0</span>
+          </div>
+          <div id="conversations" class="conversation-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h3>ایجاد مکالمه جدید</h3>
+          </div>
+          <form id="new-conversation-form" class="stack" autocomplete="off">
+            <label class="field">
+              <span>شناسه کاربر گیرنده</span>
+              <input type="number" id="recipient-id" required />
+            </label>
+            <label class="field">
+              <span>پیام ابتدایی</span>
+              <textarea id="initial-message" rows="2" required></textarea>
+            </label>
+            <button class="primary" type="submit">ارسال</button>
+          </form>
+        </section>
+      </aside>
+
+      <main class="content">
+        <header class="content-header">
+          <div>
+            <p class="eyebrow">مکالمه فعال</p>
+            <h2 id="active-conversation-title">هیچ مکالمه‌ای انتخاب نشده است</h2>
+            <p id="typing-indicator" class="typing">&nbsp;</p>
+          </div>
+          <div class="status">
+            <span class="dot" id="ws-status"></span>
+            <span id="ws-text">غیرفعال</span>
+          </div>
+        </header>
+
+        <section class="messages" id="messages"></section>
+
+        <footer class="composer">
+          <form id="message-form" class="message-form" autocomplete="off">
+            <textarea
+              id="message-input"
+              rows="2"
+              placeholder="متن پیام..."
+              required
+            ></textarea>
+            <div class="actions">
+              <button type="button" id="typing-btn" class="ghost">در حال تایپ</button>
+              <button type="submit" class="primary">ارسال</button>
+            </div>
+          </form>
+        </footer>
+      </main>
+    </div>
+
+    <template id="message-template">
+      <article class="message-item">
+        <header class="message-meta">
+          <div class="meta-row">
+            <span class="sender"></span>
+            <span class="timestamp"></span>
+          </div>
+          <div class="controls">
+            <button class="ghost edit-btn">ویرایش</button>
+            <button class="ghost delete-btn">حذف</button>
+            <label class="attach-label">
+              <input type="file" class="attach-input" hidden />
+              افزودن فایل
+            </label>
+          </div>
+        </header>
+        <p class="message-content"></p>
+        <div class="attachments"></div>
+      </article>
+    </template>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

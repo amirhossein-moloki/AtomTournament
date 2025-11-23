@@ -28,5 +28,10 @@ node_modules/
 htmlcov/
 reports/
 
+# مسیر کلی فرانت‌اند برای خروجی‌های موقتی نادیده گرفته می‌شد،
+# اما پوشه chat شامل پیاده‌سازی دستی است و باید در مخزن بماند.
 frontend/
+!frontend/
+!frontend/chat/
+!frontend/chat/**
 celerybeat-schedule
