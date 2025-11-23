@@ -42,7 +42,9 @@ class CustomAttachmentSaveTests(TestCase):
         self.assertEqual(attachment.url, media.url)
 
     def test_save_with_request_uses_authenticated_user(self):
-        user = get_user_model().objects.create_user("uploader", "uploader@example.com", "pass")
+        user = get_user_model().objects.create_user(
+            "uploader", "uploader@example.com", "pass", phone_number="+989120000999"
+        )
         request = self.factory.post("/upload")
         request.user = user
 
