@@ -15,6 +15,7 @@ from rest_framework_simplejwt.views import (
 )
 
 from tournaments.views import private_media_view
+from tournament_project.ckeditor_views import ckeditor5_upload
 from .views import page_not_found_view
 
 handler404 = page_not_found_view
@@ -24,6 +25,11 @@ urlpatterns = [
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     # --- Admin Panel ---
+    path(
+        "ckeditor5/image_upload/",
+        ckeditor5_upload,
+        name="ck_editor_5_upload_file",
+    ),
     path("ckeditor5/", include("django_ckeditor_5.urls")),
     path("admin/", admin.site.urls),
 
