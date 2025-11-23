@@ -1,7 +1,6 @@
 import re
 from django.conf import settings
 from django.db import models
-from .attachments import CustomAttachment
 from django.db.models import Count
 from django.db.models.functions import Coalesce
 from django.urls import reverse
@@ -9,6 +8,8 @@ from django.utils.text import slugify
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
+from django_ckeditor_5.fields import CKEditor5Field
+
 
 User = get_user_model()
 
@@ -117,7 +118,7 @@ class Post(models.Model):
     canonical_url = models.URLField(null=True, blank=True)
     title = models.CharField(max_length=255)
     excerpt = models.TextField()
-    content = models.TextField()  # Assuming RichText or Markdown is handled on the frontend
+    content = CKEditor5Field(config_name="default")
     reading_time_sec = models.PositiveIntegerField(default=0)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='draft')
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default='public')
@@ -177,7 +178,7 @@ class PostTag(models.Model):
 class Revision(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE)
     editor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    content = models.TextField()
+    content = CKEditor5Field(config_name="default")
     title = models.CharField(max_length=255)
     excerpt = models.TextField()
     change_note = models.CharField(max_length=255, blank=True)
@@ -197,7 +198,7 @@ class Comment(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
-    content = models.TextField()
+    content = CKEditor5Field(config_name="default")
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
     ip = models.GenericIPAddressField(null=True, blank=True)
@@ -228,7 +229,7 @@ class Reaction(models.Model):
 class Page(models.Model):
     slug = models.SlugField(unique=True)
     title = models.CharField(max_length=255)
-    content = models.TextField()
+    content = CKEditor5Field(config_name="default")
     status = models.CharField(max_length=10, choices=Post.STATUS_CHOICES, default='draft')
     published_at = models.DateTimeField(null=True, blank=True)
     seo_title = models.CharField(max_length=255, blank=True)

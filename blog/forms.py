@@ -1,7 +1,8 @@
 from django import forms
 from django.contrib.admin.widgets import AdminFileWidget
 from django.utils.html import format_html
-from .models import Comment, Media, Post
+from .models import Comment, Media, Page, Post
+from django_ckeditor_5.widgets import CKEditor5Widget
 
 
 class ImagePreviewWidget(AdminFileWidget):
@@ -26,8 +27,18 @@ class CommentForm(forms.ModelForm):
 
 
 class PostAdminForm(forms.ModelForm):
+    content = forms.CharField(widget=CKEditor5Widget(config_name="default"))
+
     class Meta:
         model = Post
+        fields = '__all__'
+
+
+class PageAdminForm(forms.ModelForm):
+    content = forms.CharField(widget=CKEditor5Widget(config_name="default"))
+
+    class Meta:
+        model = Page
         fields = '__all__'
 
 
