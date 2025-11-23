@@ -6,6 +6,7 @@ from django.db import transaction
 from django.utils import timezone
 from datetime import timedelta
 from django.shortcuts import redirect
+from django.db import transaction
 from rest_framework import generics, status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -144,45 +145,52 @@ class WithdrawalRequestAPIView(generics.CreateAPIView):
         user = request.user
 
         try:
-            wallet = user.wallet
+            with transaction.atomic():
+                wallet = Wallet.objects.select_for_update().get(user=user)
+
+                if wallet.withdrawable_balance < amount or wallet.total_balance < amount:
+                    return Response(
+                        {"error": "موجودی کافی نیست."}, status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                if amount < settings.MINIMUM_WITHDRAWAL_AMOUNT:
+                    return Response(
+                        {
+                            "error": f"حداقل مقدار برداشت {settings.MINIMUM_WITHDRAWAL_AMOUNT:,.0f} ریال است."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Check for recent withdrawal requests
+                if WithdrawalRequest.objects.filter(
+                    user=user, created_at__gte=timezone.now() - timedelta(hours=24)
+                ).exists():
+                    return Response(
+                        {"error": "شما در ۲۴ ساعت گذشته یک درخواست برداشت ثبت کرده‌اید."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Update wallet card and sheba number if not already set
+                if not wallet.card_number:
+                    wallet.card_number = card_number
+                if not wallet.sheba_number:
+                    wallet.sheba_number = sheba_number
+                wallet.save()
+
+                withdrawal_request = WithdrawalRequest.objects.create(
+                    user=user,
+                    amount=amount,
+                )
+                # Deduct from balances, but hold it until admin approves
+                wallet.total_balance -= amount
+                wallet.withdrawable_balance -= amount
+                wallet.save()
+
         except Wallet.DoesNotExist:
-            return Response({"error": "Wallet not found for this user."}, status=status.HTTP_404_NOT_FOUND)
-
-        if wallet.withdrawable_balance < amount:
-            return Response({"error": "موجودی کافی نیست."}, status=status.HTTP_400_BAD_REQUEST)
-
-        if amount < settings.MINIMUM_WITHDRAWAL_AMOUNT:
             return Response(
-                {
-                    "error": f"حداقل مقدار برداشت {settings.MINIMUM_WITHDRAWAL_AMOUNT:,.0f} ریال است."
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+                {"error": "Wallet not found for this user."},
+                status=status.HTTP_404_NOT_FOUND,
             )
-
-        # Check for recent withdrawal requests
-        if WithdrawalRequest.objects.filter(
-            user=user, created_at__gte=timezone.now() - timedelta(hours=24)
-        ).exists():
-            return Response(
-                {"error": "شما در ۲۴ ساعت گذشته یک درخواست برداشت ثبت کرده‌اید."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Update wallet card and sheba number if not already set
-        if not wallet.card_number:
-            wallet.card_number = card_number
-        if not wallet.sheba_number:
-            wallet.sheba_number = sheba_number
-        wallet.save()
-
-        withdrawal_request = WithdrawalRequest.objects.create(
-            user=user,
-            amount=amount,
-        )
-        # Deduct from withdrawable_balance, but hold it until admin approves
-        wallet.withdrawable_balance -= amount
-        wallet.save()
-
 
         return Response(
             WithdrawalRequestSerializer(withdrawal_request).data,
@@ -224,21 +232,25 @@ class AdminWithdrawalRequestViewSet(viewsets.ModelViewSet):
 
         wallet = instance.user.wallet
 
-        if status == "approved":
-            instance.status = "approved"
-            Transaction.objects.create(
-                wallet=wallet,
-                amount=instance.amount,
-                transaction_type="withdrawal",
-                status="success",
-                description=f"Withdrawal request {instance.id} approved by admin.",
-            )
-        elif status == "rejected":
-            instance.status = "rejected"
-            wallet.withdrawable_balance += instance.amount
-            wallet.save()
+        with transaction.atomic():
+            wallet = Wallet.objects.select_for_update().get(user=instance.user)
 
-        instance.save()
+            if status == "approved":
+                instance.status = "approved"
+                Transaction.objects.create(
+                    wallet=wallet,
+                    amount=instance.amount,
+                    transaction_type="withdrawal",
+                    status="success",
+                    description=f"Withdrawal request {instance.id} approved by admin.",
+                )
+            elif status == "rejected":
+                instance.status = "rejected"
+                wallet.total_balance += instance.amount
+                wallet.withdrawable_balance += instance.amount
+                wallet.save()
+
+            instance.save()
         return Response(WithdrawalRequestSerializer(instance).data)
 
 
