@@ -142,7 +142,7 @@ class PaymentAPITestCase(APITestCase):
 
     def test_withdraw_success(self):
         WithdrawalRequest.objects.filter(user=self.user).delete()
-        self.wallet.total_balance = Decimal("5000.00")
+        self.wallet.total_balance = Decimal("2000000.00")
         self.wallet.withdrawable_balance = Decimal("2000000.00")
         self.wallet.save()
 
@@ -151,6 +151,7 @@ class PaymentAPITestCase(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.wallet.refresh_from_db()
+        self.assertEqual(self.wallet.total_balance, Decimal("500000.00"))
         self.assertEqual(self.wallet.withdrawable_balance, Decimal("500000.00"))
 
     def test_withdraw_insufficient_funds(self):
