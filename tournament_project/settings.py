@@ -529,6 +529,7 @@ CACHES = {
 }
 
 CKEDITOR_5_UPLOAD_PATH = "uploads/"
+CKEDITOR_5_CUSTOM_ATTACHMENT_MODEL = "blog.CustomAttachment"
 CKEDITOR_5_CONFIGS = {
     "default": {
         "toolbar": [
