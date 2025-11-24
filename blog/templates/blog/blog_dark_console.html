@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>استودیوی ساخت پست وبلاگ</title>
+  <style>
+    :root {
+      --bg: #0c0f16;
+      --panel: #111726;
+      --card: #161c2c;
+      --muted: #9aa3b5;
+      --text: #eef2fb;
+      --accent: #7dd3fc;
+      --accent-2: #c084fc;
+      --border: #242c3f;
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+      --radius: 18px;
+      font-family: "Inter", "Vazirmatn", system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 18% 18%, rgba(124, 58, 237, 0.2), transparent 28%),
+                  radial-gradient(circle at 86% 10%, rgba(14, 165, 233, 0.18), transparent 26%),
+                  radial-gradient(circle at 70% 82%, rgba(16, 185, 129, 0.16), transparent 26%),
+                  var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding-bottom: 72px;
+    }
+
+    header { padding: 40px 28px 16px; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 10px 28px -4px;
+      color: var(--muted);
+    }
+    .topbar .dot { width: 10px; height: 10px; border-radius: 50%; background: #22d3ee; box-shadow: 0 0 14px rgba(34, 211, 238, 0.65); }
+    .topbar .crumbs { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+    .topbar .crumbs span { color: var(--text); }
+
+    .hero {
+      background: linear-gradient(120deg, rgba(124, 58, 237, 0.22), rgba(14, 165, 233, 0.22));
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 28px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    h1 { margin: 0 0 8px; letter-spacing: -0.02em; font-size: 30px; }
+    h2 { margin: 0 0 10px; letter-spacing: -0.01em; }
+    p.lead { color: var(--muted); margin: 0; }
+
+    main { padding: 0 28px; display: grid; gap: 18px; }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+    .grid-2 { grid-template-columns: 2fr 1.2fr; }
+    .grid-3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+
+    .card {
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.02), transparent);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 18px 14px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+    .card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.05), transparent 35%);
+    }
+
+    label { display: block; color: var(--muted); margin-bottom: 6px; font-size: 14px; }
+    input, textarea, select {
+      width: 100%;
+      background: #0b0f17;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 11px 12px;
+      border-radius: 12px;
+      transition: border 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    textarea { min-height: 140px; resize: vertical; }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      transform: translateY(-1px);
+      box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.18);
+    }
+
+    .row { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+
+    button {
+      background: linear-gradient(120deg, var(--accent), var(--accent-2));
+      border: none;
+      color: #0b0f17;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s;
+      box-shadow: 0 12px 32px rgba(124, 58, 237, 0.35);
+    }
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); opacity: 0.92; }
+    .ghost { background: transparent; color: var(--text); border: 1px dashed var(--border); box-shadow: none; }
+    .danger { background: linear-gradient(120deg, #fb7185, #f472b6); color: #0b0f17; }
+
+    .status {
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: #0b0f17;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 8px;
+      min-height: 44px;
+      white-space: pre-wrap;
+    }
+
+    .section-title { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    .section-title small { color: var(--muted); }
+
+    .pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; background: rgba(125,211,252,0.12); color: var(--accent); margin: 0 6px 6px 0; font-size: 13px; }
+    .muted { color: var(--muted); }
+
+    .preview {
+      background: #0d1018;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+    .preview h3 { margin: 0; }
+    .preview .excerpt { color: var(--muted); margin-top: 6px; }
+    .preview .meta { color: var(--muted); font-size: 13px; margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .preview .content-box {
+      background: #0b0f17;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 12px;
+      max-height: 320px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+    .preview-cover {
+      margin-top: 10px;
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      min-height: 160px;
+      background: linear-gradient(140deg, rgba(124, 58, 237, 0.12), rgba(14, 165, 233, 0.08));
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: stretch;
+      justify-content: stretch;
+    }
+    .preview-cover img { width: 100%; height: 100%; object-fit: cover; display: none; }
+    .preview-cover .placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 14px;
+      text-align: center;
+      padding: 12px;
+      backdrop-filter: blur(0px);
+    }
+
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.02);
+      transition: border 0.2s ease, background 0.2s ease;
+      cursor: pointer;
+    }
+    .dropzone:hover { border-color: var(--accent); background: rgba(125, 211, 252, 0.05); }
+    .dropzone input { display: none; }
+    .cover-thumb { margin-top: 10px; border-radius: 12px; width: 100%; max-height: 220px; object-fit: cover; border: 1px solid var(--border); }
+
+    .media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-top: 12px; }
+    .media-card {
+      background: #0b0f17;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      cursor: pointer;
+      transition: border 0.15s ease, transform 0.15s ease;
+    }
+    .media-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .media-card.active { border-color: var(--accent-2); box-shadow: 0 8px 24px rgba(192, 132, 252, 0.25); }
+    .media-card img { width: 100%; height: 120px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); background: #0d121f; }
+    .media-meta { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+    .media-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; border-radius: 999px; background: rgba(255, 255, 255, 0.04); color: var(--text); font-size: 12px; }
+    .chip span { color: var(--muted); font-weight: 600; }
+    .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+    .muted-btn { background: rgba(255, 255, 255, 0.04); color: var(--text); box-shadow: none; border: 1px solid var(--border); padding: 10px 12px; }
+    .tagline { color: var(--muted); font-size: 13px; margin-top: 6px; }
+
+    @media (max-width: 920px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="dot"></div>
+    <div class="crumbs">
+      <span>Blog</span>
+      <span style="opacity:.6;">/</span>
+      <span>Studio</span>
+      <span style="opacity:.6;">/</span>
+      <span>Post Builder</span>
+    </div>
+  </div>
+  <header>
+    <div class="hero">
+      <h1>استودیوی حرفه‌ای ساخت پست وبلاگ</h1>
+      <p class="lead">یک صفحه اختصاصی برای ساخت و انتشار پست‌ها با تم تاریک، پیش‌نمایش زنده و اتصال مستقیم به API.</p>
+      <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;">
+        <span class="pill">POST /api/blog/posts/</span>
+        <span class="pill">POST /api/blog/media/ (کاور)</span>
+        <span class="pill">POST /api/token/ (ورود سریع)</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="grid grid-2">
+    <section class="grid grid-3">
+      <div class="card">
+        <div class="section-title">
+          <h2>توکن JWT</h2>
+          <small>Authorization: Bearer &lt;token&gt;</small>
+        </div>
+        <label for="token">توکن فعلی</label>
+        <input id="token" placeholder="توکن را اینجا قرار دهید یا از فرم ورود بگیرید" />
+        <div class="status" id="status-box">آماده.</div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          <h2>ورود سریع</h2>
+          <small>POST /api/token/</small>
+        </div>
+        <form id="login-form">
+          <div class="row">
+            <div>
+              <label for="username">نام کاربری</label>
+              <input id="username" autocomplete="username" required />
+            </div>
+            <div>
+              <label for="password">رمز عبور</label>
+              <input id="password" type="password" autocomplete="current-password" required />
+            </div>
+          </div>
+          <button type="submit">دریافت و درج توکن</button>
+        </form>
+        <div class="status" id="login-status"></div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          <h2>آپلود کاور</h2>
+          <small>POST /api/blog/media/</small>
+        </div>
+        <label>فایل تصویر</label>
+        <div class="dropzone" id="dropzone">
+          <p class="muted" style="margin:0">فایل را بکشید و رها کنید یا کلیک کنید</p>
+          <input type="file" id="media-file" accept="image/*" />
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <div>
+            <label for="media-title">عنوان</label>
+            <input id="media-title" placeholder="مثلا Cover for Post" />
+          </div>
+          <div>
+            <label for="media-alt">متن جایگزین</label>
+            <input id="media-alt" placeholder="Alt text" />
+          </div>
+        </div>
+        <button id="upload-btn" type="button">آپلود کاور</button>
+        <div class="status" id="media-status"></div>
+        <img id="cover-preview" class="cover-thumb" style="display:none" alt="کاور" />
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          <h2>کتابخانه رسانه</h2>
+          <small>GET /api/blog/media/</small>
+        </div>
+        <p class="tagline">همه تصاویر درون وبلاگ را ببینید، یکی را به عنوان کاور یا OG انتخاب کنید یا روی کارت دابل‌کلیک کنید تا کاور شود.</p>
+        <div class="toolbar">
+          <input id="media-search" placeholder="جست‌وجوی عنوان یا Alt" style="max-width:220px;" />
+          <button type="button" class="muted-btn" id="refresh-media">بارگیری رسانه‌ها</button>
+          <button type="button" class="ghost" id="clear-selection">پاک‌کردن انتخاب‌ها</button>
+        </div>
+        <div class="status" id="library-status">بارگیری نشده است.</div>
+        <div class="media-grid" id="media-grid"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-title">
+        <h2>پیش‌نمایش زنده</h2>
+        <small>تغییر هر فیلد بلافاصله اعمال می‌شود</small>
+      </div>
+      <div class="preview" id="live-preview">
+        <div class="preview-cover" id="preview-cover-box">
+          <img id="preview-cover-img" alt="کاور انتخابی" />
+          <div class="placeholder" id="preview-cover-placeholder">کاوری انتخاب نشده است.</div>
+        </div>
+        <h3 id="preview-title">عنوان پست</h3>
+        <div class="excerpt" id="preview-excerpt">خلاصه کوتاه پست در اینجا نمایش داده می‌شود.</div>
+        <div class="meta">
+          <span id="preview-status">وضعیت: draft</span>
+          <span id="preview-visibility">دسترسی: public</span>
+        </div>
+        <div class="content-box" id="preview-content">محتوا را بنویسید تا پیش‌نمایش در لحظه به‌روزرسانی شود.</div>
+      </div>
+    </section>
+  </main>
+
+  <main style="padding:0 28px; margin-top: -6px;">
+    <section class="card">
+      <div class="section-title">
+        <h2>فرم اصلی ساخت پست</h2>
+        <small>POST /api/blog/posts/</small>
+      </div>
+      <form id="post-form">
+        <div class="row">
+          <div>
+            <label for="post-title">عنوان</label>
+            <input id="post-title" required />
+          </div>
+          <div>
+            <label for="post-slug">اسلاگ</label>
+            <input id="post-slug" placeholder="در صورت خالی بودن از عنوان ساخته می‌شود" />
+          </div>
+        </div>
+
+        <label for="post-excerpt">خلاصه</label>
+        <input id="post-excerpt" required />
+
+        <label for="post-content">محتوا</label>
+        <textarea id="post-content" required></textarea>
+
+        <div class="row">
+          <div>
+            <label for="post-status">وضعیت</label>
+            <select id="post-status">
+              <option value="draft">draft</option>
+              <option value="review">review</option>
+              <option value="scheduled">scheduled</option>
+              <option value="published">published</option>
+            </select>
+          </div>
+          <div>
+            <label for="post-visibility">دسترسی</label>
+            <select id="post-visibility">
+              <option value="public">public</option>
+              <option value="private">private</option>
+              <option value="unlisted">unlisted</option>
+            </select>
+          </div>
+          <div>
+            <label for="post-scheduled">تاریخ زمان‌بندی (ISO)</label>
+            <input id="post-scheduled" placeholder="2024-06-02T10:00:00Z" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="post-category">شناسه دسته (اختیاری)</label>
+            <input id="post-category" type="number" min="1" placeholder="مثلا 3" />
+          </div>
+          <div>
+            <label for="post-tags">شناسه تگ‌ها (Comma)</label>
+            <input id="post-tags" placeholder="1,3,5" />
+          </div>
+          <div>
+            <label for="post-series">شناسه سری (اختیاری)</label>
+            <input id="post-series" type="number" min="1" placeholder="مثلا 2" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="post-cover">شناسه کاور (از آپلود)</label>
+            <input id="post-cover" type="number" min="1" placeholder="پس از آپلود درج می‌شود" />
+          </div>
+          <div>
+            <label for="post-og">شناسه OG Image</label>
+            <input id="post-og" type="number" min="1" placeholder="اختیاری" />
+          </div>
+          <div>
+            <label for="post-canonical">Canonical URL</label>
+            <input id="post-canonical" placeholder="https://example.com/blog/slug" />
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <div class="chip"><span>کاور</span><strong id="chip-cover">—</strong></div>
+          <div class="chip"><span>OG</span><strong id="chip-og">—</strong></div>
+          <div class="chip"><span>تعداد تگ‌ها</span><strong id="chip-tags">0</strong></div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="post-seo-title">عنوان سئو</label>
+            <input id="post-seo-title" placeholder="اختیاری" />
+          </div>
+          <div>
+            <label for="post-seo-desc">توضیح سئو</label>
+            <input id="post-seo-desc" placeholder="Meta description" />
+          </div>
+        </div>
+
+        <div class="row" style="align-items:end;">
+          <div>
+            <button type="button" class="ghost" id="draft-btn">ذخیره پیش‌نویس</button>
+          </div>
+          <div>
+            <button type="submit">ارسال پست</button>
+          </div>
+          <div>
+            <button type="button" class="danger" id="publish-btn">انتشار سریع</button>
+          </div>
+        </div>
+      </form>
+      <div class="status" id="post-status"></div>
+    </section>
+  </main>
+
+  <script>
+    function setStatus(el, msg, type = 'info') {
+      el.textContent = msg;
+      if (type === 'success') {
+        el.style.color = '#4ade80';
+      } else if (type === 'error') {
+        el.style.color = '#fb7185';
+      } else {
+        el.style.color = 'var(--muted)';
+      }
+    }
+
+    function slugify(text) {
+      return text
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^\w\-آابپتثجچحخدذرزسشصضطظعغفقکگلمنوهی]/g, '')
+        .replace(/\-+/g, '-');
+    }
+
+    const tokenInput = document.getElementById('token');
+    const chipCover = document.getElementById('chip-cover');
+    const chipOg = document.getElementById('chip-og');
+    const chipTags = document.getElementById('chip-tags');
+    const previewCoverImg = document.getElementById('preview-cover-img');
+    const previewCoverPlaceholder = document.getElementById('preview-cover-placeholder');
+    const mediaGrid = document.getElementById('media-grid');
+    const libraryStatus = document.getElementById('library-status');
+    const mediaSearch = document.getElementById('media-search');
+    let mediaItems = [];
+
+    function updateCoverDisplay(url, idLabel) {
+      if (url) {
+        previewCoverImg.src = url;
+        previewCoverImg.style.display = 'block';
+        previewCoverPlaceholder.style.opacity = 0;
+        previewCoverPlaceholder.textContent = idLabel ? `کاور ID ${idLabel}` : 'کاور انتخاب شد';
+      } else {
+        previewCoverImg.style.display = 'none';
+        previewCoverPlaceholder.style.opacity = 1;
+        previewCoverPlaceholder.textContent = idLabel ? `کاور ID ${idLabel}` : 'کاوری انتخاب نشده است.';
+      }
+    }
+
+    function updateChips() {
+      const coverVal = document.getElementById('post-cover').value;
+      const ogVal = document.getElementById('post-og').value;
+      const tagsRaw = document.getElementById('post-tags').value;
+      const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+      chipCover.textContent = coverVal || '—';
+      chipOg.textContent = ogVal || '—';
+      chipTags.textContent = tags.length;
+      if (!coverVal) updateCoverDisplay('', null);
+    }
+
+    async function apiRequest(url, options = {}) {
+      const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+      if (tokenInput.value.trim()) headers['Authorization'] = `Bearer ${tokenInput.value.trim()}`;
+      const res = await fetch(url, { ...options, headers });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw { status: res.status, data };
+      return data;
+    }
+
+    // Login
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const statusEl = document.getElementById('login-status');
+      setStatus(statusEl, 'در حال ورود...');
+      try {
+        const data = await fetch('/api/token/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        }).then(r => r.json());
+        if (data.access) {
+          tokenInput.value = data.access;
+          setStatus(statusEl, 'توکن درج شد.', 'success');
+        } else {
+          setStatus(statusEl, 'ورود ناموفق.', 'error');
+        }
+      } catch (err) {
+        setStatus(statusEl, 'خطا در ورود.', 'error');
+      }
+    });
+
+    // Dropzone
+    const dropzone = document.getElementById('dropzone');
+    const mediaInput = document.getElementById('media-file');
+    dropzone.addEventListener('click', () => mediaInput.click());
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.style.borderColor = 'var(--accent)'; });
+    dropzone.addEventListener('dragleave', () => { dropzone.style.borderColor = 'var(--border)'; });
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.style.borderColor = 'var(--border)';
+      if (e.dataTransfer.files.length) {
+        mediaInput.files = e.dataTransfer.files;
+      }
+    });
+
+    mediaInput.addEventListener('change', () => {
+      const statusEl = document.getElementById('media-status');
+      if (mediaInput.files[0]) {
+        setStatus(statusEl, `فایل انتخاب شد: ${mediaInput.files[0].name}`);
+      }
+    });
+
+    document.getElementById('upload-btn').addEventListener('click', async () => {
+      const file = mediaInput.files[0];
+      const statusEl = document.getElementById('media-status');
+      if (!file) { setStatus(statusEl, 'فایل را انتخاب کنید.', 'error'); return; }
+      setStatus(statusEl, 'در حال آپلود...');
+      const formData = new FormData();
+      formData.append('file', file);
+      if (document.getElementById('media-title').value) formData.append('title', document.getElementById('media-title').value);
+      if (document.getElementById('media-alt').value) formData.append('alt_text', document.getElementById('media-alt').value);
+      try {
+        const headers = {};
+        if (tokenInput.value.trim()) headers['Authorization'] = `Bearer ${tokenInput.value.trim()}`;
+        const res = await fetch('/api/blog/media/', { method: 'POST', headers, body: formData });
+        const data = await res.json();
+        if (!res.ok) throw { status: res.status, data };
+        document.getElementById('post-cover').value = data.id;
+        const preview = document.getElementById('cover-preview');
+        preview.src = data.file || data.url || '';
+        preview.style.display = data.file || data.url ? 'block' : 'none';
+        updateChips();
+        updateCoverDisplay(mediaUrl(data), data.id);
+        if (Array.isArray(mediaItems)) { mediaItems.unshift(data); renderMedia(); }
+        setStatus(statusEl, `آپلود شد (ID: ${data.id})`, 'success');
+      } catch (err) {
+        setStatus(statusEl, `خطا: ${JSON.stringify(err.data || err)}`, 'error');
+      }
+    });
+
+    function mediaUrl(item) {
+      return item?.file || item?.url || item?.image || item?.path || '';
+    }
+
+    function renderMedia() {
+      if (!mediaGrid) return;
+      const term = mediaSearch.value.trim().toLowerCase();
+      mediaGrid.innerHTML = '';
+      const filtered = mediaItems.filter(item => {
+        const haystack = `${item.title || ''} ${item.alt_text || ''}`.toLowerCase();
+        return haystack.includes(term);
+      });
+      if (!filtered.length) {
+        mediaGrid.innerHTML = '<div class="muted" style="grid-column:1/-1; text-align:center; padding:18px;">رسانه‌ای یافت نشد.</div>';
+        return;
+      }
+
+      filtered.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'media-card';
+        card.dataset.id = item.id;
+        const img = document.createElement('img');
+        img.src = mediaUrl(item) || '';
+        img.alt = item.alt_text || 'media';
+        const meta = document.createElement('div');
+        meta.className = 'media-meta';
+        meta.innerHTML = `<strong style="color:var(--text);">#${item.id}</strong>${item.title ? `<span>${item.title}</span>` : ''}${item.alt_text ? `<span>Alt: ${item.alt_text}</span>` : ''}`;
+
+        const actions = document.createElement('div');
+        actions.className = 'media-actions';
+        const coverBtn = document.createElement('button');
+        coverBtn.type = 'button';
+        coverBtn.className = 'muted-btn';
+        coverBtn.textContent = 'انتخاب کاور';
+        coverBtn.addEventListener('click', (e) => { e.stopPropagation(); selectCover(item, card); });
+
+        const ogBtn = document.createElement('button');
+        ogBtn.type = 'button';
+        ogBtn.className = 'ghost';
+        ogBtn.textContent = 'انتخاب OG';
+        ogBtn.addEventListener('click', (e) => { e.stopPropagation(); selectOg(item, card); });
+
+        actions.appendChild(coverBtn);
+        actions.appendChild(ogBtn);
+
+        card.appendChild(img);
+        card.appendChild(meta);
+        card.appendChild(actions);
+
+        card.addEventListener('click', () => {
+          card.classList.toggle('active');
+        });
+
+        card.addEventListener('dblclick', () => selectCover(item, card));
+
+        mediaGrid.appendChild(card);
+      });
+    }
+
+    function selectCover(item, card) {
+      document.getElementById('post-cover').value = item.id;
+      updateChips();
+      updateCoverDisplay(mediaUrl(item), item.id);
+      setStatus(libraryStatus, `کاور انتخاب شد: #${item.id}`, 'success');
+      if (card) card.classList.add('active');
+    }
+
+    function selectOg(item, card) {
+      document.getElementById('post-og').value = item.id;
+      updateChips();
+      setStatus(libraryStatus, `OG انتخاب شد: #${item.id}`, 'success');
+      if (card) card.classList.add('active');
+    }
+
+    async function loadMedia() {
+      setStatus(libraryStatus, 'در حال بارگیری رسانه‌ها...');
+      try {
+        const data = await apiRequest('/api/blog/media/');
+        mediaItems = Array.isArray(data) ? data : (data.results || []);
+        renderMedia();
+        setStatus(libraryStatus, `تعداد ${mediaItems.length} رسانه بارگیری شد.`, 'success');
+      } catch (err) {
+        setStatus(libraryStatus, `خطا در بارگیری: ${JSON.stringify(err.data || err)}`, 'error');
+      }
+    }
+
+    if (mediaSearch) mediaSearch.addEventListener('input', renderMedia);
+    const refreshBtn = document.getElementById('refresh-media');
+    if (refreshBtn) refreshBtn.addEventListener('click', loadMedia);
+    const clearSelectionBtn = document.getElementById('clear-selection');
+    if (clearSelectionBtn) clearSelectionBtn.addEventListener('click', () => {
+      document.getElementById('post-cover').value = '';
+      document.getElementById('post-og').value = '';
+      updateChips();
+      updateCoverDisplay('', null);
+      document.querySelectorAll('.media-card').forEach(c => c.classList.remove('active'));
+      setStatus(libraryStatus, 'انتخاب‌ها پاک شد.');
+    });
+
+    // Live preview
+    const previewTitle = document.getElementById('preview-title');
+    const previewExcerpt = document.getElementById('preview-excerpt');
+    const previewContent = document.getElementById('preview-content');
+    const previewStatus = document.getElementById('preview-status');
+    const previewVisibility = document.getElementById('preview-visibility');
+
+    ['post-title', 'post-excerpt', 'post-content', 'post-status', 'post-visibility'].forEach(id => {
+      document.getElementById(id).addEventListener('input', updatePreview);
+    });
+
+    ['post-cover', 'post-og', 'post-tags'].forEach(id => {
+      document.getElementById(id).addEventListener('input', () => {
+        updateChips();
+        if (id === 'post-cover') {
+          const coverVal = document.getElementById('post-cover').value;
+          updateCoverDisplay('', coverVal || null);
+        }
+      });
+    });
+
+    document.getElementById('post-title').addEventListener('input', (e) => {
+      const currentSlug = document.getElementById('post-slug').value.trim();
+      if (!currentSlug) document.getElementById('post-slug').value = slugify(e.target.value);
+    });
+
+    function updatePreview() {
+      previewTitle.textContent = document.getElementById('post-title').value || 'عنوان پست';
+      previewExcerpt.textContent = document.getElementById('post-excerpt').value || 'خلاصه کوتاه پست در اینجا نمایش داده می‌شود.';
+      previewContent.textContent = document.getElementById('post-content').value || 'محتوا را بنویسید تا پیش‌نمایش در لحظه به‌روزرسانی شود.';
+      previewStatus.textContent = `وضعیت: ${document.getElementById('post-status').value}`;
+      previewVisibility.textContent = `دسترسی: ${document.getElementById('post-visibility').value}`;
+    }
+
+    updatePreview();
+    updateChips();
+    loadMedia();
+
+    function collectPayload(customStatus) {
+      const tagsRaw = document.getElementById('post-tags').value;
+      const tags = tagsRaw ? tagsRaw.split(',').map(t => Number(t.trim())).filter(Boolean) : [];
+      const payload = {
+        title: document.getElementById('post-title').value,
+        slug: document.getElementById('post-slug').value || undefined,
+        excerpt: document.getElementById('post-excerpt').value,
+        content: document.getElementById('post-content').value,
+        status: customStatus || document.getElementById('post-status').value,
+        visibility: document.getElementById('post-visibility').value,
+        scheduled_publish: document.getElementById('post-scheduled').value || null,
+        category_id: document.getElementById('post-category').value ? Number(document.getElementById('post-category').value) : null,
+        tags,
+        cover_media_id: document.getElementById('post-cover').value ? Number(document.getElementById('post-cover').value) : null,
+        og_image_id: document.getElementById('post-og').value ? Number(document.getElementById('post-og').value) : null,
+        canonical_url: document.getElementById('post-canonical').value || null,
+        seo_title: document.getElementById('post-seo-title').value || null,
+        seo_description: document.getElementById('post-seo-desc').value || null,
+        series: document.getElementById('post-series').value ? Number(document.getElementById('post-series').value) : null,
+      };
+      return payload;
+    }
+
+    async function submitPost(statusOverride) {
+      const statusEl = document.getElementById('post-status');
+      setStatus(statusEl, 'در حال ارسال...');
+      const payload = collectPayload(statusOverride);
+      try {
+        const data = await apiRequest('/api/blog/posts/', { method: 'POST', body: JSON.stringify(payload) });
+        setStatus(statusEl, `موفق: ${data.slug || 'created'}`, 'success');
+      } catch (err) {
+        setStatus(statusEl, `خطا: ${JSON.stringify(err.data)}`, 'error');
+      }
+    }
+
+    document.getElementById('post-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      submitPost();
+    });
+
+    document.getElementById('draft-btn').addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('post-status').value = 'draft';
+      updatePreview();
+      submitPost('draft');
+    });
+
+    document.getElementById('publish-btn').addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('post-status').value = 'published';
+      updatePreview();
+      submitPost('published');
+    });
+  </script>
+</body>
+</html>
