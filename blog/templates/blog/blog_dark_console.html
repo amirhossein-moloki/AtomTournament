@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>پنل مدیریت وبلاگ - تم تاریک</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --panel: #161922;
+      --card: #1d212d;
+      --muted: #9aa3b5;
+      --text: #e8ecf5;
+      --accent: #7dd3fc;
+      --accent-2: #a78bfa;
+      --danger: #f472b6;
+      --success: #4ade80;
+      --border: #252b3a;
+      --shadow: 0 12px 40px rgba(0,0,0,0.35);
+      --radius: 18px;
+      font-family: "Inter", "Vazirmatn", system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 10% 20%, rgba(124,58,237,0.18), transparent 30%),
+                  radial-gradient(circle at 90% 10%, rgba(14,165,233,0.18), transparent 28%),
+                  radial-gradient(circle at 70% 80%, rgba(16,185,129,0.14), transparent 25%),
+                  var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding-bottom: 64px;
+    }
+
+    header {
+      padding: 36px 28px 12px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, rgba(124,58,237,0.28), rgba(14,165,233,0.22));
+      border: 1px solid rgba(255,255,255,0.06);
+      padding: 28px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: -0.02em; }
+    h2 { margin: 0 0 10px; letter-spacing: -0.01em; }
+    p.lead { color: var(--muted); margin: 0; }
+
+    main { padding: 0 28px; display: grid; gap: 18px; }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+    .grid-2 { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+
+    .card {
+      background: linear-gradient(145deg, rgba(255,255,255,0.02), transparent);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 18px 14px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+    .card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.06), transparent 35%);
+    }
+
+    label { display: block; color: var(--muted); margin-bottom: 6px; font-size: 14px; }
+    input, textarea, select {
+      width: 100%;
+      background: #0b0d12;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 10px;
+      transition: border 0.2s ease, transform 0.2s ease;
+    }
+    textarea { min-height: 120px; resize: vertical; }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      transform: translateY(-1px);
+      box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.16);
+    }
+
+    .row { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+
+    button {
+      background: linear-gradient(120deg, var(--accent), var(--accent-2));
+      border: none;
+      color: #0b0d12;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s;
+      box-shadow: 0 10px 30px rgba(124,58,237,0.35);
+    }
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); opacity: 0.9; }
+    .ghost {
+      background: transparent;
+      color: var(--text);
+      border: 1px dashed var(--border);
+      box-shadow: none;
+    }
+    .danger { background: linear-gradient(120deg, #fb7185, #f472b6); color: #0b0d12; }
+
+    .status {
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: #0b0d12;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 8px;
+      min-height: 44px;
+    }
+
+    pre {
+      background: #0b0d12;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(125,211,252,0.12);
+      color: var(--accent);
+      margin: 0 6px 6px 0;
+      font-size: 13px;
+    }
+    .muted { color: var(--muted); }
+    .chip { background: rgba(167,139,250,0.15); color: #e9d5ff; padding: 4px 10px; border-radius: 20px; font-size: 12px; }
+    .section-title { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    .section-title small { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="hero">
+      <h1>پنل حرفه‌ای وبلاگ</h1>
+      <p class="lead">مدیریت کامل پست‌ها، رسانه‌ها، برچسب‌ها، سری‌ها، صفحات و منوها روی API /api/blog/ با تم تاریک مینیمال.</p>
+      <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;">
+        <span class="pill">GET/POST /api/blog/posts/</span>
+        <span class="pill">POST /api/blog/posts/&lt;slug&gt;/publish/</span>
+        <span class="pill">/media /categories /tags /series /comments /pages /menus</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="grid grid-2">
+      <div class="card">
+        <div class="section-title">
+          <h2>توکن JWT</h2>
+          <small>هدر Authorization = Bearer &lt;token&gt;</small>
+        </div>
+        <label for="token">توکن فعلی</label>
+        <input id="token" placeholder="توکن را اینجا قرار دهید یا از فرم ورود بگیرید" />
+        <div class="status" id="status-box">در انتظار...</div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          <h2>ورود سریع</h2>
+          <small>POST /api/token/</small>
+        </div>
+        <form id="login-form">
+          <div class="row">
+            <div>
+              <label for="username">نام کاربری</label>
+              <input id="username" required>
+            </div>
+            <div>
+              <label for="password">رمز عبور</label>
+              <input id="password" type="password" required>
+            </div>
+          </div>
+          <button type="submit">دریافت توکن</button>
+        </form>
+        <div class="status" id="login-status"></div>
+      </div>
+    </section>
+
+    <section class="grid grid-2">
+      <div class="card">
+        <div class="section-title">
+          <h2>بارگذاری رسانه</h2>
+          <small>POST /api/blog/media/</small>
+        </div>
+        <form id="media-form">
+          <label for="media-file">فایل</label>
+          <input id="media-file" type="file" required>
+          <div class="row">
+            <div>
+              <label for="media-title">عنوان</label>
+              <input id="media-title" placeholder="مثلا Cover for Post" />
+            </div>
+            <div>
+              <label for="media-alt">متن جایگزین</label>
+              <input id="media-alt" placeholder="Alt text" />
+            </div>
+          </div>
+          <button type="submit">آپلود</button>
+        </form>
+        <div class="status" id="media-status"></div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          <h2>طبقه‌بندی‌ها</h2>
+          <small>POST /api/blog/categories | tags | series</small>
+        </div>
+        <form id="category-form">
+          <div class="row">
+            <div>
+              <label for="cat-name">نام دسته</label>
+              <input id="cat-name" required>
+            </div>
+            <div>
+              <label for="cat-slug">اسلاگ</label>
+              <input id="cat-slug" required>
+            </div>
+          </div>
+          <label for="cat-parent">شناسه والد (اختیاری)</label>
+          <input id="cat-parent" type="number" min="1" placeholder="مثلا 3" />
+          <button type="submit">ساخت دسته</button>
+        </form>
+
+        <hr style="border:1px solid var(--border); margin:14px 0;" />
+        <form id="tag-form">
+          <div class="row">
+            <div>
+              <label for="tag-name">نام تگ</label>
+              <input id="tag-name" required>
+            </div>
+            <div>
+              <label for="tag-slug">اسلاگ</label>
+              <input id="tag-slug" required>
+            </div>
+          </div>
+          <button type="submit">ساخت تگ</button>
+        </form>
+
+        <hr style="border:1px solid var(--border); margin:14px 0;" />
+        <form id="series-form">
+          <div class="row">
+            <div>
+              <label for="series-title">عنوان سری</label>
+              <input id="series-title" required>
+            </div>
+            <div>
+              <label for="series-slug">اسلاگ</label>
+              <input id="series-slug" required>
+            </div>
+          </div>
+          <label for="series-desc">توضیحات</label>
+          <textarea id="series-desc" placeholder="توضیح کوتاه"></textarea>
+          <label for="series-order">استراتژی مرتب‌سازی</label>
+          <select id="series-order">
+            <option value="manual">Manual</option>
+            <option value="by_date">By Date</option>
+          </select>
+          <button type="submit">ساخت سری</button>
+        </form>
+        <div class="status" id="taxonomy-status"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-title">
+        <h2>ساخت/به‌روزرسانی پست</h2>
+        <small>POST /api/blog/posts/ | PUT /api/blog/posts/&lt;slug&gt;/</small>
+      </div>
+      <form id="post-form">
+        <div class="row">
+          <div>
+            <label for="post-title">عنوان</label>
+            <input id="post-title" required>
+          </div>
+          <div>
+            <label for="post-excerpt">خلاصه</label>
+            <input id="post-excerpt" required>
+          </div>
+        </div>
+        <label for="post-content">محتوا (HTML یا متن)</label>
+        <textarea id="post-content" required></textarea>
+        <div class="row">
+          <div>
+            <label for="post-status">وضعیت</label>
+            <select id="post-status">
+              <option value="draft">draft</option>
+              <option value="review">review</option>
+              <option value="scheduled">scheduled</option>
+              <option value="published">published</option>
+              <option value="archived">archived</option>
+            </select>
+          </div>
+          <div>
+            <label for="post-visibility">دسترس‌پذیری</label>
+            <select id="post-visibility">
+              <option value="public">public</option>
+              <option value="private">private</option>
+              <option value="unlisted">unlisted</option>
+            </select>
+          </div>
+          <div>
+            <label for="post-scheduled">تاریخ زمان‌بندی (ISO)</label>
+            <input id="post-scheduled" placeholder="2024-06-02T10:00:00Z">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="post-category">شناسه دسته</label>
+            <input id="post-category" type="number" min="1" placeholder="اختیاری">
+          </div>
+          <div>
+            <label for="post-tags">شناسه تگ‌ها (comma-separated)</label>
+            <input id="post-tags" placeholder="1,3,5">
+          </div>
+          <div>
+            <label for="post-cover">شناسه کاور (Media)</label>
+            <input id="post-cover" type="number" min="1" placeholder="اختیاری">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="post-og">شناسه OG Image</label>
+            <input id="post-og" type="number" min="1" placeholder="اختیاری">
+          </div>
+          <div>
+            <label for="post-slug">اسلاگ (برای ویرایش/PUT)</label>
+            <input id="post-slug" placeholder="اگر خالی باشد از عنوان ساخته می‌شود">
+          </div>
+          <div>
+            <label for="post-seo-title">عنوان سئو</label>
+            <input id="post-seo-title" placeholder="اختیاری">
+          </div>
+        </div>
+        <label for="post-seo-desc">توضیح سئو</label>
+        <textarea id="post-seo-desc" placeholder="Meta description"></textarea>
+        <div class="row">
+          <div>
+            <label for="post-canonical">Canonical URL</label>
+            <input id="post-canonical" placeholder="https://example.com/blog/slug">
+          </div>
+          <div>
+            <label for="post-series">شناسه سری (اختیاری)</label>
+            <input id="post-series" type="number" min="1" placeholder="مثلا 2">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="post-mode">حالت ارسال</label>
+            <select id="post-mode">
+              <option value="create">Create (POST)</option>
+              <option value="update">Update (PUT)</option>
+            </select>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button type="submit">ارسال</button>
+          </div>
+        </div>
+      </form>
+      <div class="status" id="post-status"></div>
+    </section>
+
+    <section class="grid grid-2">
+      <div class="card">
+        <div class="section-title">
+          <h2>لیست پست‌ها</h2>
+          <small>GET /api/blog/posts/</small>
+        </div>
+        <form id="post-list-form">
+          <div class="row">
+            <div>
+              <label for="list-search">جستجو</label>
+              <input id="list-search" placeholder="عنوان یا متن">
+            </div>
+            <div>
+              <label for="list-order">مرتب‌سازی</label>
+              <select id="list-order">
+                <option value="-published_at">جدیدترین</option>
+                <option value="published_at">قدیمی‌ترین</option>
+                <option value="-views_count">بیشترین بازدید</option>
+              </select>
+            </div>
+            <div>
+              <label for="list-page">صفحه</label>
+              <input id="list-page" type="number" min="1" value="1">
+            </div>
+          </div>
+          <button type="submit">بروزرسانی لیست</button>
+        </form>
+        <div class="status" id="list-status"></div>
+        <div id="post-list"></div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          <h2>جزئیات / انتشار پست</h2>
+          <small>GET + POST publish</small>
+        </div>
+        <form id="post-detail-form">
+          <label for="detail-slug">اسلاگ پست</label>
+          <input id="detail-slug" required placeholder="my-article">
+          <div class="row">
+            <button type="submit">نمایش جزئیات</button>
+            <button type="button" id="publish-btn" class="ghost">انتشار پیش‌نویس</button>
+          </div>
+        </form>
+        <div id="post-detail" class="status" style="min-height:120px"></div>
+      </div>
+    </section>
+
+    <section class="grid grid-2">
+      <div class="card">
+        <div class="section-title">
+          <h2>نظرات</h2>
+          <small>POST /api/blog/comments/</small>
+        </div>
+        <form id="comment-form">
+          <div class="row">
+            <div>
+              <label for="comment-post-id">شناسه پست</label>
+              <input id="comment-post-id" type="number" min="1" required>
+            </div>
+            <div>
+              <label for="comment-parent">والد (اختیاری)</label>
+              <input id="comment-parent" type="number" min="1" placeholder="برای پاسخ">
+            </div>
+          </div>
+          <label for="comment-content">متن نظر (HTML پشتیبانی می‌شود)</label>
+          <textarea id="comment-content" required></textarea>
+          <button type="submit">ارسال نظر</button>
+        </form>
+        <div class="status" id="comment-status"></div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          <h2>صفحات و منو</h2>
+          <small>POST /api/blog/pages | menus | menu-items</small>
+        </div>
+        <form id="page-form">
+          <div class="row">
+            <div>
+              <label for="page-title">عنوان صفحه</label>
+              <input id="page-title" required>
+            </div>
+            <div>
+              <label for="page-slug">اسلاگ</label>
+              <input id="page-slug" required>
+            </div>
+          </div>
+          <label for="page-content">محتوا</label>
+          <textarea id="page-content" required></textarea>
+          <div class="row">
+            <div>
+              <label for="page-status">وضعیت</label>
+              <select id="page-status">
+                <option value="draft">draft</option>
+                <option value="published">published</option>
+                <option value="review">review</option>
+              </select>
+            </div>
+            <div>
+              <label for="page-seo-title">عنوان سئو</label>
+              <input id="page-seo-title" placeholder="اختیاری">
+            </div>
+          </div>
+          <label for="page-seo-desc">توضیح سئو</label>
+          <textarea id="page-seo-desc"></textarea>
+          <button type="submit">ایجاد صفحه</button>
+        </form>
+
+        <hr style="border:1px solid var(--border); margin:14px 0;" />
+        <form id="menu-form">
+          <div class="row">
+            <div>
+              <label for="menu-name">نام منو</label>
+              <input id="menu-name" required>
+            </div>
+            <div>
+              <label for="menu-location">محل نمایش</label>
+              <select id="menu-location">
+                <option value="header">Header</option>
+                <option value="footer">Footer</option>
+                <option value="sidebar">Sidebar</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit">ثبت منو</button>
+        </form>
+
+        <form id="menu-item-form" style="margin-top:12px;">
+          <div class="row">
+            <div>
+              <label for="menu-id">شناسه منو</label>
+              <input id="menu-id" type="number" min="1" required>
+            </div>
+            <div>
+              <label for="menu-label">عنوان آیتم</label>
+              <input id="menu-label" required>
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="menu-url">آدرس</label>
+              <input id="menu-url" required placeholder="/blog/my-post">
+            </div>
+            <div>
+              <label for="menu-order">ترتیب</label>
+              <input id="menu-order" type="number" value="0">
+            </div>
+            <div>
+              <label for="menu-parent">والد (اختیاری)</label>
+              <input id="menu-parent" type="number" min="1" placeholder="شناسه آیتم والد">
+            </div>
+          </div>
+          <label><input type="checkbox" id="menu-blank"> باز شدن در تب جدید</label>
+          <button type="submit">افزودن آیتم</button>
+        </form>
+        <div class="status" id="page-menu-status"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const statusBox = document.getElementById('status-box');
+    const tokenInput = document.getElementById('token');
+
+    function setStatus(el, message, type = 'info') {
+      const colors = { info: varColor('--muted'), success: varColor('--success'), error: varColor('--danger') };
+      el.style.color = colors[type] || colors.info;
+      el.textContent = message;
+    }
+
+    function varColor(name) {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    async function apiRequest(path, options = {}, expectJson = true) {
+      const headers = options.headers || {};
+      const token = tokenInput.value.trim();
+      if (!options.body || !(options.body instanceof FormData)) {
+        headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+      }
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const response = await fetch(path, { ...options, headers });
+      const text = await response.text();
+      let payload = text;
+      if (expectJson) {
+        try { payload = text ? JSON.parse(text) : {}; } catch (_) { payload = { raw: text }; }
+      }
+      if (!response.ok) throw { status: response.status, data: payload };
+      return payload;
+    }
+
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const statusEl = document.getElementById('login-status');
+      setStatus(statusEl, 'در حال ارسال...');
+      try {
+        const data = await apiRequest('/api/token/', { method: 'POST', body: JSON.stringify({ username, password }) });
+        tokenInput.value = data.access;
+        setStatus(statusEl, 'توکن دریافت شد و در بالای صفحه قرار گرفت.', 'success');
+        setStatus(statusBox, 'توکن فعال شد.', 'success');
+      } catch (err) {
+        setStatus(statusEl, `خطا: ${JSON.stringify(err.data)}`, 'error');
+      }
+    });
+
+    document.getElementById('media-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData();
+      const file = document.getElementById('media-file').files[0];
+      formData.append('file', file);
+      formData.append('title', document.getElementById('media-title').value);
+      formData.append('alt_text', document.getElementById('media-alt').value);
+      const statusEl = document.getElementById('media-status');
+      setStatus(statusEl, 'در حال آپلود...');
+      try {
+        const data = await apiRequest('/api/blog/media/', { method: 'POST', body: formData, headers: {} });
+        setStatus(statusEl, `موفق: ID=${data.id}, URL=${data.url}`, 'success');
+      } catch (err) {
+        setStatus(statusEl, `خطا: ${JSON.stringify(err.data)}`, 'error');
+      }
+    });
+
+    document.getElementById('category-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        name: document.getElementById('cat-name').value,
+        slug: document.getElementById('cat-slug').value,
+      };
+      const parent = document.getElementById('cat-parent').value;
+      if (parent) payload.parent = Number(parent);
+      const statusEl = document.getElementById('taxonomy-status');
+      setStatus(statusEl, 'در حال ساخت دسته...');
+      try {
+        const data = await apiRequest('/api/blog/categories/', { method: 'POST', body: JSON.stringify(payload) });
+        setStatus(statusEl, `دسته ایجاد شد: ${data.name}`, 'success');
+      } catch (err) {
+        setStatus(statusEl, `خطا: ${JSON.stringify(err.data)}`, 'error');
+      }
+    });
+
+    document.getElementById('tag-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = { name: document.getElementById('tag-name').value, slug: document.getElementById('tag-slug').value };
+      const statusEl = document.getElementById('taxonomy-status');
+      setStatus(statusEl, 'در حال ساخت تگ...');
+      try {
+        const data = await apiRequest('/api/blog/tags/', { method: 'POST', body: JSON.stringify(payload) });
+        setStatus(statusEl, `تگ ثبت شد: ${data.name}`, 'success');
+      } catch (err) {
+        setStatus(statusEl, `خطا: ${JSON.stringify(err.data)}`, 'error');
+      }
+    });
+
+    document.getElementById('series-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        title: document.getElementById('series-title').value,
+        slug: document.getElementById('series-slug').value,
+        description: document.getElementById('series-desc').value,
+        order_strategy: document.getElementById('series-order').value,
+      };
+      const statusEl = document.getElementById('taxonomy-status');
+      setStatus(statusEl, 'در حال ساخت سری...');
+      try {
+        const data = await apiRequest('/api/blog/series/', { method: 'POST', body: JSON.stringify(payload) });
+        setStatus(statusEl, `سری ایجاد شد: ${data.title}`, 'success');
+      } catch (err) {
+        setStatus(statusEl, `خطا: ${JSON.stringify(err.data)}`, 'error');
+      }
+    });
+
+    document.getElementById('post-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const tags = document.getElementById('post-tags').value.split(',').map(t => t.trim()).filter(Boolean).map(Number);
+      const payload = {
+        title: document.getElementById('post-title').value,
+        excerpt: document.getElementById('post-excerpt').value,
+        content: document.getElementById('post-content').value,
+        status: document.getElementById('post-status').value,
+        visibility: document.getElementById('post-visibility').value,
+        seo_title: document.getElementById('post-seo-title').value,
+        seo_description: document.getElementById('post-seo-desc').value,
+        canonical_url: document.getElementById('post-canonical').value,
+        scheduled_at: document.getElementById('post-scheduled').value || null,
+        tag_ids: tags,
+      };
+      const category = document.getElementById('post-category').value;
+      const cover = document.getElementById('post-cover').value;
+      const og = document.getElementById('post-og').value;
+      const series = document.getElementById('post-series').value;
+      const slug = document.getElementById('post-slug').value.trim();
+      if (category) payload.category_id = Number(category);
+      if (cover) payload.cover_media_id = Number(cover);
+      if (og) payload.og_image_id = Number(og);
+      if (series) payload.series = Number(series);
+      const mode = document.getElementById('post-mode').value;
+      const statusEl = document.getElementById('post-status');
+      setStatus(statusEl, 'در حال ارسال...');
+      try {
+        const method = mode === 'update' ? 'PUT' : 'POST';
+        const url = mode === 'update' ? `/api/blog/posts/${slug || ''}/` : '/api/blog/posts/';
+        const data = await apiRequest(url, { method, body: JSON.stringify(payload) });
+        setStatus(statusEl, `موفق: ${data.slug || 'created'}`, 'success');
+      } catch (err) {
+        setStatus(statusEl, `خطا: ${JSON.stringify(err.data)}`, 'error');
+      }
+    });
+
+    document.getElementById('post-list-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const search = document.getElementById('list-search').value;
+      const ordering = document.getElementById('list-order').value;
+      const page = document.getElementById('list-page').value || 1;
+      const statusEl = document.getElementById('list-status');
+      setStatus(statusEl, 'در حال واکشی...');
+      try {
+        const params = new URLSearchParams({ ordering, page });
+        if (search) params.append('search', search);
+        const data = await apiRequest(`/api/blog/posts/?${params.toString()}`);
+        const list = Array.isArray(data.results) ? data.results : data;
+        renderPostList(list);
+        setStatus(statusEl, `تعداد: ${list.length}`, 'success');
+      } catch (err) {
+        setStatus(statusEl, `خطا: ${JSON.stringify(err.data)}`, 'error');
+      }
+    });
+
+    function renderPostList(list) {
+      const container = document.getElementById('post-list');
+      if (!list || !list.length) { container.innerHTML = '<p class="muted">موردی یافت نشد.</p>'; return; }
+      container.innerHTML = list.map(post => `
+        <div style="border:1px solid var(--border); padding:12px; border-radius:12px; margin-top:10px;">
+          <div class="section-title" style="margin-bottom:6px;">
+            <strong>${post.title}</strong>
+            <span class="chip">${post.status}</span>
+          </div>
+          <div class="muted">${post.excerpt || ''}</div>
+          <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+            <span class="pill">Slug: ${post.slug}</span>
+            <span class="pill">Views: ${post.views_count}</span>
+            <span class="pill">Comments: ${post.comments_count || 0}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('post-detail-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const slug = document.getElementById('detail-slug').value.trim();
+      const statusEl = document.getElementById('post-detail');
+      setStatus(statusEl, 'در حال واکشی...');
+      try {
+        const data = await apiRequest(`/api/blog/posts/${slug}/`);
+        statusEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <strong>${data.title}</strong> <span class="chip">${data.status}</span>
+          </div>
+          <div class="muted">${data.excerpt}</div>
+          <pre>${data.content}</pre>
+          <div class="muted">بازدید: ${data.views_count} | لایک: ${data.likes_count} | نظرات: ${data.comments?.length || 0}</div>
+        `;
+      } catch (err) {
+        setStatus(statusEl, `خطا: ${JSON.stringify(err.data)}`, 'error');
+      }
+    });
+
+    document.getElementById('publish-btn').addEventListener('click', async () => {
+      const slug = document.getElementById('detail-slug').value.trim();
+      const statusEl = document.getElementById('post-detail');
+      if (!slug) { setStatus(statusEl, 'اسلاگ را وارد کنید.', 'error'); return; }
+      setStatus(statusEl, 'در حال انتشار...');
+      try {
+        const data = await apiRequest(`/api/blog/posts/${slug}/publish/`, { method: 'POST' });
+        setStatus(statusEl, `منتشر شد: ${data.status} | تاریخ ${data.published_at}`, 'success');
+      } catch (err) {
+        setStatus(statusEl, `خطا: ${JSON.stringify(err.data)}`, 'error');
+      }
+    });
+
+    document.getElementById('comment-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        post: Number(document.getElementById('comment-post-id').value),
+        parent: document.getElementById('comment-parent').value || null,
+        content: document.getElementById('comment-content').value,
+      };
+      if (payload.parent) payload.parent = Number(payload.parent);
+      const statusEl = document.getElementById('comment-status');
+      setStatus(statusEl, 'در حال ارسال نظر...');
+      try {
+        const data = await apiRequest('/api/blog/comments/', { method: 'POST', body: JSON.stringify(payload) });
+        setStatus(statusEl, `نظر ثبت شد با شناسه ${data.id}`, 'success');
+      } catch (err) {
+        setStatus(statusEl, `خطا: ${JSON.stringify(err.data)}`, 'error');
+      }
+    });
+
+    document.getElementById('page-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        title: document.getElementById('page-title').value,
+        slug: document.getElementById('page-slug').value,
+        content: document.getElementById('page-content').value,
+        status: document.getElementById('page-status').value,
+        seo_title: document.getElementById('page-seo-title').value,
+        seo_description: document.getElementById('page-seo-desc').value,
+      };
+      const statusEl = document.getElementById('page-menu-status');
+      setStatus(statusEl, 'در حال ساخت صفحه...');
+      try {
+        const data = await apiRequest('/api/blog/pages/', { method: 'POST', body: JSON.stringify(payload) });
+        setStatus(statusEl, `صفحه ایجاد شد: ${data.slug}`, 'success');
+      } catch (err) {
+        setStatus(statusEl, `خطا: ${JSON.stringify(err.data)}`, 'error');
+      }
+    });
+
+    document.getElementById('menu-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        name: document.getElementById('menu-name').value,
+        location: document.getElementById('menu-location').value,
+      };
+      const statusEl = document.getElementById('page-menu-status');
+      setStatus(statusEl, 'در حال ساخت منو...');
+      try {
+        const data = await apiRequest('/api/blog/menus/', { method: 'POST', body: JSON.stringify(payload) });
+        setStatus(statusEl, `منو ایجاد شد: ${data.name} (id=${data.id})`, 'success');
+      } catch (err) {
+        setStatus(statusEl, `خطا: ${JSON.stringify(err.data)}`, 'error');
+      }
+    });
+
+    document.getElementById('menu-item-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        menu: Number(document.getElementById('menu-id').value),
+        label: document.getElementById('menu-label').value,
+        url: document.getElementById('menu-url').value,
+        order: Number(document.getElementById('menu-order').value || 0),
+        target_blank: document.getElementById('menu-blank').checked,
+      };
+      const parent = document.getElementById('menu-parent').value;
+      if (parent) payload.parent = Number(parent);
+      const statusEl = document.getElementById('page-menu-status');
+      setStatus(statusEl, 'در حال افزودن آیتم...');
+      try {
+        const data = await apiRequest('/api/blog/menu-items/', { method: 'POST', body: JSON.stringify(payload) });
+        setStatus(statusEl, `آیتم ثبت شد: ${data.label}`, 'success');
+      } catch (err) {
+        setStatus(statusEl, `خطا: ${JSON.stringify(err.data)}`, 'error');
+      }
+    });
+  </script>
+</body>
+</html>
