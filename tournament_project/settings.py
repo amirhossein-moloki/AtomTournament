@@ -345,6 +345,9 @@ UNFOLD = {
 }
 
 # Django REST Framework Settings
+anon_throttle_rate = os.environ.get("API_THROTTLE_RATE_ANON", "2000/day")
+user_throttle_rate = os.environ.get("API_THROTTLE_RATE_USER", "20000/day")
+
 REST_FRAMEWORK = {
     # This line is required for drf-spectacular
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
@@ -357,8 +360,8 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.UserRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
-        "anon": "100/day",
-        "user": "1000/day",
+        "anon": anon_throttle_rate,
+        "user": user_throttle_rate,
     },
     'EXCEPTION_HANDLER': 'blog.exceptions.custom_exception_handler',
 }
