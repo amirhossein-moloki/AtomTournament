@@ -237,6 +237,8 @@ kombu==5.5.4
     # via celery
 mccabe==0.7.0
     # via flake8
+markdownify==0.13.1
+    # via -r requirements.in
 multidict==6.6.4
     # via
     #   aiohttp
