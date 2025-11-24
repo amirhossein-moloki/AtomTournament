@@ -30,7 +30,7 @@ def convert_image_to_webp(image_field, max_width=1920, quality=80):
     buffer.seek(0)
 
     # اسم فایل رو .webp می‌کنیم
-    original_name = image_field.name
+    original_name = getattr(image_field, 'name', 'untitled.webp')
     if "." in original_name:
         base_name = original_name.rsplit(".", 1)[0]
     else:
