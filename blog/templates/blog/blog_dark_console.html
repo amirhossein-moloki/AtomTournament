@@ -488,7 +488,7 @@
           </div>
           <div>
             <label for="post-canonical">Canonical URL</label>
-            <input id="post-canonical" placeholder="https://example.com/blog/slug" />
+            <input id="post-canonical" placeholder="https://atom-game.ir/blog/slug" />
           </div>
         </div>
 
@@ -560,6 +560,9 @@
         .replace(/[^\w\-آابپتثجچحخدذرزسشصضطظعغفقکگلمنوهی]/g, '')
         .replace(/\-+/g, '-');
     }
+
+    const API_BASE = 'https://atom-game.ir';
+    const withBase = (path = '') => (path.startsWith('http') ? path : `${API_BASE}${path}`);
 
     const tokenInput = document.getElementById('token');
     const chipCover = document.getElementById('chip-cover');
@@ -769,7 +772,7 @@
     async function apiRequest(url, options = {}) {
       const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
       if (tokenInput.value.trim()) headers['Authorization'] = `Bearer ${tokenInput.value.trim()}`;
-      const res = await fetch(url, { ...options, headers });
+      const res = await fetch(withBase(url), { ...options, headers });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw { status: res.status, data };
       return data;
@@ -783,7 +786,7 @@
       const statusEl = document.getElementById('login-status');
       setStatus(statusEl, 'در حال ورود...');
       try {
-        const data = await fetch('/api/token/', {
+        const data = await fetch(withBase('/api/token/'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password }),
@@ -832,12 +835,13 @@
       try {
         const headers = {};
         if (tokenInput.value.trim()) headers['Authorization'] = `Bearer ${tokenInput.value.trim()}`;
-        const res = await fetch('/api/blog/media/', { method: 'POST', headers, body: formData });
+        const res = await fetch(withBase('/api/blog/media/'), { method: 'POST', headers, body: formData });
         const data = await res.json();
         if (!res.ok) throw { status: res.status, data };
         document.getElementById('post-cover').value = data.id;
         const preview = document.getElementById('cover-preview');
-        preview.src = data.file || data.url || '';
+        const uploadUrl = withBase(data.file || data.url || '');
+        preview.src = uploadUrl;
         preview.style.display = data.file || data.url ? 'block' : 'none';
         updateChips();
         updateCoverDisplay(mediaUrl(data), data.id);
@@ -849,7 +853,9 @@
     });
 
     function mediaUrl(item) {
-      return item?.file || item?.url || item?.image || item?.path || '';
+      const raw = item?.file || item?.url || item?.image || item?.path || '';
+      if (!raw) return '';
+      return withBase(raw);
     }
 
     function renderMedia() {
