@@ -345,8 +345,8 @@ UNFOLD = {
 }
 
 # Django REST Framework Settings
-anon_throttle_rate = os.environ.get("API_THROTTLE_RATE_ANON", "2000/day")
-user_throttle_rate = os.environ.get("API_THROTTLE_RATE_USER", "20000/day")
+anon_throttle_rate = os.environ.get("API_THROTTLE_RATE_ANON", "1000/day")
+user_throttle_rate = os.environ.get("API_THROTTLE_RATE_USER", "10000/day")
 
 REST_FRAMEWORK = {
     # This line is required for drf-spectacular
