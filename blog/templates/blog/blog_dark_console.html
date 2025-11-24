@@ -219,6 +219,58 @@
     .muted-btn { background: rgba(255, 255, 255, 0.04); color: var(--text); box-shadow: none; border: 1px solid var(--border); padding: 10px 12px; }
     .tagline { color: var(--muted); font-size: 13px; margin-top: 6px; }
 
+    /* Overlay pickers */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 7, 12, 0.78);
+      backdrop-filter: blur(10px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 30;
+      padding: 20px;
+    }
+    .overlay.active { display: flex; }
+    .modal {
+      background: #0f1420;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      width: min(1100px, 96vw);
+      max-height: 90vh;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-header {
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-body { padding: 18px; overflow-y: auto; }
+    .modal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+    .modal-card {
+      background: #0b0f17;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      cursor: pointer;
+      transition: border 0.15s ease, transform 0.15s ease;
+    }
+    .modal-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .modal-card.active { border-color: var(--accent-2); box-shadow: 0 10px 30px rgba(192, 132, 252, 0.25); }
+    .modal-card h4 { margin: 0; }
+    .modal-chip { display: inline-flex; align-items: center; gap: 6px; background: rgba(125,211,252,0.12); color: var(--accent); padding: 4px 8px; border-radius: 999px; font-size: 12px; }
+    .modal-actions { display: flex; gap: 10px; align-items: center; }
+    .modal-filter { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
     @media (max-width: 920px) {
       .grid-2 { grid-template-columns: 1fr; }
     }
@@ -349,6 +401,11 @@
         <small>POST /api/blog/posts/</small>
       </div>
       <form id="post-form">
+        <input type="hidden" id="post-category" />
+        <input type="hidden" id="post-tags" />
+        <input type="hidden" id="post-series" />
+        <input type="hidden" id="post-cover" />
+        <input type="hidden" id="post-og" />
         <div class="row">
           <div>
             <label for="post-title">عنوان</label>
@@ -392,38 +449,47 @@
 
         <div class="row">
           <div>
-            <label for="post-category">شناسه دسته (اختیاری)</label>
-            <input id="post-category" type="number" min="1" placeholder="مثلا 3" />
+            <label>دسته‌بندی</label>
+            <div class="toolbar" style="justify-content:space-between;">
+              <button type="button" class="muted-btn" id="open-category">انتخاب از لیست</button>
+              <div class="chip"><span>دسته</span><strong id="chip-category">—</strong></div>
+            </div>
           </div>
           <div>
-            <label for="post-tags">شناسه تگ‌ها (Comma)</label>
-            <input id="post-tags" placeholder="1,3,5" />
+            <label>تگ‌ها</label>
+            <div class="toolbar" style="justify-content:space-between;">
+              <button type="button" class="muted-btn" id="open-tags">انتخاب تگ</button>
+              <div class="chip"><span>تعداد</span><strong id="chip-tags">0</strong></div>
+            </div>
           </div>
           <div>
-            <label for="post-series">شناسه سری (اختیاری)</label>
-            <input id="post-series" type="number" min="1" placeholder="مثلا 2" />
+            <label>سری</label>
+            <div class="toolbar" style="justify-content:space-between;">
+              <button type="button" class="muted-btn" id="open-series">انتخاب سری</button>
+              <div class="chip"><span>سری</span><strong id="chip-series">—</strong></div>
+            </div>
           </div>
         </div>
 
         <div class="row">
           <div>
-            <label for="post-cover">شناسه کاور (از آپلود)</label>
-            <input id="post-cover" type="number" min="1" placeholder="پس از آپلود درج می‌شود" />
+            <label>کاور</label>
+            <div class="toolbar" style="justify-content:space-between;">
+              <button type="button" class="muted-btn" id="open-cover">انتخاب/تغییر کاور</button>
+              <div class="chip"><span>کاور</span><strong id="chip-cover">—</strong></div>
+            </div>
           </div>
           <div>
-            <label for="post-og">شناسه OG Image</label>
-            <input id="post-og" type="number" min="1" placeholder="اختیاری" />
+            <label>OG Image</label>
+            <div class="toolbar" style="justify-content:space-between;">
+              <button type="button" class="muted-btn" id="open-og">انتخاب OG</button>
+              <div class="chip"><span>OG</span><strong id="chip-og">—</strong></div>
+            </div>
           </div>
           <div>
             <label for="post-canonical">Canonical URL</label>
             <input id="post-canonical" placeholder="https://example.com/blog/slug" />
           </div>
-        </div>
-
-        <div class="toolbar">
-          <div class="chip"><span>کاور</span><strong id="chip-cover">—</strong></div>
-          <div class="chip"><span>OG</span><strong id="chip-og">—</strong></div>
-          <div class="chip"><span>تعداد تگ‌ها</span><strong id="chip-tags">0</strong></div>
         </div>
 
         <div class="row">
@@ -452,6 +518,26 @@
       <div class="status" id="post-status"></div>
     </section>
   </main>
+
+  <div class="overlay" id="picker-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h3 id="picker-title" style="margin:0;">انتخاب</h3>
+          <p id="picker-sub" class="muted" style="margin:4px 0 0; font-size:13px;">یک مورد را انتخاب کنید.</p>
+        </div>
+        <div class="modal-actions">
+          <input id="picker-search" placeholder="جست‌وجو" style="max-width:220px;" />
+          <button type="button" class="ghost" id="picker-close">بستن</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="modal-filter" id="picker-filter"></div>
+        <div class="modal-grid" id="picker-grid"></div>
+        <div class="status" id="picker-status" style="margin-top:12px;">گزینه‌ای انتخاب نشده است.</div>
+      </div>
+    </div>
+  </div>
 
   <script>
     function setStatus(el, msg, type = 'info') {
@@ -485,6 +571,18 @@
     const libraryStatus = document.getElementById('library-status');
     const mediaSearch = document.getElementById('media-search');
     let mediaItems = [];
+    let categories = [];
+    let tagsList = [];
+    let seriesList = [];
+
+    const overlay = document.getElementById('picker-overlay');
+    const pickerTitle = document.getElementById('picker-title');
+    const pickerSub = document.getElementById('picker-sub');
+    const pickerGrid = document.getElementById('picker-grid');
+    const pickerSearch = document.getElementById('picker-search');
+    const pickerStatus = document.getElementById('picker-status');
+    const pickerFilter = document.getElementById('picker-filter');
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closePicker(); });
 
     function updateCoverDisplay(url, idLabel) {
       if (url) {
@@ -507,8 +605,166 @@
       chipCover.textContent = coverVal || '—';
       chipOg.textContent = ogVal || '—';
       chipTags.textContent = tags.length;
+      document.getElementById('chip-category').textContent = document.getElementById('post-category').value || '—';
+      document.getElementById('chip-series').textContent = document.getElementById('post-series').value || '—';
       if (!coverVal) updateCoverDisplay('', null);
     }
+
+    function closePicker() {
+      overlay.classList.remove('active');
+      pickerGrid.innerHTML = '';
+      pickerSearch.value = '';
+      pickerStatus.textContent = 'گزینه‌ای انتخاب نشده است.';
+      delete overlay.dataset.type;
+    }
+
+    document.getElementById('picker-close').addEventListener('click', closePicker);
+
+    function parseIds(raw) {
+      return raw ? raw.split(',').map(t => t.trim()).filter(Boolean) : [];
+    }
+
+    async function ensureData(type) {
+      if (type === 'category' && !categories.length) {
+        const data = await apiRequest('/api/blog/categories/');
+        categories = Array.isArray(data) ? data : (data.results || []);
+      }
+      if (type === 'tags' && !tagsList.length) {
+        const data = await apiRequest('/api/blog/tags/');
+        tagsList = Array.isArray(data) ? data : (data.results || []);
+      }
+      if (type === 'series' && !seriesList.length) {
+        const data = await apiRequest('/api/blog/series/');
+        seriesList = Array.isArray(data) ? data : (data.results || []);
+      }
+      if ((type === 'cover' || type === 'og') && !mediaItems.length) {
+        await loadMedia();
+      }
+    }
+
+    function renderPicker(type) {
+      const term = pickerSearch.value.trim().toLowerCase();
+      let items = [];
+      if (type === 'category') items = categories;
+      if (type === 'tags') items = tagsList;
+      if (type === 'series') items = seriesList;
+      if (type === 'cover' || type === 'og') items = mediaItems;
+
+      pickerGrid.innerHTML = '';
+      const filtered = items.filter(item => {
+        const haystack = `${item.title || item.name || item.slug || item.alt_text || ''}`.toLowerCase();
+        return haystack.includes(term);
+      });
+
+      if (!filtered.length) {
+        pickerGrid.innerHTML = '<div class="muted" style="grid-column:1/-1; text-align:center;">نتیجه‌ای یافت نشد.</div>';
+        return;
+      }
+
+      const selectedTags = new Set(parseIds(document.getElementById('post-tags').value));
+      const currentCategory = document.getElementById('post-category').value;
+      const currentSeries = document.getElementById('post-series').value;
+      const currentCover = document.getElementById('post-cover').value;
+      const currentOg = document.getElementById('post-og').value;
+
+      filtered.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'modal-card';
+        const id = item.id;
+        const title = item.title || item.name || item.slug || `مورد ${id}`;
+        const desc = item.description || item.alt_text || item.slug || '';
+        card.innerHTML = `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px;"><h4>${title}</h4><span class="muted">#${id}</span></div>${desc ? `<p class=\"muted\" style=\"margin:0;\">${desc}</p>` : ''}`;
+
+        if (type === 'tags' && selectedTags.has(String(id))) card.classList.add('active');
+        if (type === 'category' && currentCategory == id) card.classList.add('active');
+        if (type === 'series' && currentSeries == id) card.classList.add('active');
+        if (type === 'cover' && currentCover == id) card.classList.add('active');
+        if (type === 'og' && currentOg == id) card.classList.add('active');
+
+        if (type === 'cover' || type === 'og') {
+          const img = document.createElement('img');
+          img.src = mediaUrl(item) || '';
+          img.alt = item.alt_text || 'media';
+          img.style.borderRadius = '10px';
+          img.style.border = '1px solid var(--border)';
+          img.style.height = '140px';
+          img.style.objectFit = 'cover';
+          card.prepend(img);
+        }
+
+        card.addEventListener('click', () => {
+          if (type === 'category') {
+            document.getElementById('post-category').value = id;
+            document.getElementById('chip-category').textContent = `#${id}`;
+            pickerStatus.textContent = `دسته انتخاب شد: ${title}`;
+            updatePreview();
+            updateChips();
+            closePicker();
+          }
+          if (type === 'series') {
+            document.getElementById('post-series').value = id;
+            document.getElementById('chip-series').textContent = `#${id}`;
+            pickerStatus.textContent = `سری انتخاب شد: ${title}`;
+            updateChips();
+            closePicker();
+          }
+          if (type === 'tags') {
+            if (selectedTags.has(String(id))) {
+              selectedTags.delete(String(id));
+            } else {
+              selectedTags.add(String(id));
+            }
+            document.getElementById('post-tags').value = Array.from(selectedTags).join(',');
+            pickerStatus.textContent = `تگ‌های انتخابی: ${Array.from(selectedTags).join(', ') || 'هیچ'}`;
+            updateChips();
+            renderPicker('tags');
+          }
+          if (type === 'cover') {
+            document.getElementById('post-cover').value = id;
+            updateCoverDisplay(mediaUrl(item), id);
+            pickerStatus.textContent = `کاور تنظیم شد: ${title}`;
+            updateChips();
+            closePicker();
+          }
+          if (type === 'og') {
+            document.getElementById('post-og').value = id;
+            pickerStatus.textContent = `OG تنظیم شد: ${title}`;
+            updateChips();
+            closePicker();
+          }
+        });
+
+        pickerGrid.appendChild(card);
+      });
+    }
+
+    async function openPicker(type) {
+      overlay.classList.add('active');
+      overlay.dataset.type = type;
+      pickerSearch.value = '';
+      pickerGrid.innerHTML = '';
+      pickerStatus.textContent = 'در حال آماده‌سازی...';
+      pickerFilter.innerHTML = '';
+
+      if (type === 'category') { pickerTitle.textContent = 'انتخاب دسته'; pickerSub.textContent = 'یک دسته را برای پست برگزینید.'; }
+      if (type === 'tags') { pickerTitle.textContent = 'انتخاب تگ‌ها'; pickerSub.textContent = 'چند تگ را تیک کنید.'; }
+      if (type === 'series') { pickerTitle.textContent = 'انتخاب سری'; pickerSub.textContent = 'سری انتشار را مشخص کنید.'; }
+      if (type === 'cover') { pickerTitle.textContent = 'انتخاب کاور'; pickerSub.textContent = 'از رسانه‌های موجود یک کاور برگزینید.'; }
+      if (type === 'og') { pickerTitle.textContent = 'انتخاب تصویر OG'; pickerSub.textContent = 'برای اشتراک‌گذاری شبکه‌های اجتماعی.'; }
+
+      try {
+        await ensureData(type);
+        renderPicker(type);
+        pickerStatus.textContent = 'برای انتخاب روی کارت‌ها کلیک کنید.';
+      } catch (err) {
+        pickerStatus.textContent = `خطا در بارگیری: ${JSON.stringify(err.data || err)}`;
+      }
+    }
+
+    pickerSearch.addEventListener('input', () => {
+      const type = overlay.dataset.type;
+      if (type) renderPicker(type);
+    });
 
     async function apiRequest(url, options = {}) {
       const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
@@ -690,6 +946,12 @@
       document.querySelectorAll('.media-card').forEach(c => c.classList.remove('active'));
       setStatus(libraryStatus, 'انتخاب‌ها پاک شد.');
     });
+
+    document.getElementById('open-category').addEventListener('click', () => openPicker('category'));
+    document.getElementById('open-tags').addEventListener('click', () => openPicker('tags'));
+    document.getElementById('open-series').addEventListener('click', () => openPicker('series'));
+    document.getElementById('open-cover').addEventListener('click', () => openPicker('cover'));
+    document.getElementById('open-og').addEventListener('click', () => openPicker('og'));
 
     // Live preview
     const previewTitle = document.getElementById('preview-title');
