@@ -2,7 +2,7 @@
 import mimetypes
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
-from common.utils.images import convert_image_to_webp
+from common.utils.images import convert_image_to_avif
 
 
 class AttachmentService:
@@ -36,9 +36,9 @@ class AttachmentService:
             is_image = "image" in content_type
             file_to_save = self.file_obj
 
-            if is_image and not self.file_obj.name.lower().endswith(".webp"):
-                file_to_save = convert_image_to_webp(self.file_obj)
-                content_type = "image/webp"
+            if is_image and not self.file_obj.name.lower().endswith(".avif"):
+                file_to_save = convert_image_to_avif(self.file_obj)
+                content_type = "image/avif"
 
             # Use a temporary variable to avoid RecursionError
             temp_file = file_to_save

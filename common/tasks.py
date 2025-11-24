@@ -1,13 +1,13 @@
 from celery import shared_task
 from django.apps import apps
 from django.core.files.storage import default_storage
-from .utils.images import convert_image_to_webp
+from .utils.images import convert_image_to_avif
 import os
 
 @shared_task(bind=True, max_retries=3)
-def convert_image_to_webp_task(self, app_label, model_name, instance_pk, field_name):
+def convert_image_to_avif_task(self, app_label, model_name, instance_pk, field_name):
     """
-    یک وظیفه Celery برای تبدیل ناهمگام یک فیلد تصویر به فرمت WebP.
+    یک وظیفه Celery برای تبدیل ناهمگام یک فیلد تصویر به فرمت AVIF.
     """
     try:
         # پیدا کردن مدل و آبجکت مورد نظر از دیتابیس
@@ -16,20 +16,20 @@ def convert_image_to_webp_task(self, app_label, model_name, instance_pk, field_n
 
         image_field = getattr(instance, field_name)
 
-        # اگر فایلی وجود نداشت یا از قبل WebP بود، کاری انجام نده
-        if not image_field or not image_field.name or image_field.name.endswith('.webp'):
+        # اگر فایلی وجود نداشت یا از قبل AVIF بود، کاری انجام نده
+        if not image_field or not image_field.name or image_field.name.lower().endswith('.avif'):
             return f"No action needed for {model_name} {instance_pk}."
 
         original_path = image_field.path
 
         # 1. فایل اصلی را از حافظه بخوان
         with image_field.open('rb') as original_file:
-            # 2. تبدیل به WebP در حافظه
-            webp_content = convert_image_to_webp(original_file)
-            new_storage_key = os.path.splitext(image_field.name)[0] + '.webp'
+            # 2. تبدیل به AVIF در حافظه
+            avif_content = convert_image_to_avif(original_file)
+            new_storage_key = os.path.splitext(image_field.name)[0] + '.avif'
 
         # 3. فایل جدید را ذخیره کن
-        saved_path = default_storage.save(new_storage_key, webp_content)
+        saved_path = default_storage.save(new_storage_key, avif_content)
 
         # 4. مدل را آپدیت کن
         setattr(instance, field_name, saved_path)

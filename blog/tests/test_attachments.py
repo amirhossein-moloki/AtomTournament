@@ -1,58 +1,64 @@
-import shutil
-import tempfile
+# blog/tests/test_attachments.py
+
 from io import BytesIO
-
-from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import RequestFactory, TestCase, override_settings
+from django.test import TestCase
+from django.contrib.auth import get_user_model
 from PIL import Image
+from blog.models import Media, CustomAttachment
+from blog.services import process_attachment
 
-from blog.attachments import CustomAttachment
-from blog.models import Media
-
-
-def _make_test_image(name="test.png"):
-    buffer = BytesIO()
-    Image.new("RGB", (2, 2), (255, 0, 0)).save(buffer, format="PNG")
-    buffer.seek(0)
-    return SimpleUploadedFile(name, buffer.getvalue(), content_type="image/png")
+User = get_user_model()
 
 
-class CustomAttachmentSaveTests(TestCase):
+class AttachmentServiceTest(TestCase):
     def setUp(self):
-        self.temp_media_root = tempfile.mkdtemp()
-        self.override = override_settings(MEDIA_ROOT=self.temp_media_root)
-        self.override.enable()
-        self.factory = RequestFactory()
+        self.user = User.objects.create_user(username="testuser", password="password")
 
-    def tearDown(self):
-        self.override.disable()
-        shutil.rmtree(self.temp_media_root, ignore_errors=True)
-
-    def test_save_without_request_creates_media_record(self):
-        attachment = CustomAttachment(file=_make_test_image(), name="No Request")
-
-        attachment.save()
-
-        media = Media.objects.get(title="No Request")
-        self.assertIsNone(media.uploaded_by)
-        self.assertEqual(media.type, "image")
-        self.assertEqual(media.mime, "image/webp")
-        self.assertTrue(media.storage_key.endswith(".webp"))
-        self.assertEqual(attachment.url, media.url)
-
-    def test_save_with_request_uses_authenticated_user(self):
-        user = get_user_model().objects.create_user(
-            "uploader", "uploader@example.com", "pass", phone_number="+989120000999"
+    def _create_image(self, filename="test.jpg", size=(100, 100), image_format="JPEG"):
+        """Helper to create a dummy image file."""
+        buffer = BytesIO()
+        Image.new("RGB", size).save(buffer, image_format)
+        buffer.seek(0)
+        return SimpleUploadedFile(
+            filename, buffer.read(), content_type=f"image/{image_format.lower()}"
         )
-        request = self.factory.post("/upload")
-        request.user = user
 
-        attachment = CustomAttachment(file=_make_test_image("with_user.png"), name="With User")
+    def test_image_attachment_is_converted_to_avif(self):
+        """
+        تست می‌کند که فایل‌های تصویری به درستی به فرمت AVIF تبدیل می‌شوند.
+        """
+        image = self._create_image()
+        attachment = CustomAttachment(file=image, name="Test Image")
 
-        attachment.save(request=request)
+        # Mock request object if needed by the service
+        request = type("Request", (), {"user": self.user})()
 
-        media = Media.objects.get(title="With User")
-        self.assertEqual(media.uploaded_by, user)
-        self.assertEqual(media.mime, "image/webp")
-        self.assertEqual(attachment.url, media.url)
+        processed_attachment = process_attachment(attachment, request=request)
+
+        # بررسی می‌کنیم که یک آبجکت Media ساخته شده
+        media = Media.objects.first()
+        self.assertIsNotNone(media)
+        self.assertEqual(media.title, "Test Image")
+        self.assertEqual(media.uploaded_by, self.user)
+        self.assertEqual(media.mime, "image/avif")
+        self.assertTrue(media.storage_key.endswith(".avif"))
+
+        # بررسی می‌کنیم که URL در Attachment ذخیره شده
+        self.assertIsNotNone(processed_attachment.url)
+        self.assertTrue(processed_attachment.file.name.endswith('.avif'))
+
+    def test_non_image_attachment_is_not_converted(self):
+        """
+        تست می‌کند فایل‌های غیرتصویری تبدیل نمی‌شوند.
+        """
+        text_file = SimpleUploadedFile("test.txt", b"file_content", content_type="text/plain")
+        attachment = CustomAttachment(file=text_file, name="Test Document")
+
+        process_attachment(attachment)
+
+        media = Media.objects.first()
+        self.assertIsNotNone(media)
+        self.assertEqual(media.mime, "text/plain")
+        self.assertTrue(media.storage_key.endswith(".txt"))
+        self.assertFalse(media.storage_key.endswith(".avif"))
