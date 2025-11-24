@@ -1,5 +1,8 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.core.files.storage import default_storage
+from markdownify import markdownify as html_to_markdown
+
 from .models import (
     AuthorProfile, Category, Tag, Post, Series, Media,
     Comment, Reaction, Page, Menu, MenuItem, Revision
@@ -8,7 +11,27 @@ from .models import (
 User = get_user_model()
 
 
-from django.core.files.storage import default_storage
+class ContentNormalizationMixin:
+    content_field_name = "content"
+
+    def _normalize_content(self, value: str) -> str:
+        normalized = html_to_markdown(
+            value,
+            strip=["script", "style"],
+            preserve_br=True,
+            heading_style="ATX",
+            escape_asterisks=False,
+            escape_underscores=False,
+            escape_md=False,
+        )
+        return normalized.replace("\xa0", " ").strip()
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        content_value = data.get(self.content_field_name)
+        if isinstance(content_value, str) and content_value.strip():
+            data[self.content_field_name] = self._normalize_content(content_value)
+        return data
 
 class MediaDetailSerializer(serializers.ModelSerializer):
     class Meta:
@@ -112,7 +135,7 @@ class PostListSerializer(serializers.ModelSerializer):
         return obj.reactions.filter(reaction='like').count()
 
 
-class PostDetailSerializer(PostListSerializer):
+class PostDetailSerializer(ContentNormalizationMixin, PostListSerializer):
     series = SeriesSerializer(read_only=True)
     og_image = MediaDetailSerializer(read_only=True)
     comments = CommentForPostSerializer(many=True, read_only=True)
@@ -125,7 +148,7 @@ class PostDetailSerializer(PostListSerializer):
         )
 
 
-class PostCreateUpdateSerializer(serializers.ModelSerializer):
+class PostCreateUpdateSerializer(ContentNormalizationMixin, serializers.ModelSerializer):
     tag_ids = serializers.PrimaryKeyRelatedField(
         many=True, queryset=Tag.objects.all(), source='tags', required=False, write_only=True
     )

@@ -68,3 +68,4 @@ django-tempus-dominus
 django-formtools
 django-jalali-date
 django-ckeditor-5
+markdownify==0.13.1
