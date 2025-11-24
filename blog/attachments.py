@@ -1,4 +1,5 @@
 import mimetypes
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -12,25 +13,32 @@ class CustomAttachment(models.Model):
     uploaded = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, request=None, **kwargs):
-        file_obj = self.file
+        try:
+            file_obj = self.file
 
-        if not self.name:
-            self.name = getattr(file_obj, "name", "") or "attachment"
+            if not self.name:
+                self.name = getattr(file_obj, "name", "") or "attachment"
 
-        content_type = getattr(getattr(file_obj, "file", None), "content_type", None)
-        if content_type is None:
-            guessed_type, _ = mimetypes.guess_type(getattr(file_obj, "name", ""))
-            content_type = guessed_type or "application/octet-stream"
+            content_type = getattr(getattr(file_obj, "file", None), "content_type", None)
+            if content_type is None:
+                guessed_type, _ = mimetypes.guess_type(getattr(file_obj, "name", ""))
+                content_type = guessed_type or "application/octet-stream"
 
-        is_image = "image" in content_type
-        file_to_save = file_obj
-        if is_image and not file_obj.name.lower().endswith(".webp"):
-            file_to_save = convert_image_to_webp(file_obj)
-            content_type = "image/webp"
+            is_image = "image" in content_type
+            file_to_save = file_obj
+            if is_image and not file_obj.name.lower().endswith(".webp"):
+                file_to_save = convert_image_to_webp(file_obj)
+                content_type = "image/webp"
 
-        self.file.save(file_to_save.name, file_to_save, save=False)
-        storage_key = self.file.name
-        file_url = self.file.storage.url(storage_key)
+            self.file.save(file_to_save.name, file_to_save, save=False)
+            storage_key = self.file.name
+            file_url = self.file.storage.url(storage_key)
+        except Exception as e:
+            raise ValidationError(
+                _("امکان پردازش فایل آپلود شده وجود ندارد. لطفاً از فرمت معتبر استفاده کنید. خطا: %(error)s"),
+                code='invalid_file',
+                params={'error': str(e)},
+            )
 
         from blog.models import Media
 
