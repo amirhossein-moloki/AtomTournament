@@ -39,11 +39,12 @@ autobahn==24.4.2
     # via daphne
 automat==25.4.16
     # via twisted
+beautifulsoup4==4.14.2
+    # via markdownify
 billiard==4.2.1
     # via celery
 black==25.1.0
     # via -r requirements.in
-bleach==6.3.0
 boto3==1.40.10
     # via -r requirements.in
 botocore==1.40.11
@@ -110,6 +111,7 @@ django==5.2.5
     #   django-appconf
     #   django-axes
     #   django-celery-results
+    #   django-ckeditor-5
     #   django-cors-headers
     #   django-filter
     #   django-formtools
@@ -136,6 +138,8 @@ django-appconf==1.1.0
 django-axes==8.0.0
     # via -r requirements.in
 django-celery-results==2.6.0
+    # via -r requirements.in
+django-ckeditor-5==0.2.13
     # via -r requirements.in
 django-cors-headers==4.7.0
     # via -r requirements.in
@@ -164,8 +168,6 @@ django-simple-history==3.10.1
 django-sslserver-v2==1.0
     # via -r requirements.in
 django-storages==1.14.6
-    # via -r requirements.in
-django-ckeditor-5==0.2.13
     # via -r requirements.in
 django-tempus-dominus==5.1.2.17
     # via -r requirements.in
@@ -235,10 +237,10 @@ jsonschema-specifications==2025.4.1
     # via jsonschema
 kombu==5.5.4
     # via celery
-mccabe==0.7.0
-    # via flake8
 markdownify==0.13.1
     # via -r requirements.in
+mccabe==0.7.0
+    # via flake8
 multidict==6.6.4
     # via
     #   aiohttp
@@ -264,6 +266,10 @@ pathspec==0.12.1
 phonenumbers==9.0.12
     # via -r requirements.in
 pillow==11.3.0
+    # via
+    #   -r requirements.in
+    #   django-ckeditor-5
+pillow-avif-plugin==1.5.2
     # via -r requirements.in
 pip-tools==7.5.0
     # via -r requirements.in
@@ -351,7 +357,9 @@ service-identity==24.2.0
 shortuuid==1.0.11
     # via -r requirements.in
 six==1.17.0
-    # via python-dateutil
+    # via
+    #   markdownify
+    #   python-dateutil
 smsir-python==1.0.8
     # via -r requirements.in
 social-auth-app-django==5.5.1
@@ -360,6 +368,8 @@ social-auth-core==4.7.0
     # via social-auth-app-django
 sortedcontainers==2.4.0
     # via fakeredis
+soupsieve==2.8
+    # via beautifulsoup4
 sqlparse==0.5.3
     # via
     #   django
@@ -377,6 +387,7 @@ txaio==25.6.1
 typing-extensions==4.8.0
     # via
     #   aiosignal
+    #   beautifulsoup4
     #   pydantic
     #   pydantic-core
     #   referencing
@@ -400,8 +411,6 @@ vine==5.1.0
     #   kombu
 wcwidth==0.2.13
     # via prompt-toolkit
-webencodings==0.5.1
-    # via bleach
 wheel==0.45.1
     # via pip-tools
 yarl==1.20.1

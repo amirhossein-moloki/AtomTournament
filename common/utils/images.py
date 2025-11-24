@@ -3,12 +3,13 @@
 from io import BytesIO
 from django.core.files.base import ContentFile
 from PIL import Image
+import pillow_avif  # noqa: F401 -> Registered plugin
 
 
-def convert_image_to_webp(image_field, max_width=1920, quality=80):
+def convert_image_to_avif(image_field, max_width=1920, quality=75):
     """
     ورودی: یک ImageField/File
-    خروجی: یک ContentFile که فرمتش WebP هست و آماده‌ی ذخیره تو ImageField
+    خروجی: یک ContentFile که فرمتش AVIF هست و آماده‌ی ذخیره تو ImageField
     """
 
     # فایل رو با Pillow باز می‌کنیم
@@ -24,18 +25,19 @@ def convert_image_to_webp(image_field, max_width=1920, quality=80):
         new_height = int(float(img.height) * ratio)
         img = img.resize((max_width, new_height), Image.LANCZOS)
 
-    # توی buffer به فرمت WEBP ذخیره می‌کنیم
+    # توی buffer به فرمت AVIF ذخیره می‌کنیم
     buffer = BytesIO()
-    img.save(buffer, format="WEBP", quality=quality, method=6)
+    # Note: `method=6` is for WEBP, AVIF has different params. Using defaults for now.
+    img.save(buffer, format="AVIF", quality=quality)
     buffer.seek(0)
 
-    # اسم فایل رو .webp می‌کنیم
-    original_name = getattr(image_field, 'name', 'untitled.webp')
+    # اسم فایل رو .avif می‌کنیم
+    original_name = getattr(image_field, 'name', 'untitled.avif')
     if "." in original_name:
         base_name = original_name.rsplit(".", 1)[0]
     else:
         base_name = original_name
 
-    new_name = base_name + ".webp"
+    new_name = base_name + ".avif"
 
     return ContentFile(buffer.read(), name=new_name)

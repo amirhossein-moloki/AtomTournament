@@ -33,7 +33,6 @@ COMPRESSIBLE_EXTENSIONS = {
 }
 
 BINARY_EXTENSIONS = {
-    ".avif",
     ".gif",
     ".heic",
     ".heif",
@@ -45,6 +44,7 @@ BINARY_EXTENSIONS = {
     ".ogg",
     ".pdf",
     ".png",
+    ".avif",
     ".webp",
     ".zip",
 }
