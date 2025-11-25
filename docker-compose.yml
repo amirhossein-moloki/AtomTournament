@@ -101,9 +101,14 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command: >
       '
-        if ! certbot certificates | grep -q "atom-game.ir"; then
-          certbot certonly --webroot -w /var/www/certbot --non-interactive --agree-tos --email dev@atom-game.ir -d atom-game.ir -d www.atom-game.ir --rsa-key-size 4096 --verbose;
-        fi;
+        until certbot certificates | grep -q "atom-game.ir"; do
+          echo "### Trying to obtain a certificate for atom-game.ir...";
+          certbot certonly --webroot -w /var/www/certbot --non-interactive --agree-tos --email dev@atom-game.ir -d atom-game.ir -d www.atom-game.ir --rsa-key-size 4096 --verbose || true;
+          echo "### Waiting for 5 seconds before retrying...";
+          sleep 5;
+        done;
+
+        echo "### Certificate found. Starting renewal process...";
         while true; do certbot renew --quiet; sleep 12h; done;
       '
     depends_on:
