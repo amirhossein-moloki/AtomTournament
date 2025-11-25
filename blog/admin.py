@@ -154,8 +154,8 @@ class MenuAdmin(admin.ModelAdmin):
 
 
 class CustomAttachmentAdmin(admin.ModelAdmin):
-    list_display = ['name', 'file', 'uploaded']
-    search_fields = ['name']
+    list_display = ['name', 'url', 'file', 'uploaded']
+    search_fields = ['name', 'url']
     list_filter = ['uploaded']
     actions = ['delete_selected']
 

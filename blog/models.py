@@ -10,6 +10,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelatio
 from django.contrib.contenttypes.models import ContentType
 from django_ckeditor_5.fields import CKEditor5Field
 from django.utils.translation import gettext_lazy as _
+from urllib.parse import urlparse, urlunparse
 from blog.services import process_attachment
 
 
@@ -267,14 +268,42 @@ class MenuItem(models.Model):
 
 
 class CustomAttachment(models.Model):
-    file = models.FileField(upload_to="attachments/")
+    file = models.FileField(upload_to="attachments/", null=True, blank=True)
     name = models.CharField(max_length=255, blank=True)
-    url = models.URLField(blank=True)
+    url = models.URLField(blank=True, max_length=2048)
     uploaded = models.DateTimeField(auto_now_add=True)
 
+    def clean_url(self):
+        """
+        Validates and sanitizes the URL.
+        - Ensures the URL has a scheme (defaults to https).
+        - Ensures the URL has a network location (domain).
+        """
+        if self.url:
+            parsed_url = urlparse(self.url)
+
+            scheme = parsed_url.scheme or 'https'
+            netloc = parsed_url.netloc or parsed_url.path.split('/')[0]
+            path = parsed_url.path if parsed_url.netloc else '/'.join(parsed_url.path.split('/')[1:])
+
+            # Reconstruct the URL with the corrected parts
+            self.url = urlunparse((scheme, netloc, path, parsed_url.params, parsed_url.query, parsed_url.fragment))
+
     def save(self, *args, request=None, **kwargs):
-        # Let the service handle the heavy lifting
-        process_attachment(self, request)
+        # If a file is uploaded, process it using the service
+        if self.file:
+            process_attachment(self, request)
+        # If no file is uploaded but a URL is provided, clean the URL
+        elif self.url:
+            self.clean_url()
+
+        # If no name is provided, try to derive it from the file or URL
+        if not self.name:
+            if self.file and self.file.name:
+                self.name = self.file.name.split('/')[-1]
+            elif self.url:
+                self.name = self.url.split('/')[-1] or "Attachment"
+
         super().save(*args, **kwargs)
 
     class Meta:
@@ -282,4 +311,4 @@ class CustomAttachment(models.Model):
         verbose_name_plural = _("Attachments")
 
     def __str__(self):
-        return self.name
+        return self.name or f"Attachment {self.id}"
