@@ -3,7 +3,7 @@ from django.contrib.auth.models import Group
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from .models import User, Role
-from common.tasks import convert_image_to_webp_task
+from common.tasks import convert_image_to_avif_task
 
 @receiver(post_save, sender=User)
 def user_post_save(sender, instance, created, **kwargs):
@@ -24,9 +24,9 @@ def user_post_save(sender, instance, created, **kwargs):
             instance.referral_code = shortuuid.uuid()
             instance.save(update_fields=['referral_code']) # Save only the necessary field
 
-        # Schedule WebP conversion for profile picture
+        # Schedule AVIF conversion for profile picture
         if instance.profile_picture:
-            convert_image_to_webp_task.delay(
+            convert_image_to_avif_task.delay(
                 app_label='users',
                 model_name='User',
                 instance_pk=instance.pk,
