@@ -2,6 +2,10 @@
 
 set -e
 
+# Ensure Nginx can read the certbot challenge files
+mkdir -p /var/www/certbot
+chown -R nginx:nginx /var/www/certbot
+
 # Variables
 domain="atom-game.ir"
 le_path="/etc/letsencrypt/live/$domain"
