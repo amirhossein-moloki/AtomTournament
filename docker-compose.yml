@@ -88,11 +88,6 @@ services:
     ports:
       - "80:80"
       - "443:443"
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost/ || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     depends_on:
       - web
     entrypoint:
@@ -112,8 +107,7 @@ services:
         while true; do certbot renew --quiet; sleep 12h; done;
       '
     depends_on:
-      nginx:
-        condition: service_healthy
+      - nginx
 
 volumes:
   postgres_data:
