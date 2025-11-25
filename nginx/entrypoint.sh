@@ -16,6 +16,8 @@ if [ ! -f "$le_path/fullchain.pem" ]; then
         -keyout "$le_path/privkey.pem" \
         -out "$le_path/fullchain.pem" \
         -subj "$dummy_cert_subj"
+    # Also create the chain file needed for OCSP stapling
+    cp "$le_path/fullchain.pem" "$le_path/chain.pem"
 fi
 
 # 2. Start Nginx in the background
