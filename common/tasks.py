@@ -20,24 +20,26 @@ def convert_image_to_avif_task(self, app_label, model_name, instance_pk, field_n
         if not image_field or not image_field.name or image_field.name.lower().endswith('.avif'):
             return f"No action needed for {model_name} {instance_pk}."
 
-        original_path = image_field.path
+        original_name = image_field.name
 
         # 1. فایل اصلی را از حافظه بخوان
         with image_field.open('rb') as original_file:
             # 2. تبدیل به AVIF در حافظه
             avif_content = convert_image_to_avif(original_file)
-            new_storage_key = os.path.splitext(image_field.name)[0] + '.avif'
+
+        # از نام فایل اصلی برای ساختن نام فایل جدید استفاده می‌کنیم
+        new_storage_key = os.path.splitext(original_name)[0] + '.avif'
 
         # 3. فایل جدید را ذخیره کن
-        saved_path = default_storage.save(new_storage_key, avif_content)
+        saved_name = default_storage.save(new_storage_key, avif_content)
 
         # 4. مدل را آپدیت کن
-        setattr(instance, field_name, saved_path)
+        setattr(instance, field_name, saved_name)
         instance.save(update_fields=[field_name])
 
         # 5. فایل اصلی را (در صورت متفاوت بودن) حذف کن
-        if saved_path != original_path and default_storage.exists(original_path):
-             default_storage.delete(original_path)
+        if saved_name != original_name and default_storage.exists(original_name):
+            default_storage.delete(original_name)
 
         return f"Successfully converted image for {model_name} {instance_pk}."
 
