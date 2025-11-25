@@ -6,7 +6,7 @@ from PIL import Image
 import pillow_avif  # noqa: F401 -> Registered plugin
 
 
-def convert_image_to_avif(image_field, max_width=1920, quality=75):
+def convert_image_to_avif(image_field, max_width=1920, quality=75, speed=4):
     """
     ورودی: یک ImageField/File
     خروجی: یک ContentFile که فرمتش AVIF هست و آماده‌ی ذخیره تو ImageField
@@ -23,12 +23,12 @@ def convert_image_to_avif(image_field, max_width=1920, quality=75):
     if img.width > max_width:
         ratio = max_width / float(img.width)
         new_height = int(float(img.height) * ratio)
-        img = img.resize((max_width, new_height), Image.LANCZOS)
+        img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
 
     # توی buffer به فرمت AVIF ذخیره می‌کنیم
     buffer = BytesIO()
-    # Note: `method=6` is for WEBP, AVIF has different params. Using defaults for now.
-    img.save(buffer, format="AVIF", quality=quality)
+    # speed=4 provides a good balance between compression time and file size.
+    img.save(buffer, format="AVIF", quality=quality, speed=speed, strip=True)
     buffer.seek(0)
 
     # اسم فایل رو .avif می‌کنیم
