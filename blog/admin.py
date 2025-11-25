@@ -1,9 +1,8 @@
 from django.contrib import admin, messages
 from .models import (
     AuthorProfile, Category, Tag, Post, PostTag, Series, Media, Revision,
-    Comment, Reaction, Page, Menu, MenuItem
+    Comment, Reaction, Page, Menu, MenuItem, CustomAttachment
 )
-from .attachments import CustomAttachment
 
 
 from django.core.files.storage import default_storage

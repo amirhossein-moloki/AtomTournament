@@ -9,6 +9,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django_ckeditor_5.fields import CKEditor5Field
+from django.utils.translation import gettext_lazy as _
+from blog.services import process_attachment
 
 
 User = get_user_model()
@@ -262,3 +264,22 @@ class MenuItem(models.Model):
 
     def __str__(self):
         return self.label
+
+
+class CustomAttachment(models.Model):
+    file = models.FileField(upload_to="attachments/")
+    name = models.CharField(max_length=255, blank=True)
+    url = models.URLField(blank=True)
+    uploaded = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, request=None, **kwargs):
+        # Let the service handle the heavy lifting
+        process_attachment(self, request)
+        super().save(*args, **kwargs)
+
+    class Meta:
+        verbose_name = _("Attachment")
+        verbose_name_plural = _("Attachments")
+
+    def __str__(self):
+        return self.name
