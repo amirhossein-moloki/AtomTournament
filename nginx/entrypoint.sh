@@ -25,6 +25,9 @@ create_dummy_cert() {
       -out "$LE_PATH/fullchain.pem" \
       -subj "$DUMMY_CERT_SUBJ"
 
+    # Create a dummy chain.pem for startup
+    cp "$LE_PATH/fullchain.pem" "$LE_PATH/chain.pem"
+
     # اطمینان از اینکه Nginx می‌تواند گواهی موقت را بخواند
     echo ">>> Setting initial ownership for dummy certificate..."
     chown -R nginx:nginx /etc/letsencrypt

@@ -1,7 +1,7 @@
 services:
   web:
     build: .
-    command: sh -c "./docker-entrypoint.sh"
+    command: sh -c "/app/docker-entrypoint.sh"
     volumes:
       - .:/app
       - static_volume:/app/staticfiles
