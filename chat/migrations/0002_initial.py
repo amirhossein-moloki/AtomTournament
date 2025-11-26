@@ -10,52 +10,55 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
+        ("chat", "0001_initial"),
         ("support", "0002_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name="supportassignment",
-            name="support_person",
-            field=models.ForeignKey(
-                on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL
+            model_name="conversation",
+            name="participants",
+            field=models.ManyToManyField(
+                related_name="conversations", to=settings.AUTH_USER_MODEL
             ),
         ),
         migrations.AddField(
-            model_name="ticket",
-            name="user",
+            model_name="conversation",
+            name="support_ticket",
             field=models.ForeignKey(
-                on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL
-            ),
-        ),
-        migrations.AddField(
-            model_name="ticketmessage",
-            name="ticket",
-            field=models.ForeignKey(
+                blank=True,
+                null=True,
                 on_delete=django.db.models.deletion.CASCADE,
-                related_name="messages",
+                related_name="conversations",
                 to="support.ticket",
             ),
         ),
         migrations.AddField(
-            model_name="ticketmessage",
-            name="user",
+            model_name="message",
+            name="conversation",
             field=models.ForeignKey(
-                on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="messages",
+                to="chat.conversation",
             ),
         ),
         migrations.AddField(
-            model_name="ticketattachment",
-            name="ticket_message",
+            model_name="message",
+            name="sender",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="sent_messages",
+                to=settings.AUTH_USER_MODEL,
+            ),
+        ),
+        migrations.AddField(
+            model_name="attachment",
+            name="message",
             field=models.ForeignKey(
                 on_delete=django.db.models.deletion.CASCADE,
                 related_name="attachments",
-                to="support.ticketmessage",
+                to="chat.message",
             ),
-        ),
-        migrations.AlterUniqueTogether(
-            name="supportassignment",
-            unique_together={("support_person", "game")},
         ),
     ]
