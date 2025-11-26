@@ -1,0 +1,168 @@
+# /etc/nginx/nginx.conf
+
+# تنظیمات سطح بالا
+user nginx;
+pid /var/run/nginx.pid;
+worker_processes auto;
+events {
+    worker_connections 1024;
+}
+
+# بلاک HTTP
+http {
+    # MIME Types
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    # لاگ‌ها
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log;
+
+    # تنظیمات عمومی
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    types_hash_max_size 2048;
+    client_max_body_size 20M;
+
+    # تعریف upstream برای Django
+    upstream django_server {
+        server web:8000;
+    }
+
+    # Cache path برای API
+    proxy_cache_path /var/cache/nginx/api_cache levels=1:2 keys_zone=api_cache:10m max_size=1g inactive=60m use_temp_path=off;
+    proxy_cache_key "$scheme$request_method$host$request_uri";
+
+    # Rate limit برای API
+    limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
+
+
+    ########################
+    # HTTP → HTTPS Redirect
+    ########################
+    server {
+        listen 80;
+        server_name ${DOMAIN} www.${DOMAIN};
+
+        # برای چالش‌های Let's Encrypt
+        location ~ /.well-known/acme-challenge/ {
+            allow all;
+            root /var/www/certbot;
+            default_type "text/plain";
+        }
+
+        # ریدایرکت همه‌ی HTTP به HTTPS
+        location / {
+            return 301 https://$host$request_uri;
+        }
+    }
+
+
+    ########################
+    # HTTPS Server
+    ########################
+    server {
+        listen 443 ssl http2;
+        server_name ${DOMAIN} www.${DOMAIN};
+
+        # Root & index برای frontend (SPA)
+        root /var/www/frontend;
+        index index.html;
+
+        # SSL – گواهی‌های Certbot
+        ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+        ssl_trusted_certificate /etc/letsencrypt/live/${DOMAIN}/chain.pem;
+
+        # وارد کردن تنظیمات ماژولار SSL/TLS
+        include /etc/nginx/ssl_params.conf;
+
+        # وارد کردن هدرهای امنیتی
+        include /etc/nginx/security_headers.conf;
+
+        ########################
+        # Compression
+        ########################
+        gzip on;
+        gzip_vary on;
+        gzip_proxied any;
+        gzip_comp_level 5;
+        gzip_min_length 1024;
+        gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript image/svg+xml;
+
+        brotli on;
+        brotli_comp_level 5;
+        brotli_min_length 1024;
+        brotli_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript image/svg+xml;
+
+        ########################
+        # Error Pages
+        ########################
+        error_page 404 /404.html;
+        location = /404.html {
+            internal;
+        }
+
+        ########################
+        # Frontend (SPA)
+        ########################
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        ########################
+        # Static & Media files
+        ########################
+        location ~ ^/(static|media)/ {
+            # مسیر alias بر اساس URI تعیین می‌شود
+            alias /app/$1/;
+
+            # برای فایل‌های استاتیک، ابتدا به دنبال نسخه فشرده brotli و سپس gzip بگرد
+            brotli_static on;
+            gzip_static on;
+
+            # برای فایل‌های مدیا، ابتدا نسخه avif و webp را امتحان کن
+            if ($uri ~* ^/media/.*) {
+                try_files $uri.avif $uri.webp $uri =404;
+            }
+
+            expires 1y;
+            access_log off;
+            add_header Cache-Control "public, max-age=31536000, immutable";
+        }
+
+        ########################
+        # Django (API, Admin, ...)
+        ########################
+        location ~ ^/(api|admin|blog|select2|private-media)(/|$) {
+            limit_req zone=api_limit burst=20 nodelay;
+
+            # CSP را برای این بخش‌ها override می‌کنیم تا اسکریپت‌های لازم برای ادمین و... کار کنند
+            add_header Content-Security-Policy "default-src 'self' data: blob:; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:;" always;
+
+            # منطق کش کردن API
+            set $api_cache_bypass 0;
+            if ($http_authorization != "") { set $api_cache_bypass 1; }
+            if ($http_cookie ~* "(sessionid|csrftoken)") { set $api_cache_bypass 1; }
+
+            proxy_cache api_cache;
+            proxy_cache_methods GET HEAD;
+            proxy_cache_lock on;
+            proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+            proxy_cache_background_update on;
+            proxy_cache_valid 200 301 302 10m;
+            proxy_cache_valid 404 1m;
+            proxy_cache_bypass $api_cache_bypass;
+            proxy_no_cache $api_cache_bypass;
+            add_header X-Cache-Status $upstream_cache_status;
+
+            proxy_intercept_errors off;
+            proxy_pass http://django_server;
+
+            # وارد کردن تنظیمات پروکسی
+            include /etc/nginx/proxy_params.conf;
+        }
+    }
+}
