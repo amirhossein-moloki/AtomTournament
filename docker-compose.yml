@@ -102,12 +102,26 @@ services:
     command: >
       '
         trap exit TERM;
-        while ! certbot certonly --webroot -w /var/www/certbot --non-interactive --agree-tos --email dev@atom-game.ir -d atom-game.ir -d www.atom-game.ir --rsa-key-size 4096 --verbose; do
-          echo "Certbot failed. Retrying in 5 seconds...";
-          sleep 5;
+
+        # Check if a certificate already exists and retry if it fails
+        if [ ! -f "/etc/letsencrypt/live/atom-game.ir/fullchain.pem" ]; then
+          echo "### No certificate found, attempting to obtain one with retries...";
+
+          while ! certbot certonly --webroot -w /var/www/certbot --non-interactive --agree-tos \
+            --email amirh.moloki@gmail.com -d atom-game.ir -d www.atom-game.ir \
+            --rsa-key-size 4096 --verbose; do
+              echo "Certbot failed. Retrying in 5 seconds...";
+              sleep 5;
+          done
+        else
+          echo "### Certificate found, skipping issuance...";
+        fi
+
+        echo "### Starting renewal process...";
+        while true; do
+          certbot renew --quiet;
+          sleep 12h;
         done;
-        echo "### Certificate obtained. Starting renewal process...";
-        while true; do certbot renew --quiet; sleep 12h; done;
       '
     depends_on:
       - nginx
