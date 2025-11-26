@@ -1,13 +1,12 @@
 #!/bin/sh
-
-set -e
+set -e  # در صورت هر خطا اسکریپت متوقف می‌شود
 
 # --- Configuration ---
 # اولین دامنه از متغیر محیطی DOMAINS به عنوان دامنه اصلی استفاده می‌شود
 export DOMAIN=$(echo "$DOMAINS" | cut -d',' -f1)
-LE_PATH="/etc/letsencrypt/live/$DOMAIN"
-DHPARAMS_PATH="/etc/letsencrypt/dhparams.pem"
-DUMMY_CERT_SUBJ="/CN=localhost"
+LE_PATH="/etc/letsencrypt/live/$DOMAIN"  # مسیر گواهی Let's Encrypt
+DHPARAMS_PATH="/etc/letsencrypt/dhparams.pem"  # مسیر فایل dhparams
+DUMMY_CERT_SUBJ="/CN=localhost"  # مشخصات گواهی موقت
 LE_ISSUER="Let's Encrypt"
 
 echo "### Nginx Entrypoint: Configuration"
@@ -16,22 +15,26 @@ echo "Let's Encrypt Path: $LE_PATH"
 echo "--------------------"
 
 # --- Functions ---
+
+# تابع ایجاد گواهی موقت (dummy)
 create_dummy_cert() {
   if [ ! -f "$LE_PATH/privkey.pem" ] || [ ! -f "$LE_PATH/fullchain.pem" ] || [ ! -f "$LE_PATH/chain.pem" ]; then
     echo ">>> One or more certificate files are missing. Cleaning up and creating dummy certificate for $DOMAIN..."
-    # Clean up any partial files to avoid issues
+
+    # پاکسازی فایل‌های ناقص و ایجاد پوشه اگر وجود ندارد
     rm -f "$LE_PATH"/*
     mkdir -p "$LE_PATH"
 
+    # ایجاد گواهی موقت 4096 بیت با اعتبار 1 روز
     openssl req -x509 -nodes -newkey rsa:4096 -days 1 \
       -keyout "$LE_PATH/privkey.pem" \
       -out "$LE_PATH/fullchain.pem" \
       -subj "$DUMMY_CERT_SUBJ"
 
-    # Create a dummy chain.pem for startup, which Nginx requires
+    # ایجاد chain.pem که Nginx برای شروع به آن نیاز دارد
     cp "$LE_PATH/fullchain.pem" "$LE_PATH/chain.pem"
 
-    # Set ownership so the nginx user can read the certs
+    # مالکیت فایل‌ها را به nginx تغییر می‌دهیم
     echo ">>> Setting initial ownership for dummy certificate..."
     chown -R nginx:nginx /etc/letsencrypt
   else
@@ -39,6 +42,7 @@ create_dummy_cert() {
   fi
 }
 
+# تابع ایجاد dhparams (امنیت Diffie-Hellman)
 create_dhparams() {
   if [ ! -f "$DHPARAMS_PATH" ]; then
     echo ">>> Creating dhparams.pem (4096 bits)... This may take a while."
@@ -57,24 +61,21 @@ create_dhparams
 envsubst '$DOMAIN' < /app/nginx.conf.template > /etc/nginx/conf.d/default.conf
 echo ">>> Nginx config generated from template."
 
-# 3. راه‌اندازی Nginx در پس‌زمینه
+# 3. اجرای Nginx در پس‌زمینه
 echo ">>> Starting Nginx with initial configuration..."
-# Nginx را در پس‌زمینه اجرا می‌کنیم تا بتوانیم لاگ‌ها را ببینیم
 nginx -g "daemon off;" &
 NGINX_PID=$!
 
-# 4. حلقه پایدار برای تمدید گواهی‌ها
+# 4. حلقه دائمی برای اعمال تغییرات گواهی‌ها
+# توضیح: این حلقه هر ۱۲ ساعت مالکیت فایل‌ها را به nginx می‌دهد و Nginx را reload می‌کند
 (
   while true; do
-    # هر ۱۲ ساعت یک بار صبر می‌کنیم
     echo ">>> [Cron] Waiting for 12 hours before the next check..."
     sleep 12h
 
-    # مالکیت فایل‌ها را برای کاربر nginx تنظیم می‌کنیم
     echo ">>> [Cron] Updating certificate ownership for Nginx..."
     chown -R nginx:nginx /etc/letsencrypt
 
-    # Nginx را برای بارگذاری گواهی جدید reload می‌کنیم
     echo ">>> [Cron] Reloading Nginx to apply new certificates..."
     nginx -s reload
   done
