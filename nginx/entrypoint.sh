@@ -22,6 +22,9 @@ if [ ! -f "$le_path/fullchain.pem" ]; then
         -subj "$dummy_cert_subj"
     # Also create the chain file needed for OCSP stapling
     cp "$le_path/fullchain.pem" "$le_path/chain.pem"
+
+    echo "### Setting ownership of dummy certificate..."
+    chown -R nginx:nginx "$le_path"
 fi
 
 # 2. Start Nginx in the background
