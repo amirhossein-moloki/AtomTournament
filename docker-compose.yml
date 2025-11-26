@@ -82,8 +82,9 @@ services:
       - ./frontend:/var/www/frontend:ro
       - static_volume:/app/staticfiles
       - media_volume:/app/media
-      - certbot_data:/etc/letsencrypt
-      - webroot_data:/var/www/certbot
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - webroot_data:/var/w
+ww/certbot
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
       - "80:80"
@@ -96,7 +97,7 @@ services:
   certbot:
     image: certbot/certbot
     volumes:
-      - certbot_data:/etc/letsencrypt
+      - /etc/letsencrypt:/etc/letsencrypt
       - webroot_data:/var/www/certbot
     entrypoint: ["/bin/sh", "-c"]
     command: >
@@ -130,5 +131,4 @@ volumes:
   postgres_data:
   static_volume:
   media_volume:
-  certbot_data:
   webroot_data:
