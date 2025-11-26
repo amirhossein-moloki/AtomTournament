@@ -24,6 +24,10 @@ create_dummy_cert() {
       -keyout "$LE_PATH/privkey.pem" \
       -out "$LE_PATH/fullchain.pem" \
       -subj "$DUMMY_CERT_SUBJ"
+
+    # اطمینان از اینکه Nginx می‌تواند گواهی موقت را بخواند
+    echo ">>> Setting initial ownership for dummy certificate..."
+    chown -R nginx:nginx /etc/letsencrypt
   fi
 }
 
@@ -47,31 +51,27 @@ echo ">>> Nginx config generated from template."
 
 # 3. راه‌اندازی Nginx در پس‌زمینه
 echo ">>> Starting Nginx with initial configuration..."
+# Nginx را در پس‌زمینه اجرا می‌کنیم تا بتوانیم لاگ‌ها را ببینیم
 nginx -g "daemon off;" &
 NGINX_PID=$!
 
-# 4. حلقه برای انتظار و بارگذاری گواهی واقعی
-(
-  echo ">>> Waiting for the real certificate to be issued by Certbot..."
-  # این حلقه هر ۵ ثانیه چک می‌کند تا زمانی که گواهی واقعی صادر شود
-  while ! openssl x509 -in "$LE_PATH/fullchain.pem" -noout -issuer | grep -q "$LE_ISSUER"; do
-    sleep 5
-  done
-
-  echo ">>> Real certificate found. Reloading Nginx..."
-  nginx -s reload
-) &
-
-# 5. حلقه برای reload دوره‌ای جهت تمدید گواهی
+# 4. حلقه هوشمند برای مدیریت گواهی‌ها
 (
   while true; do
-    echo ">>> Sleeping for 12 hours before next renewal check..."
-    sleep 12h
-    echo ">>> Periodically reloading Nginx to apply renewed certificates..."
+    echo ">>> [inotify] Watching for changes in $LE_PATH..."
+    # منتظر رویداد create یا modify در پوشه گواهی‌ها می‌مانیم
+    # inotifywait به طور خودکار خارج می‌شود وقتی رویدادی رخ دهد
+    inotifywait -e create -e modify --timeout 43200 "$LE_PATH"
+
+    # بعد از هر رویداد یا تایم‌اوت (۱۲ ساعت)، مالکیت را اصلاح و Nginx را reload می‌کنیم
+    echo ">>> [inotify] Change detected or timeout reached. Updating permissions..."
+    chown -R nginx:nginx /etc/letsencrypt
+
+    echo ">>> [inotify] Reloading Nginx to apply changes..."
     nginx -s reload
   done
 ) &
 
-# 6. نگه داشتن پروسس اصلی
+# 5. نگه داشتن پروسس اصلی
 wait $NGINX_PID
 exit $?
