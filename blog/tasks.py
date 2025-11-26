@@ -19,19 +19,38 @@ def increment_post_view_count(post_id):
         logger.error(f"Error incrementing view count for Post ID {post_id}: {e}")
 
 
+from common.utils.images import convert_image_to_avif
+
+from django.core.files.storage import default_storage
+
 @shared_task
 def process_media_image(media_id):
     """
-    Celery task to process an uploaded image (e.g., create thumbnails).
+    Celery task to process an uploaded image, including converting to AVIF.
     """
     from .models import Media
     try:
         media = Media.objects.get(id=media_id)
-        # In a real-world scenario, you would use a library like Pillow
-        # to open media.file, generate a thumbnail, and save it.
-        # For this example, we'll just log the action.
-        logger.info(f"Processing image for media: {media.title}")
-        # Example: generate_thumbnail(media.file.path)
+        if "image" in media.mime and not media.storage_key.lower().endswith(".avif"):
+            original_storage_key = media.storage_key
+            try:
+                # Assuming media.storage_key is the path to the file
+                avif_file = convert_image_to_avif(media.storage_key)
+
+                # Update the media object with the new AVIF file details
+                media.storage_key = avif_file.name
+                media.mime = "image/avif"
+                media.url = default_storage.url(avif_file.name)
+                media.size_bytes = avif_file.size
+                media.save()
+
+                # Delete the original file
+                default_storage.delete(original_storage_key)
+
+                logger.info(f"Successfully converted image to AVIF for media: {media.title}")
+
+            except Exception as e:
+                logger.error(f"Error converting image to AVIF for media ID {media_id}: {e}")
     except Media.DoesNotExist:
         logger.error(f"Media with id {media_id} not found for processing.")
 

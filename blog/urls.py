@@ -5,7 +5,8 @@ from .views import (
     publish_post, related_posts,
     AuthorProfileViewSet, CategoryViewSet, TagViewSet, SeriesViewSet,
     MediaViewSet, RevisionViewSet, CommentViewSet, ReactionViewSet,
-    PageViewSet, MenuViewSet, MenuItemViewSet
+    PageViewSet, MenuViewSet, MenuItemViewSet,
+    download_media
 )
 
 router = DefaultRouter()
@@ -26,5 +27,6 @@ urlpatterns = [
     path('posts/<slug:slug>/', PostRetrieveUpdateDestroyAPIView.as_view(), name='post-detail'),
     path('posts/<slug:slug>/publish/', publish_post, name='post-publish'),
     path('posts/<slug:slug>/related/', related_posts, name='post-related'),
+    path('media/<int:media_id>/download/', download_media, name='download_media'),
     path('', include(router.urls)),
 ]

@@ -1,20 +1,22 @@
 from django.contrib import admin, messages
 from .models import (
     AuthorProfile, Category, Tag, Post, PostTag, Series, Media, Revision,
-    Comment, Reaction, Page, Menu, MenuItem, CustomAttachment
+    Comment, Reaction, Page, Menu, MenuItem
 )
 
 
 from django.core.files.storage import default_storage
 from .forms import MediaAdminForm, PageAdminForm, PostAdminForm
 
+from .tasks import process_media_image
+
 @admin.register(Media)
 class MediaAdmin(admin.ModelAdmin):
     form = MediaAdminForm
-    list_display = ('title', 'type', 'mime', 'size_bytes', 'created_at')
+    list_display = ('title', 'type', 'mime', 'size_bytes', 'created_at', 'get_download_url')
     list_filter = ('type', 'mime')
     search_fields = ('title', 'alt_text')
-    readonly_fields = ('storage_key', 'url', 'type', 'mime', 'size_bytes', 'uploaded_by', 'created_at')
+    readonly_fields = ('storage_key', 'url', 'type', 'mime', 'size_bytes', 'uploaded_by', 'created_at', 'get_download_url')
 
     def save_model(self, request, obj, form, change):
         uploaded_file = form.cleaned_data.get('file')
@@ -26,6 +28,7 @@ class MediaAdmin(admin.ModelAdmin):
             obj.url = file_url
             obj.mime = uploaded_file.content_type
             obj.size_bytes = uploaded_file.size
+            obj.title = uploaded_file.name
             if 'image' in obj.mime:
                 obj.type = 'image'
             elif 'video' in obj.mime:
@@ -37,6 +40,8 @@ class MediaAdmin(admin.ModelAdmin):
             obj.uploaded_by = request.user
 
         super().save_model(request, obj, form, change)
+        if 'image' in obj.mime:
+            process_media_image.delay(obj.id)
 
 
 @admin.register(AuthorProfile)
@@ -151,16 +156,3 @@ class MenuAdmin(admin.ModelAdmin):
     list_display = ('name', 'location')
     list_filter = ('location',)
     inlines = [MenuItemInline]
-
-
-class CustomAttachmentAdmin(admin.ModelAdmin):
-    list_display = ['name', 'url', 'file', 'uploaded']
-    search_fields = ['name', 'url']
-    list_filter = ['uploaded']
-    actions = ['delete_selected']
-
-    def save_model(self, request, obj, form, change):
-        obj.save(request=request)
-
-
-admin.site.register(CustomAttachment, CustomAttachmentAdmin)
