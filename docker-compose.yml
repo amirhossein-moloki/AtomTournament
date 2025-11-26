@@ -94,7 +94,6 @@ services:
       - DOMAINS=${DOMAIN} # Pass domains from .env
     depends_on:
       - web
-    command: ["/bin/sh", "/app/entrypoint.sh"]
 
   certbot:
     build:
@@ -106,7 +105,6 @@ services:
     environment:
       - DOMAINS=${DOMAIN} # Pass domains from .env
       - EMAIL=${EMAIL}       # Pass email from .env
-    command: ["/bin/sh", "/app/entrypoint.sh"]
     # No depends_on to avoid circular dependency
 
 volumes:

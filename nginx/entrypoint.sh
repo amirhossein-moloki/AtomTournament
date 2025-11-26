@@ -4,7 +4,7 @@ set -e
 
 # --- Configuration ---
 # اولین دامنه از متغیر محیطی DOMAINS به عنوان دامنه اصلی استفاده می‌شود
-DOMAIN=$(echo "$DOMAINS" | cut -d',' -f1)
+export DOMAIN=$(echo "$DOMAINS" | cut -d',' -f1)
 LE_PATH="/etc/letsencrypt/live/$DOMAIN"
 DHPARAMS_PATH="/etc/letsencrypt/dhparams.pem"
 DUMMY_CERT_SUBJ="/CN=localhost"
