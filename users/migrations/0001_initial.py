@@ -15,7 +15,6 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("auth", "0012_alter_user_first_name_max_length"),
-        ("tournaments", "0001_initial"),
     ]
 
     operations = [
@@ -128,15 +127,6 @@ class Migration(migrations.Migration):
                         related_query_name="user",
                         to="auth.group",
                         verbose_name="groups",
-                    ),
-                ),
-                (
-                    "rank",
-                    models.ForeignKey(
-                        blank=True,
-                        null=True,
-                        on_delete=django.db.models.deletion.SET_NULL,
-                        to="tournaments.rank",
                     ),
                 ),
                 (
@@ -257,13 +247,6 @@ class Migration(migrations.Migration):
                 ),
                 ("player_id", models.CharField(max_length=100)),
                 (
-                    "game",
-                    models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE,
-                        to="tournaments.game",
-                    ),
-                ),
-                (
                     "user",
                     models.ForeignKey(
                         null=True,
@@ -273,8 +256,6 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
-            options={
-                "unique_together": {("user", "game")},
-            },
+            options={},
         ),
     ]
