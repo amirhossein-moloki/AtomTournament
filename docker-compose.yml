@@ -82,7 +82,7 @@ services:
       - ./frontend:/var/www/frontend:ro
       - static_volume:/app/staticfiles
       - media_volume:/app/media
-      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /etc/letsencrypt:/etc/letsencrypt
       - webroot_data:/var/www/certbot
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
