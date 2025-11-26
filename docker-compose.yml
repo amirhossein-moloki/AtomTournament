@@ -83,8 +83,7 @@ services:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
       - /etc/letsencrypt:/etc/letsencrypt:ro
-      - webroot_data:/var/w
-ww/certbot
+      - webroot_data:/var/www/certbot
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
       - "80:80"
