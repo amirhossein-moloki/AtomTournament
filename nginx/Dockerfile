@@ -1,13 +1,13 @@
 FROM fholzer/nginx-brotli:latest
 
 # Install utilities we rely on in the entrypoint
-RUN apk add --no-cache openssl wget \
+RUN apk add --no-cache openssl wget gettext \
     && mkdir -p /etc/nginx/modules
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf.template /app/nginx.conf.template
 COPY modules.conf /etc/nginx/modules/mod-http-brotli.conf
-COPY entrypoint.sh /app/nginx/entrypoint.sh
+COPY entrypoint.sh /app/entrypoint.sh
 
-RUN chmod +x /app/nginx/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
-ENTRYPOINT ["/app/nginx/entrypoint.sh"]
+ENTRYPOINT ["/app/entrypoint.sh"]
