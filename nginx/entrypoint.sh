@@ -17,20 +17,25 @@ echo "--------------------"
 
 # --- Functions ---
 create_dummy_cert() {
-  if [ ! -f "$LE_PATH/fullchain.pem" ]; then
-    echo ">>> Creating dummy certificate for $DOMAIN..."
+  if [ ! -f "$LE_PATH/privkey.pem" ] || [ ! -f "$LE_PATH/fullchain.pem" ] || [ ! -f "$LE_PATH/chain.pem" ]; then
+    echo ">>> One or more certificate files are missing. Cleaning up and creating dummy certificate for $DOMAIN..."
+    # Clean up any partial files to avoid issues
+    rm -f "$LE_PATH"/*
     mkdir -p "$LE_PATH"
+
     openssl req -x509 -nodes -newkey rsa:4096 -days 1 \
       -keyout "$LE_PATH/privkey.pem" \
       -out "$LE_PATH/fullchain.pem" \
       -subj "$DUMMY_CERT_SUBJ"
 
-    # Create a dummy chain.pem for startup
+    # Create a dummy chain.pem for startup, which Nginx requires
     cp "$LE_PATH/fullchain.pem" "$LE_PATH/chain.pem"
 
-    # اطمینان از اینکه Nginx می‌تواند گواهی موقت را بخواند
+    # Set ownership so the nginx user can read the certs
     echo ">>> Setting initial ownership for dummy certificate..."
     chown -R nginx:nginx /etc/letsencrypt
+  else
+    echo ">>> Certificate files already exist. Skipping dummy certificate creation."
   fi
 }
 
