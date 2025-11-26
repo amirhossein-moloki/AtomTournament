@@ -67,9 +67,9 @@ NGINX_PID=$!
 (
   while true; do
     echo ">>> [inotify] Watching for changes in $LE_PATH..."
-    # منتظر رویداد create یا modify در پوشه گواهی‌ها می‌مانیم
-    # inotifywait به طور خودکار خارج می‌شود وقتی رویدادی رخ دهد
-    inotifywait -e create -e modify --timeout 43200 "$LE_PATH"
+    # منتظر رویدادهای create, modify, delete, یا move در پوشه گواهی‌ها می‌مانیم
+    # این رویدادها به‌روزرسانی لینک‌های نمادین توسط Certbot را به طور قابل اعتماد پوشش می‌دهند
+    inotifywait -e create -e modify -e delete -e move --timeout 43200 "$LE_PATH"
 
     # بعد از هر رویداد یا تایم‌اوت (۱۲ ساعت)، مالکیت را اصلاح و Nginx را reload می‌کنیم
     echo ">>> [inotify] Change detected or timeout reached. Updating permissions..."
