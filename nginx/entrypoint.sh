@@ -63,19 +63,19 @@ echo ">>> Starting Nginx with initial configuration..."
 nginx -g "daemon off;" &
 NGINX_PID=$!
 
-# 4. حلقه هوشمند برای مدیریت گواهی‌ها
+# 4. حلقه پایدار برای تمدید گواهی‌ها
 (
   while true; do
-    echo ">>> [inotify] Watching for changes in $LE_PATH..."
-    # منتظر رویدادهای create, modify, delete, یا move در پوشه گواهی‌ها می‌مانیم
-    # این رویدادها به‌روزرسانی لینک‌های نمادین توسط Certbot را به طور قابل اعتماد پوشش می‌دهند
-    inotifywait -e create -e modify -e delete -e move --timeout 43200 "$LE_PATH"
+    # هر ۱۲ ساعت یک بار صبر می‌کنیم
+    echo ">>> [Cron] Waiting for 12 hours before the next check..."
+    sleep 12h
 
-    # بعد از هر رویداد یا تایم‌اوت (۱۲ ساعت)، مالکیت را اصلاح و Nginx را reload می‌کنیم
-    echo ">>> [inotify] Change detected or timeout reached. Updating permissions..."
+    # مالکیت فایل‌ها را برای کاربر nginx تنظیم می‌کنیم
+    echo ">>> [Cron] Updating certificate ownership for Nginx..."
     chown -R nginx:nginx /etc/letsencrypt
 
-    echo ">>> [inotify] Reloading Nginx to apply changes..."
+    # Nginx را برای بارگذاری گواهی جدید reload می‌کنیم
+    echo ">>> [Cron] Reloading Nginx to apply new certificates..."
     nginx -s reload
   done
 ) &
