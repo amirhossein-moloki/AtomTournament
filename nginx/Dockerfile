@@ -17,6 +17,7 @@ RUN apt-get update && \
     libssl-dev \
     curl \
     git \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # دانلود سورس Nginx
