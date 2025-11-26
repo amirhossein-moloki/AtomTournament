@@ -153,7 +153,9 @@ class MediaViewSet(viewsets.ModelViewSet):
         return MediaDetailSerializer
 
     def perform_create(self, serializer):
-        instance = serializer.save(uploaded_by=self.request.user)
+        uploaded_file = self.request.FILES.get('file')
+        title = uploaded_file.name if uploaded_file else 'default_title'
+        instance = serializer.save(uploaded_by=self.request.user, title=title)
         if 'image' in instance.mime:
             process_media_image.delay(instance.id)
 
@@ -237,3 +239,15 @@ class MenuItemViewSet(viewsets.ModelViewSet):
     queryset = MenuItem.objects.all()
     serializer_class = MenuItemSerializer
     permission_classes = [IsAdminUserOrReadOnly]
+
+
+from django.http import FileResponse
+from django.shortcuts import get_object_or_404
+from .models import Media
+from django.core.files.storage import default_storage
+
+def download_media(request, media_id):
+    media = get_object_or_404(Media, pk=media_id)
+    file = default_storage.open(media.storage_key, 'rb')
+    response = FileResponse(file, as_attachment=True, filename=media.title)
+    return response
