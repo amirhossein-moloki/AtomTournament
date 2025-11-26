@@ -1,13 +1,25 @@
-FROM fholzer/nginx-brotli:latest
+# Use the official Nginx image as a base
+FROM nginx:1.25-alpine
 
-# Install utilities we rely on in the entrypoint
-RUN apk add --no-cache openssl wget \
-    && mkdir -p /etc/nginx/modules
+# Install necessary packages
+# - inotify-tools: for monitoring filesystem events (certificate renewals)
+# - openssl: for generating a self-signed certificate for initial startup
+# - gettext: for `envsubst` to substitute environment variables in the config template
+RUN apk add --no-cache inotify-tools openssl gettext
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY modules.conf /etc/nginx/modules/mod-http-brotli.conf
-COPY entrypoint.sh /app/nginx/entrypoint.sh
+# Copy the entrypoint script and the Nginx configuration template
+COPY ./entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY ./app.conf.template /etc/nginx/templates/app.conf.template
 
-RUN chmod +x /app/nginx/entrypoint.sh
+# Make the entrypoint script executable
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
-ENTRYPOINT ["/app/nginx/entrypoint.sh"]
+# The entrypoint will generate the final config and start Nginx
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
+# Expose ports
+EXPOSE 80 443
+
+# The command to run when the container starts.
+# The entrypoint script will execute this command after setting up the configuration.
+CMD ["nginx", "-g", "daemon off;"]

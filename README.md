@@ -1,158 +1,94 @@
-# Tournament Management System
+# Automated Nginx and Certbot SSL Setup
 
-This is a Django-based tournament management system that allows users to create and manage tournaments, participate in matches, and interact with other users through a built-in chat system. The project also includes a wallet system for managing tournament entry fees and prizes.
+This project provides a fully automated setup for Nginx and Certbot to obtain and renew SSL certificates using Docker Compose. The architecture is designed to be robust, avoiding common race conditions and dependency issues.
 
 ## Features
 
-*   **Tournament Management:** Create, edit, and delete tournaments. Support for both individual and team-based tournaments.
-*   **Match Management:** Automatic match generation, result confirmation, and dispute resolution.
-*   **User Management:** User registration, authentication, and profile management. Role-based access control (admin, user).
-*   **Team Management:** Create and manage teams, add or remove members.
-*   **Wallet System:** Manage user wallets, including deposits, withdrawals, entry fees, and prize money.
-*   **Chat System:** Real-time chat between users.
-*   **Notification System:** Real-time notifications for users.
-*   **API Documentation:** Automatically generated API documentation using `drf-spectacular`.
+- **Fully Automated:** SSL certificates are obtained and renewed automatically.
+- **Decoupled Services:** Nginx and Certbot run independently, without direct dependencies.
+- **Graceful Reloads:** Nginx reloads its configuration without downtime.
+- **Robust Startup:** Nginx starts up even without an initial SSL certificate, enabling Certbot to perform the initial challenge.
+- **Easy Configuration:** Simple setup using a `.env` file.
 
-## Getting Started
+## Prerequisites
 
-### Prerequisites
+- Docker
+- Docker Compose
+- A registered domain name pointing to your server's IP address.
+- Ports 80 and 443 open on your server's firewall.
 
-*   Python 3.8+
-*   PostgreSQL 12+
-*   Redis
+## How It Works
 
-### Installation
+This setup uses an intelligent Nginx entrypoint script that decouples it from the Certbot container.
 
-1.  **Clone the repository:**
+1.  **Nginx Startup:** The Nginx container starts and its entrypoint script checks for the existence of an SSL certificate.
+    *   **If no certificate is found:** It generates a temporary, HTTP-only configuration that serves a placeholder page and allows Certbot's ACME challenge requests to pass through.
+    *   **If a certificate is found:** It generates a production-ready configuration that redirects all HTTP traffic to HTTPS and enables SSL.
 
+2.  **Certbot Operation:** The Certbot container runs independently. Its entrypoint script periodically attempts to obtain or renew the SSL certificate for the specified domain using the webroot method. The challenge files are written to a shared volume that Nginx can access.
+
+3.  **Automatic Nginx Reload:** The Nginx entrypoint script also starts a background process that monitors the certificate directory for changes (using `inotifywait`). When Certbot successfully obtains or renews a certificate, this monitor detects the change and triggers a graceful `nginx -s reload`, loading the new certificate and updated configuration without any downtime.
+
+## Configuration
+
+1.  **Create a `.env` file:**
+
+    Copy the example file:
     ```bash
-    git clone https://github.com/your-username/tournament-project.git
-    cd tournament-project
+    cp .env.example .env
     ```
 
-2.  **Create and activate a virtual environment:**
+2.  **Edit the `.env` file:**
 
-    ```bash
-    python -m venv venv
-    source venv/bin/activate
+    Open the `.env` file and replace the placeholder values with your domain and email address.
+
+    ```ini
+    DOMAIN=your-domain.com
+    EMAIL=your-email@example.com
     ```
 
-3.  **Install the dependencies:**
+## Usage
 
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-4.  **Set up the environment variables:**
-
-    Copy the example environment file and fill in your details.
-
-    ```bash
-    cp env.example .env
-    ```
-
-    You must set the `SECRET_KEY` and `DATABASE_URL` for your local PostgreSQL instance. The other variables have sensible defaults for local development.
-
-    **Example `.env`:**
-    ```
-    SECRET_KEY="your-super-secret-key-here"
-    DEBUG=True
-    DATABASE_URL="postgres://user:password@localhost:5432/tournament_db"
-    REDIS_URL="redis://localhost:6379/0"
-    ```
-
-5.  **Run the database migrations:**
-
-    ```bash
-    python tournament_project/manage.py migrate
-    ```
-
-6.  **Create a superuser:**
-
-    ```bash
-    python tournament_project/manage.py createsuperuser
-    ```
-
-7.  **Run the development server:**
-
-    ```bash
-    python tournament_project/manage.py runserver
-    ```
-
-The API will be available at `http://127.0.0.1:8000/api/`.
-
-### API Documentation
-
-The API documentation is available at `http://127.0.0.1:8000/api/docs/`.
-
-## Running with Docker
-
-This project is configured to run with Docker and Docker Compose. This is the recommended way to run the project for development.
-
-### Prerequisites
-
-*   Docker
-*   Docker Compose
-
-### Installation
-
-1.  **Clone the repository:**
-
-    ```bash
-    git clone https://github.com/your-username/tournament-project.git
-    cd tournament-project
-    ```
-
-2.  **Set up the environment variables:**
-
-    The project uses a `.env` file for environment variables. You can copy the example file:
-
-    ```bash
-    cp env.example .env
-    ```
-
-    The default values in `.env` are configured to work with the Docker Compose setup. You may want to change the `SECRET_KEY` to a new, randomly generated value.
-
-3.  **Build and run the application:**
-
-    ```bash
-    docker-compose up --build
-    ```
-
-    This command will build the Docker images and start all the services. The application will be available at `http://localhost:80`.
-
-4.  **Create a superuser (optional):**
-
-    To create a superuser, run the following command in a separate terminal:
-
-    ```bash
-    docker-compose exec web python manage.py createsuperuser
-    ```
-
-### Stopping the application
-
-To stop the application, press `Ctrl+C` in the terminal where `docker-compose up` is running, and then run:
+To start the services, run the following command from the root of the project:
 
 ```bash
-docker-compose down
+docker compose up -d
 ```
 
-## Project Structure
+### Initial Certificate Acquisition
+
+On the first run, Certbot may take a minute or two to obtain the certificate. You can monitor its progress by checking the logs:
+
+```bash
+docker compose logs -f certbot
+```
+
+Once the certificate is obtained, the Nginx container will automatically detect it and reload its configuration to enable HTTPS. You can see this in the Nginx logs:
+
+```bash
+docker compose logs -f nginx
+```
+
+### Forcing Certificate Renewal
+
+To manually trigger a renewal attempt, you can run:
+
+```bash
+docker compose exec certbot /usr/local/bin/entrypoint.sh
+```
+
+## File Structure
 
 ```
 .
-├── chat/                 # Chat application
-├── notifications/        # Notifications application
-├── tournament_project/   # Django project
-│   ├── tournaments/      # Tournaments application
-│   ├── users/            # Users application
-│   └── wallet/           # Wallet application
-├── .github/              # GitHub Actions workflows
-├── requirements.txt      # Python dependencies
-├── websockets.md         # WebSocket usage guide
-└── README.md
+├── .env.example        # Example environment variables
+├── .gitignore          # Files to be ignored by Git
+├── README.md           # This file
+├── certbot/
+│   └── entrypoint.sh   # Certbot's script for obtaining/renewing certificates
+├── docker-compose.yml  # Docker Compose file defining the services and volumes
+└── nginx/
+    ├── Dockerfile          # Dockerfile for the custom Nginx image
+    ├── app.conf.template   # Nginx configuration template
+    └── entrypoint.sh       # The intelligent Nginx entrypoint script
 ```
-
-## Contributing
-
-Contributions are welcome! Please read the `CONTRIBUTING.md` file for more information.

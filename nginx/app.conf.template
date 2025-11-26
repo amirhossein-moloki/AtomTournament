@@ -1,0 +1,72 @@
+# This server block handles HTTP requests.
+# Its primary purpose is to serve the Let's Encrypt ACME challenge
+# and redirect all other traffic to HTTPS.
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    # This location block is crucial for Certbot's webroot challenge.
+    # It ensures that requests to /.well-known/acme-challenge/ are
+    # served directly from the shared volume and are never redirected.
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        # The following headers are useful for debugging.
+        add_header Content-Type text/plain;
+    }
+
+    # Hide the acme-challenge directory from casual browsing.
+    location = /.well-known/acme-challenge/ {
+        return 404;
+    }
+
+    # For all other paths, issue a permanent redirect to the HTTPS version.
+    location / {
+        # ${DOLLAR}host is an Nginx variable for the request's hostname.
+        # ${DOLLAR}request_uri is an Nginx variable for the original request URI.
+        # We use `export DOLLAR='$'` in the entrypoint to make `envsubst`
+        # produce a literal dollar sign for Nginx to interpret at runtime.
+        return 301 https://${DOLLAR}host${DOLLAR}request_uri;
+    }
+}
+
+# This server block handles all HTTPS traffic for the domain.
+server {
+    listen 443 ssl http2;
+    server_name ${DOMAIN};
+
+    # --- SSL Configuration ---
+    # These paths point to the shared volume where Certbot places the certificates.
+    # The entrypoint script ensures that a self-signed certificate exists at this
+    # location on initial startup, so Nginx can always start.
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+
+    # --- SSL Security Enhancements (from Mozilla's Intermediate compatibility) ---
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384';
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_tickets off;
+
+    # OCSP Stapling - Improves performance by having Nginx fetch the OCSP response.
+    # resolver 8.8.8.8 8.8.4.4 valid=300s; # Uncomment if your server can't resolve your CA's OCSP server.
+    # resolver_timeout 5s;
+    # ssl_stapling on;
+    # ssl_stapling_verify on;
+
+    # Add the HSTS header to force all connections to be HTTPS.
+    # Be cautious with `preload`; only enable it if you are sure you can maintain HTTPS.
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+
+    # --- Content Serving ---
+    # This is a placeholder. You can replace this with your actual application's configuration,
+    # such as a `proxy_pass` to a backend service or a `root` directive for a static site.
+    location / {
+        root /usr/share/nginx/html;
+        index index.html;
+        # Example of serving a simple "OK" message.
+        return 200 "SSL configured for ${DOMAIN}. Welcome!";
+        add_header Content-Type text/plain;
+    }
+}

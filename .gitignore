@@ -1,32 +1,25 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.pyc
-*.pyd
-*.pyo
-*.so
-
-# Django stuff
-*.log
-db.sqlite3
-/media/
-/staticfiles/
-
-# Virtual environment
-venv/
-env/
+# Environment variables
 .env
 
-# IDEs
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+
+# IDEs and editors
 .idea/
 .vscode/
+*.swp
+*.swo
 
-# Static files
-node_modules/
-
-# Test output
-.coverage
-htmlcov/
-reports/
-
-frontend/
-celerybeat-schedule
+# OS-specific
+.DS_Store
+Thumbs.db
