@@ -14,7 +14,7 @@ limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
 ########################
 server {
     listen 80;
-    server_name atom-game.ir www.atom-game.ir;
+    server_name ${DOMAIN} www.${DOMAIN};
 
     # برای چالش‌های Let's Encrypt
     location /.well-known/acme-challenge/ {
@@ -32,17 +32,17 @@ server {
 ########################
 server {
     listen 443 ssl http2;
-    server_name atom-game.ir www.atom-game.ir;
+    server_name ${DOMAIN} www.${DOMAIN};
 
     # Root & index برای frontend (SPA)
     root /var/www/frontend;
     index index.html;
 
     # SSL – گواهی‌های Certbot
-    ssl_certificate     /etc/letsencrypt/live/atom-game.ir/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/atom-game.ir/privkey.pem;
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
     # برای OCSP stapling
-    ssl_trusted_certificate /etc/letsencrypt/live/atom-game.ir/chain.pem;
+    ssl_trusted_certificate /etc/letsencrypt/live/${DOMAIN}/chain.pem;
 
     # تنظیمات مدرن TLS
     ssl_protocols TLSv1.2 TLSv1.3;

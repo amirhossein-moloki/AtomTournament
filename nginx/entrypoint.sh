@@ -2,45 +2,76 @@
 
 set -e
 
-# Variables
-domain="atom-game.ir"
-le_path="/etc/letsencrypt/live/$domain"
-dummy_cert_subj="/CN=localhost"
-le_issuer="Let's Encrypt"
+# --- Configuration ---
+# اولین دامنه از متغیر محیطی DOMAINS به عنوان دامنه اصلی استفاده می‌شود
+DOMAIN=$(echo "$DOMAINS" | cut -d',' -f1)
+LE_PATH="/etc/letsencrypt/live/$DOMAIN"
+DHPARAMS_PATH="/etc/letsencrypt/dhparams.pem"
+DUMMY_CERT_SUBJ="/CN=localhost"
+LE_ISSUER="Let's Encrypt"
 
-# 1. Create a dummy certificate to allow Nginx to start
-if [ ! -f "$le_path/fullchain.pem" ]; then
-    echo "### Creating dummy certificate for $domain ..."
-    mkdir -p "$le_path"
-    openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
-        -keyout "$le_path/privkey.pem" \
-        -out "$le_path/fullchain.pem" \
-        -subj "$dummy_cert_subj"
-fi
+echo "### Nginx Entrypoint: Configuration"
+echo "Domain for certs: $DOMAIN"
+echo "Let's Encrypt Path: $LE_PATH"
+echo "--------------------"
 
-# 2. Start Nginx in the background
-echo "### Starting Nginx..."
+# --- Functions ---
+create_dummy_cert() {
+  if [ ! -f "$LE_PATH/fullchain.pem" ]; then
+    echo ">>> Creating dummy certificate for $DOMAIN..."
+    mkdir -p "$LE_PATH"
+    openssl req -x509 -nodes -newkey rsa:4096 -days 1 \
+      -keyout "$LE_PATH/privkey.pem" \
+      -out "$LE_PATH/fullchain.pem" \
+      -subj "$DUMMY_CERT_SUBJ"
+  fi
+}
+
+create_dhparams() {
+  if [ ! -f "$DHPARAMS_PATH" ]; then
+    echo ">>> Creating dhparams.pem (4096 bits)... This may take a while."
+    openssl dhparam -out "$DHPARAMS_PATH" 4096
+  fi
+}
+
+# --- Main Logic ---
+
+# 1. اطمینان از وجود فایل‌های اولیه
+create_dummy_cert
+create_dhparams
+
+# 2. تولید کانفیگ Nginx از template
+# متغیر $DOMAIN از محیط گرفته می‌شود و در template جایگزین می‌شود
+envsubst '$DOMAIN' < /app/nginx.conf.template > /etc/nginx/conf.d/default.conf
+echo ">>> Nginx config generated from template."
+
+# 3. راه‌اندازی Nginx در پس‌زمینه
+echo ">>> Starting Nginx with initial configuration..."
 nginx -g "daemon off;" &
+NGINX_PID=$!
 
-# 3. Fast-polling loop to wait for the real certificate
-echo "### Waiting for the real certificate to be issued by Certbot..."
-while ! openssl x509 -in "$le_path/fullchain.pem" -noout -issuer | grep -q "$le_issuer"; do
-    sleep 5
-done
-
-# 4. Reload Nginx as soon as the real certificate is found
-echo "### Real certificate found. Reloading Nginx..."
-nginx -s reload
-
-# 5. Start a slow-polling loop in the background for future renewals
+# 4. حلقه برای انتظار و بارگذاری گواهی واقعی
 (
-    while true; do
-        echo "### Waiting for 12 hours before next renewal check..."
-        sleep 12h
-        echo "### Checking for certificate renewal and reloading Nginx..."
-        nginx -s reload
-    done
+  echo ">>> Waiting for the real certificate to be issued by Certbot..."
+  # این حلقه هر ۵ ثانیه چک می‌کند تا زمانی که گواهی واقعی صادر شود
+  while ! openssl x509 -in "$LE_PATH/fullchain.pem" -noout -issuer | grep -q "$LE_ISSUER"; do
+    sleep 5
+  done
+
+  echo ">>> Real certificate found. Reloading Nginx..."
+  nginx -s reload
 ) &
 
-# 6. Keep the main process running
-wait
+# 5. حلقه برای reload دوره‌ای جهت تمدید گواهی
+(
+  while true; do
+    echo ">>> Sleeping for 12 hours before next renewal check..."
+    sleep 12h
+    echo ">>> Periodically reloading Nginx to apply renewed certificates..."
+    nginx -s reload
+  done
+) &
+
+# 6. نگه داشتن پروسس اصلی
+wait $NGINX_PID
+exit $?

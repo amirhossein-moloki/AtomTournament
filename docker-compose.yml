@@ -84,30 +84,30 @@ services:
       - media_volume:/app/media
       - certbot_data:/etc/letsencrypt
       - webroot_data:/var/www/certbot
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Mount the scripts and templates
+      - ./nginx/entrypoint.sh:/app/entrypoint.sh
+      - ./nginx/nginx.conf.template:/app/nginx.conf.template
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      - DOMAINS=${DOMAIN} # Pass domains from .env
     depends_on:
       - web
-    entrypoint:
-      - /app/nginx/entrypoint.sh
+    command: ["/bin/sh", "/app/entrypoint.sh"]
 
   certbot:
-    image: certbot/certbot
+    build:
+      context: ./certbot
     volumes:
       - certbot_data:/etc/letsencrypt
       - webroot_data:/var/www/certbot
-    entrypoint: ["/bin/sh", "-c"]
-    command: >
-      '
-        if ! certbot certificates | grep -q "atom-game.ir"; then
-          certbot certonly --webroot -w /var/www/certbot --non-interactive --agree-tos --email dev@atom-game.ir -d atom-game.ir -d www.atom-game.ir --rsa-key-size 4096 --verbose;
-        fi;
-        while true; do certbot renew --quiet; sleep 12h; done;
-      '
-    depends_on:
-      - nginx
+      - ./certbot/entrypoint.sh:/app/entrypoint.sh
+    environment:
+      - DOMAINS=${DOMAIN} # Pass domains from .env
+      - EMAIL=${EMAIL}       # Pass email from .env
+    command: ["/bin/sh", "/app/entrypoint.sh"]
+    # No depends_on to avoid circular dependency
 
 volumes:
   postgres_data:
