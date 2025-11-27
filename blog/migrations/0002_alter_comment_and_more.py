@@ -11,28 +11,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.CreateModel(
-            name="CustomAttachment",
-            fields=[
-                (
-                    "id",
-                    models.BigAutoField(
-                        auto_created=True,
-                        primary_key=True,
-                        serialize=False,
-                        verbose_name="ID",
-                    ),
-                ),
-                ("file", models.FileField(upload_to="attachments/")),
-                ("name", models.CharField(blank=True, max_length=255)),
-                ("url", models.URLField(blank=True)),
-                ("uploaded", models.DateTimeField(auto_now_add=True)),
-            ],
-            options={
-                "verbose_name": "Attachment",
-                "verbose_name_plural": "Attachments",
-            },
-        ),
         migrations.AlterField(
             model_name="comment",
             name="content",
