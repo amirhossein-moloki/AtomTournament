@@ -5,7 +5,8 @@ from markdownify import markdownify as html_to_markdown
 
 from .models import (
     AuthorProfile, Category, Tag, Post, Series, Media,
-    Comment, Reaction, Page, Menu, MenuItem, Revision
+    Comment, Reaction, Page, Menu, MenuItem, Revision,
+    CustomAttachment
 )
 
 User = get_user_model()
@@ -236,3 +237,12 @@ class MenuSerializer(serializers.ModelSerializer):
     class Meta:
         model = Menu
         fields = '__all__'
+
+
+class CustomAttachmentSerializer(serializers.ModelSerializer):
+    uploaded_by = serializers.StringRelatedField()
+
+    class Meta:
+        model = CustomAttachment
+        fields = ('id', 'file', 'uploaded_by', 'created_at')
+        read_only_fields = ('uploaded_by', 'created_at')

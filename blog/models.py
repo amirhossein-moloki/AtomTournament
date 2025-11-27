@@ -12,6 +12,8 @@ from django_ckeditor_5.fields import CKEditor5Field
 from django.utils.translation import gettext_lazy as _
 from urllib.parse import urlparse, urlunparse
 
+from common.utils.images import convert_image_to_avif
+
 
 User = get_user_model()
 
@@ -269,3 +271,35 @@ class MenuItem(models.Model):
 
     def __str__(self):
         return self.label
+
+
+class CustomAttachment(models.Model):
+    file = models.FileField(upload_to="attachments/")
+    uploaded_by = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='attachments'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        import os
+
+        if self.file:
+            # Check if the file is an image by extension
+            filename = self.file.name
+            is_image = False
+            image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp']
+            if any(filename.lower().endswith(ext) for ext in image_extensions):
+                is_image = True
+
+            # Avoid re-conversion loop by checking the extension
+            if is_image and not self.file.name.lower().endswith('.avif'):
+                # The convert_image_to_avif function returns a ContentFile
+                # with the correct name (.avif extension)
+                self.file = convert_image_to_avif(self.file)
+
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return os.path.basename(self.file.name)
