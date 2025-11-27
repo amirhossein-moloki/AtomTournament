@@ -1,8 +1,10 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.files.storage import default_storage
+from django.contrib.auth.decorators import login_required
 from .models import Media
 
+@login_required
 @csrf_exempt
 def ckeditor_upload_view(request):
     if request.method == 'POST' and request.FILES.get('upload'):
