@@ -1,7 +1,7 @@
 from django.contrib import admin, messages
 from .models import (
     AuthorProfile, Category, Tag, Post, PostTag, Series, Media, Revision,
-    Comment, Reaction, Page, Menu, MenuItem
+    Comment, Reaction, Page, Menu, MenuItem, CustomAttachment
 )
 
 
@@ -156,3 +156,22 @@ class MenuAdmin(admin.ModelAdmin):
     list_display = ('name', 'location')
     list_filter = ('location',)
     inlines = [MenuItemInline]
+
+
+@admin.register(CustomAttachment)
+class CustomAttachmentAdmin(admin.ModelAdmin):
+    list_display = ('__str__', 'uploaded_by', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('file', 'uploaded_by__username')
+    readonly_fields = ('uploaded_by', 'created_at')
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(uploaded_by=request.user)
+
+    def save_model(self, request, obj, form, change):
+        if not obj.pk:
+            obj.uploaded_by = request.user
+        super().save_model(request, obj, form, change)
