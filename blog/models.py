@@ -2,10 +2,12 @@ import re
 from django.conf import settings
 from django.db import models
 from django.db.models import Count
+from urllib.parse import urlparse
 from django.db.models.functions import Coalesce
 from django.urls import reverse
 from django.utils.text import slugify
 from django.contrib.auth import get_user_model
+from django.utils.translation import gettext_lazy as _
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django_ckeditor_5.fields import CKEditor5Field
@@ -172,7 +174,46 @@ class Post(models.Model):
             self.reading_time_sec = int(reading_time_minutes * 60)
         else:
             self.reading_time_sec = 0
-        super().save(*args, **kwargs)
+
+        super().save(*args, **kwargs)  # Save post first to get an ID
+
+        # Sync Cover and OG images
+        # Remove old attachments that are no longer linked
+        self.media_attachments.filter(attachment_type='cover').exclude(media=self.cover_media).delete()
+        if self.cover_media:
+            self.media_attachments.update_or_create(media=self.cover_media, defaults={'attachment_type': 'cover'})
+
+        self.media_attachments.filter(attachment_type='og-image').exclude(media=self.og_image).delete()
+        if self.og_image:
+            self.media_attachments.update_or_create(media=self.og_image, defaults={'attachment_type': 'og-image'})
+
+        # Sync in-content images
+        media_paths_in_content = set()
+        # Find URLs in src attributes of img tags
+        for url in re.findall(r'<img [^>]*src="([^"]+)"', self.content):
+            path = urlparse(url).path
+            if path.startswith(settings.MEDIA_URL):
+                # Strip /media/ part to get the storage_key
+                media_paths_in_content.add(path[len(settings.MEDIA_URL):])
+
+        # Find media objects matching the paths found
+        linked_media_ids = set(
+            Media.objects.filter(storage_key__in=media_paths_in_content).values_list('id', flat=True)
+        )
+
+        # Find media objects currently attached as 'in-content'
+        current_media_ids = set(
+            self.media_attachments.filter(attachment_type='in-content').values_list('media_id', flat=True)
+        )
+
+        # Add new attachments
+        ids_to_add = linked_media_ids - current_media_ids
+        for media_id in ids_to_add:
+            self.media_attachments.create(media_id=media_id, attachment_type='in-content')
+
+        # Remove old attachments
+        ids_to_remove = current_media_ids - linked_media_ids
+        self.media_attachments.filter(media_id__in=ids_to_remove, attachment_type='in-content').delete()
 
 
 class PostTag(models.Model):
@@ -273,33 +314,15 @@ class MenuItem(models.Model):
         return self.label
 
 
-class CustomAttachment(models.Model):
-    file = models.FileField(upload_to="attachments/")
-    uploaded_by = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='attachments'
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
+class PostMedia(models.Model):
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='media_attachments')
+    media = models.ForeignKey(Media, on_delete=models.CASCADE, related_name='post_attachments')
+    attachment_type = models.CharField(max_length=50, default='in-content')  # e.g., 'in-content', 'cover', 'og-image'
 
-    def save(self, *args, **kwargs):
-        import os
-
-        if self.file:
-            # Check if the file is an image by extension
-            filename = self.file.name
-            is_image = False
-            image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp']
-            if any(filename.lower().endswith(ext) for ext in image_extensions):
-                is_image = True
-
-            # Avoid re-conversion loop by checking the extension
-            if is_image and not self.file.name.lower().endswith('.avif'):
-                # The convert_image_to_avif function returns a ContentFile
-                # with the correct name (.avif extension)
-                self.file = convert_image_to_avif(self.file)
-
-        super().save(*args, **kwargs)
+    class Meta:
+        unique_together = ('post', 'media', 'attachment_type')
+        verbose_name = _('Post Media')
+        verbose_name_plural = _('Post Media')
 
     def __str__(self):
-        return os.path.basename(self.file.name)
+        return f'{self.media.title} attached to "{self.post.title}" as {self.attachment_type}'

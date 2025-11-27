@@ -15,7 +15,7 @@ User = get_user_model()
 class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = User
-        django_get_or_create = ('phone_number',)
+        django_get_or_create = ('username',)
 
     username = factory.LazyAttribute(lambda _: fake.user_name())
     email = factory.LazyAttribute(lambda _: fake.email())
