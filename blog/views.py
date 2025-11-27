@@ -10,13 +10,13 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import (
     Post, AuthorProfile, Category, Tag, Series, Media, Revision,
-    Comment, Reaction, Page, Menu, MenuItem, CustomAttachment
+    Comment, Reaction, Page, Menu, MenuItem
 )
 from .serializers import (
     PostListSerializer, PostDetailSerializer, PostCreateUpdateSerializer,
     AuthorProfileSerializer, CategorySerializer, TagSerializer, SeriesSerializer,
     MediaDetailSerializer, MediaCreateSerializer, RevisionSerializer, CommentSerializer, ReactionSerializer,
-    PageSerializer, MenuSerializer, MenuItemSerializer, CustomAttachmentSerializer
+    PageSerializer, MenuSerializer, MenuItemSerializer
 )
 from .filters import PostFilter
 from .pagination import CustomPageNumberPagination
@@ -251,26 +251,3 @@ def download_media(request, media_id):
     file = default_storage.open(media.storage_key, 'rb')
     response = FileResponse(file, as_attachment=True, filename=media.title)
     return response
-
-
-class CustomAttachmentViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for managing custom attachments.
-    Users can upload and manage their own attachments.
-    """
-    serializer_class = CustomAttachmentSerializer
-    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
-    pagination_class = CustomPageNumberPagination
-
-    def get_queryset(self):
-        """
-        This view should return a list of all the attachments
-        for the currently authenticated user.
-        """
-        return CustomAttachment.objects.filter(uploaded_by=self.request.user).order_by('-created_at')
-
-    def perform_create(self, serializer):
-        """
-        Set the uploaded_by field to the current user.
-        """
-        serializer.save(uploaded_by=self.request.user)

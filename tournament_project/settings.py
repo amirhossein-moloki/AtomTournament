@@ -532,7 +532,6 @@ CACHES = {
 }
 
 CKEDITOR_5_UPLOAD_PATH = "uploads/"
-CKEDITOR_5_CUSTOM_ATTACHMENT_MODEL = "blog.CustomAttachment"
 CKEDITOR_5_CONFIGS = {
     "default": {
         "toolbar": [
@@ -554,6 +553,7 @@ CKEDITOR_5_CONFIGS = {
             "undo",
             "redo",
         ],
+        "uploadUrl": "/blog/upload/",
         "image": {
             "toolbar": [
                 "imageTextAlternative",

@@ -6,7 +6,7 @@ from .views import (
     AuthorProfileViewSet, CategoryViewSet, TagViewSet, SeriesViewSet,
     MediaViewSet, RevisionViewSet, CommentViewSet, ReactionViewSet,
     PageViewSet, MenuViewSet, MenuItemViewSet,
-    download_media, CustomAttachmentViewSet
+    download_media
 )
 
 router = DefaultRouter()
@@ -15,7 +15,6 @@ router.register(r'categories', CategoryViewSet)
 router.register(r'tags', TagViewSet)
 router.register(r'series', SeriesViewSet)
 router.register(r'media', MediaViewSet)
-router.register(r'attachments', CustomAttachmentViewSet, basename='attachment')
 router.register(r'revisions', RevisionViewSet)
 router.register(r'comments', CommentViewSet)
 router.register(r'reactions', ReactionViewSet)

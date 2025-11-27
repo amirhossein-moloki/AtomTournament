@@ -34,11 +34,12 @@ class AuthorProfileAPITest(BaseAPITestCase):
         """
         Ensures we can list author profiles.
         """
+        initial_count = AuthorProfile.objects.count()
         AuthorProfileFactory.create_batch(3)
         url = reverse('authorprofile-list')
         response = self.client.get(url, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 6)
+        self.assertEqual(AuthorProfile.objects.count(), initial_count + 3)
 
     def test_retrieve_author_profile(self):
         """

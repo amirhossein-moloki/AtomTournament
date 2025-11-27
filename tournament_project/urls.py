@@ -16,6 +16,7 @@ from rest_framework_simplejwt.views import (
 
 from tournaments.views import private_media_view
 from tournament_project.ckeditor_views import ckeditor5_upload
+from blog.ckeditor_views import ckeditor_upload_view
 from .views import page_not_found_view
 
 handler404 = page_not_found_view
@@ -69,6 +70,7 @@ urlpatterns = [
     path("api/atomgamebot/", include("atomgamebot.urls")),
     path("api/blog/", include("blog.urls")),
     path("blog/", include("blog.ssr_urls")),
+    path("blog/upload/", ckeditor_upload_view, name="ckeditor_upload"),
 ]
 
 # --- Debug Tools & Static/Media ---
