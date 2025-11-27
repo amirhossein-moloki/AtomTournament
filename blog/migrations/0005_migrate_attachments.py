@@ -38,7 +38,7 @@ def migrate_custom_attachments(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('blog', '0004_postmedia_delete_customattachment'),
+        ('blog', '0001_squashed_0004_postmedia_delete_customattachment'),
     ]
 
     operations = [
