@@ -12,8 +12,16 @@ User = get_user_model()
 
 class TicketAPITest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user('user', 'user@example.com', 'password')
-        self.staff_user = User.objects.create_user('staff', 'staff@example.com', 'password', is_staff=True)
+        self.user = User.objects.create_user(
+            "user", "user@example.com", "password", phone_number="+15555555555"
+        )
+        self.staff_user = User.objects.create_user(
+            "staff",
+            "staff@example.com",
+            "password",
+            is_staff=True,
+            phone_number="+15555555556",
+        )
         self.client = APIClient()
 
     def _create_image(self, filename="test.jpg", size=(100, 100), image_format="JPEG"):
@@ -29,12 +37,11 @@ class TicketAPITest(TestCase):
         self.client.force_authenticate(user=self.user)
         image_file = self._create_image()
         data = {
-            'title': 'Test Ticket with AVIF',
-            'department': 'technical',
-            'content': 'This is a test ticket with an attachment.',
-            'attachment': image_file
+            "title": "Test Ticket with AVIF",
+            "content": "This is a test ticket with an attachment.",
+            "attachment": image_file,
         }
-        response = self.client.post('/api/support/tickets/', data, format='multipart')
+        response = self.client.post("/api/support/tickets/", data, format="multipart")
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Ticket.objects.count(), 1)

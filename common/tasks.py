@@ -22,16 +22,11 @@ def convert_image_to_avif_task(self, app_label, model_name, instance_pk, field_n
 
         original_name = image_field.name
 
-        # 1. فایل اصلی را از حافظه بخوان
-        with image_field.open('rb') as original_file:
-            # 2. تبدیل به AVIF در حافظه
-            avif_content = convert_image_to_avif(original_file)
+        # 1. Convert the image to AVIF in memory. The utility returns a ContentFile.
+        avif_content_file = convert_image_to_avif(image_field)
 
-        # از نام فایل اصلی برای ساختن نام فایل جدید استفاده می‌کنیم
-        new_storage_key = os.path.splitext(original_name)[0] + '.avif'
-
-        # 3. فایل جدید را ذخیره کن
-        saved_name = default_storage.save(new_storage_key, avif_content)
+        # 2. Save the new file to storage.
+        saved_name = default_storage.save(avif_content_file.name, avif_content_file)
 
         # 4. مدل را آپدیت کن
         setattr(instance, field_name, saved_name)
