@@ -3,7 +3,7 @@ from rest_framework import status
 from django.utils import timezone
 from datetime import timedelta
 
-from blog.factories import PostFactory, CategoryFactory, TagFactory, SeriesFactory
+from blog.factories import PostFactory, CategoryFactory, TagFactory, SeriesFactory, MediaFactory
 from blog.models import Post
 from blog.tests.base import BaseAPITestCase
 
@@ -95,11 +95,31 @@ class PostAPITest(BaseAPITestCase):
 
     def test_retrieve_post(self):
         yesterday = timezone.now() - timedelta(days=1)
-        post = PostFactory(status='published', published_at=yesterday)
+        cover_media = MediaFactory()
+        in_content_media = MediaFactory()
+
+        post_content = f'<p>Some text</p><img src="/media/{in_content_media.storage_key}" />'
+        post = PostFactory(
+            status='published',
+            published_at=yesterday,
+            cover_media=cover_media,
+            content=post_content
+        )
+        post.save()  # Trigger the media attachment logic
+
         url = reverse('post-detail', kwargs={'slug': post.slug})
         response = self.client.get(url, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['title'], post.title)
+
+        # Check for media attachments
+        self.assertIn('media_attachments', response.data)
+        attachments = response.data['media_attachments']
+        self.assertEqual(len(attachments), 2)
+
+        attachment_types = {att['attachment_type'] for att in attachments}
+        self.assertIn('cover', attachment_types)
+        self.assertIn('in-content', attachment_types)
 
     def test_update_post(self):
         self._authenticate_as_staff()

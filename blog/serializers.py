@@ -5,7 +5,7 @@ from markdownify import markdownify as html_to_markdown
 
 from .models import (
     AuthorProfile, Category, Tag, Post, Series, Media,
-    Comment, Reaction, Page, Menu, MenuItem, Revision
+    Comment, Reaction, Page, Menu, MenuItem, Revision, PostMedia
 )
 
 User = get_user_model()
@@ -141,11 +141,24 @@ class PostDetailSerializer(ContentNormalizationMixin, PostListSerializer):
     comments = CommentForPostSerializer(many=True, read_only=True)
     content = serializers.CharField()
 
+    media_attachments = serializers.SerializerMethodField()
+
     class Meta(PostListSerializer.Meta):
         fields = PostListSerializer.Meta.fields + (
             'content', 'canonical_url', 'series', 'seo_title',
-            'seo_description', 'og_image', 'comments'
+            'seo_description', 'og_image', 'comments', 'media_attachments'
         )
+
+    def get_media_attachments(self, obj):
+        return PostMediaSerializer(obj.media_attachments.all(), many=True).data
+
+
+class PostMediaSerializer(serializers.ModelSerializer):
+    media = MediaDetailSerializer(read_only=True)
+
+    class Meta:
+        model = PostMedia
+        fields = ('media', 'attachment_type')
 
 
 class PostCreateUpdateSerializer(ContentNormalizationMixin, serializers.ModelSerializer):

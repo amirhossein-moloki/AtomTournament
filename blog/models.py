@@ -2,10 +2,12 @@ import re
 from django.conf import settings
 from django.db import models
 from django.db.models import Count
+from urllib.parse import urlparse
 from django.db.models.functions import Coalesce
 from django.urls import reverse
 from django.utils.text import slugify
 from django.contrib.auth import get_user_model
+from django.utils.translation import gettext_lazy as _
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django_ckeditor_5.fields import CKEditor5Field

@@ -50,7 +50,4 @@ class Migration(migrations.Migration):
                 "unique_together": {("post", "media", "attachment_type")},
             },
         ),
-        migrations.DeleteModel(
-            name="CustomAttachment",
-        ),
     ]
