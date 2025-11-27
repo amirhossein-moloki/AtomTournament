@@ -323,7 +323,7 @@ LOGGING = {
 }
 
 # Use console logging in development and file logging in production
-if DEBUG:
+if DEBUG or "test" in sys.argv or "pytest" in sys.modules:
     LOGGING["loggers"]["django"]["handlers"] = ["console"]
     LOGGING["loggers"]["root"]["handlers"] = ["console"]
 else:
@@ -481,11 +481,15 @@ CELERY_BROKER_TRANSPORT_OPTIONS = {
 CELERY_RESULT_EXPIRES = timedelta(
     hours=int(os.environ.get("CELERY_RESULT_EXPIRES_HOURS", "24"))
 )
+
 if "test" in sys.argv:
     CELERY_TASK_ALWAYS_EAGER = True
     RATELIMIT_ENABLED = False
     # Disable guardian's anonymous user during tests to prevent test failures
     ANONYMOUS_USER_NAME = None
+
+if "test" in sys.argv or "pytest" in sys.modules:
+    CELERY_TASK_ALWAYS_EAGER = True
 
 # SMS.ir Configuration
 SMSIR_API_KEY = os.environ.get("SMSIR_API_KEY")

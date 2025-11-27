@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     netcat-openbsd \
     locales \
+    libavif-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Generate locale

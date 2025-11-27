@@ -30,11 +30,33 @@ class TicketMessageSerializer(serializers.ModelSerializer):
 
 class TicketSerializer(serializers.ModelSerializer):
     messages = TicketMessageSerializer(many=True, read_only=True)
+    content = serializers.CharField(write_only=True)
+    attachment = serializers.FileField(write_only=True, required=False)
 
     class Meta:
         model = Ticket
-        fields = ("id", "user", "title", "status", "created_at", "messages")
+        fields = (
+            "id",
+            "user",
+            "title",
+            "status",
+            "created_at",
+            "messages",
+            "content",
+            "attachment",
+        )
         read_only_fields = ("id", "user", "status", "created_at", "messages")
+
+    def create(self, validated_data):
+        content = validated_data.pop("content")
+        attachment_file = validated_data.pop("attachment", None)
+        ticket = Ticket.objects.create(**validated_data)
+        message = TicketMessage.objects.create(
+            ticket=ticket, user=ticket.user, message=content
+        )
+        if attachment_file:
+            TicketAttachment.objects.create(ticket_message=message, file=attachment_file)
+        return ticket
 
 
 class SupportAssignmentSerializer(serializers.ModelSerializer):
