@@ -1,114 +1,95 @@
 import random
 import requests
-from faker import Faker
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
-from django.utils.text import slugify
 from django.core.files.base import ContentFile
-
-from blog.models import AuthorProfile, Category, Post, Tag, Media
+from faker import Faker
+from blog.models import Post, Category, Tag, AuthorProfile, Media
 
 User = get_user_model()
 
 class Command(BaseCommand):
-    help = 'Creates a specified number of random posts'
+    help = 'Creates a specified number of random posts for testing and development.'
 
     def add_arguments(self, parser):
-        parser.add_argument('count', type=int, nargs='?', default=10, help='Number of posts to create')
+        parser.add_argument('count', type=int, help='The number of random posts to create.')
 
     def handle(self, *args, **options):
         count = options['count']
         fake = Faker()
 
-        # Get or create a user
+        # Check if any users exist, create one if not
+        if not User.objects.exists():
+            default_user = User.objects.create_user(
+                username='defaultuser',
+                password='password',
+                email=fake.email()
+            )
+            # The AuthorProfile is created by a signal, so we get or create it.
+            AuthorProfile.objects.get_or_create(
+                user=default_user,
+                defaults={
+                    'display_name': default_user.username,
+                    'bio': fake.paragraph(nb_sentences=3)
+                }
+            )
+            self.stdout.write(self.style.SUCCESS('No users found. Created a default user.'))
+
+        # Get authors, categories, and tags
         authors = list(AuthorProfile.objects.all())
         if not authors:
-            self.stdout.write(self.style.WARNING('No authors found. Creating a default user and author profile.'))
-            default_user = User.objects.create_user(username='testuser', password='password')
-            author_profile, _ = AuthorProfile.objects.get_or_create(user=default_user)
-            authors.append(author_profile)
+            self.stderr.write(self.style.ERROR("No author profiles found. Create some first."))
+            return
 
-        for i in range(count):
-            self.stdout.write(f'Creating post {i + 1}/{count}...')
+        categories = list(Category.objects.all())
+        if not categories:
+            for i in range(5):
+                Category.objects.create(name=f'Category {i}', slug=f'category-{i}')
+            categories = list(Category.objects.all())
+            self.stdout.write(self.style.SUCCESS('No categories found. Created 5 default categories.'))
 
-            # 1. Select a random author
-            author_profile = random.choice(authors)
-            random_user = author_profile.user
-            author_profile, _ = AuthorProfile.objects.get_or_create(
-                user=random_user,
-                defaults={'display_name': random_user.username}
-            )
+        tags = list(Tag.objects.all())
+        if not tags:
+            for i in range(10):
+                Tag.objects.create(name=f'Tag {i}', slug=f'tag-{i}')
+            tags = list(Tag.objects.all())
+            self.stdout.write(self.style.SUCCESS('No tags found. Created 10 default tags.'))
 
-            # 2. Generate content
-            title = fake.sentence(nb_words=6)
-            content = '\n\n'.join(fake.paragraphs(nb=10))
-            excerpt = fake.paragraph(nb_sentences=3)
-            status = random.choice([Post.STATUS_CHOICES[0][0], Post.STATUS_CHOICES[3][0]]) # draft or published
+        for _ in range(count):
+            # Create Media instances for cover and OG image
+            cover_media = self._create_dummy_media(fake)
+            og_image = self._create_dummy_media(fake)
 
-            # 3. Create Category
-            category_name = fake.word().capitalize()
-            category_slug = slugify(category_name)
-            # Ensure slug is unique
-            unique_slug = category_slug
-            counter = 1
-            while Category.objects.filter(slug=unique_slug).exists():
-                unique_slug = f'{category_slug}-{counter}'
-                counter += 1
-            category = Category.objects.create(name=category_name, slug=unique_slug)
-
-            # 4. Create Tags
-            tags = []
-            for _ in range(random.randint(2, 5)):
-                tag_name = fake.word()
-                tag_slug = slugify(tag_name)
-                # Ensure slug is unique
-                unique_tag_slug = tag_slug
-                counter = 1
-                while Tag.objects.filter(slug=unique_tag_slug).exists():
-                    unique_tag_slug = f'{tag_slug}-{counter}'
-                    counter += 1
-                tag, _ = Tag.objects.get_or_create(name=tag_name, slug=unique_tag_slug)
-                tags.append(tag)
-
-            # 5. Handle Images
-            def create_media_from_placeholder(width, height):
-                try:
-                    url = f'https://via.placeholder.com/{width}x{height}.png'
-                    response = requests.get(url, timeout=10)
-                    response.raise_for_status()
-
-                    media = Media.objects.create(
-                        storage_key=f'placeholders/{fake.uuid4()}.png',
-                        url=url,
-                        type='image',
-                        mime='image/png',
-                        width=width,
-                        height=height,
-                        size_bytes=len(response.content),
-                        alt_text=fake.sentence(),
-                        title=fake.sentence(nb_words=4),
-                        uploaded_by=random_user
-                    )
-                    return media
-                except requests.RequestException as e:
-                    self.stdout.write(self.style.ERROR(f'Failed to download image: {e}'))
-                    return None
-
-            cover_image = create_media_from_placeholder(1200, 800)
-            og_image = create_media_from_placeholder(800, 600)
-
-            # 6. Create Post
             post = Post.objects.create(
-                title=title,
-                content=content,
-                excerpt=excerpt,
-                author=author_profile,
-                category=category,
-                status=status,
-                cover_media=cover_image,
+                title=fake.sentence(nb_words=6),
+                excerpt=fake.paragraph(nb_sentences=2),
+                content=' '.join(fake.paragraphs(nb=5)),
+                status=random.choice(['draft', 'published']),
+                author=random.choice(authors),
+                category=random.choice(categories),
+                cover_media=cover_media,
                 og_image=og_image,
             )
-            post.tags.set(tags)
-            post.save() # Trigger slug generation and reading time calculation
+            post.tags.set(random.sample(tags, k=random.randint(1, 4)))
 
         self.stdout.write(self.style.SUCCESS(f'Successfully created {count} random posts.'))
+
+    def _create_dummy_media(self, fake):
+        """Downloads a placeholder image and creates a Media object."""
+        try:
+            response = requests.get('https://via.placeholder.com/800x600.png/007bff/FFFFFF?text=Image')
+            response.raise_for_status()  # Raise an exception for bad status codes
+
+            file_name = f"{fake.slug()}.png"
+            media = Media(
+                title=file_name,
+                type='image',
+                mime='image/png',
+            )
+            media.storage_key = ContentFile(response.content, name=file_name)
+            media.save()
+            return media
+
+        except requests.exceptions.RequestException as e:
+            self.stderr.write(self.style.ERROR(f"Failed to download image: {e}"))
+            return None

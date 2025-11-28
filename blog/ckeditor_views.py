@@ -2,6 +2,8 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.files.storage import default_storage
 from django.contrib.auth.decorators import login_required
+
+from common.utils.images import convert_image_to_avif
 from .models import Media
 
 @login_required
@@ -10,20 +12,31 @@ def ckeditor_upload_view(request):
     if request.method == 'POST' and request.FILES.get('upload'):
         uploaded_file = request.FILES['upload']
 
-        # Save the file using default storage and create a Media object
-        storage_key = default_storage.save(uploaded_file.name, uploaded_file)
+        # Check if the uploaded file is an image
+        if 'image' not in uploaded_file.content_type:
+            return JsonResponse({'error': 'فایل آپلود شده تصویر نیست.'}, status=400)
+
+        # Convert the image to AVIF
+        try:
+            avif_file = convert_image_to_avif(uploaded_file)
+        except Exception as e:
+            return JsonResponse({'error': f'خطا در پردازش تصویر: {e}'}, status=500)
+
+        # Save the converted file using default storage
+        storage_key = default_storage.save(avif_file.name, avif_file)
         file_url = default_storage.url(storage_key)
 
+        # Create a Media object for the new AVIF image
         media = Media.objects.create(
             storage_key=storage_key,
             url=file_url,
-            mime=uploaded_file.content_type,
-            size_bytes=uploaded_file.size,
-            title=uploaded_file.name,
+            mime='image/avif',  # Explicitly set the MIME type for AVIF
+            size_bytes=avif_file.size,
+            title=avif_file.name,
             uploaded_by=request.user,
-            type='image' if 'image' in uploaded_file.content_type else 'file'
+            type='image'
         )
 
         return JsonResponse({'url': file_url})
 
-    return JsonResponse({'error': 'Invalid request'}, status=400)
+    return JsonResponse({'error': 'درخواست نامعتبر است.'}, status=400)
