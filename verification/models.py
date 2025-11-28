@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from common.fields import OptimizedImageField, OptimizedVideoField
 
 
 class Verification(models.Model):
@@ -11,13 +12,13 @@ class Verification(models.Model):
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     level = models.IntegerField(choices=LEVEL_CHOICES, default=1)
-    id_card_image = models.ImageField(
+    id_card_image = OptimizedImageField(
         upload_to="verification_images/", blank=True, null=True
     )
-    selfie_image = models.ImageField(
+    selfie_image = OptimizedImageField(
         upload_to="verification_images/", blank=True, null=True
     )
-    video = models.FileField(upload_to="verification_videos/", blank=True, null=True)
+    video = OptimizedVideoField(upload_to="verification_videos/", blank=True, null=True)
     is_verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
