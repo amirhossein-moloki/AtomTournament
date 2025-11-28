@@ -5,7 +5,7 @@ from .utils.images import convert_image_to_avif
 import os
 
 @shared_task(bind=True, max_retries=3)
-def convert_image_to_avif_task(self, app_label, model_name, instance_pk, field_name):
+def convert_image_to_avif_task(self, app_label, model_name, instance_pk, field_name, quality=50, speed=6):
     """
     یک وظیفه Celery برای تبدیل ناهمگام یک فیلد تصویر به فرمت AVIF.
     """
@@ -23,7 +23,7 @@ def convert_image_to_avif_task(self, app_label, model_name, instance_pk, field_n
         original_name = image_field.name
 
         # 1. Convert the image to AVIF in memory. The utility returns a ContentFile.
-        avif_content_file = convert_image_to_avif(image_field)
+        avif_content_file = convert_image_to_avif(image_field, quality=quality, speed=speed)
 
         # 2. Save the new file to storage.
         saved_name = default_storage.save(avif_content_file.name, avif_content_file)

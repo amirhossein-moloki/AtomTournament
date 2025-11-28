@@ -44,7 +44,7 @@ def process_media_image(media_id):
             # Open the original file from storage
             with default_storage.open(original_storage_key, 'rb') as image_file:
                 # Convert the image to AVIF
-                avif_file = convert_image_to_avif(image_file)
+                avif_file = convert_image_to_avif(image_file, quality=55, speed=5)
 
             # Save the new AVIF file to storage
             new_storage_key = default_storage.save(avif_file.name, avif_file)

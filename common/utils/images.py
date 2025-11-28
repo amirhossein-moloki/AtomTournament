@@ -6,7 +6,7 @@ from PIL import Image
 import pillow_avif  # noqa: F401 -> Registered plugin
 
 
-def convert_image_to_avif(image_field, max_dimension=1920, quality=75, speed=4):
+def convert_image_to_avif(image_field, max_dimension=1920, quality=50, speed=6):
     """
     ورودی: یک ImageField/File
     خروجی: یک ContentFile که فرمتش AVIF هست و آماده‌ی ذخیره تو ImageField

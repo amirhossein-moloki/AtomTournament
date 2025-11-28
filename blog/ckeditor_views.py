@@ -19,7 +19,7 @@ def ckeditor_upload_view(request):
 
         # Convert the image to AVIF
         try:
-            avif_file = convert_image_to_avif(uploaded_file)
+            avif_file = convert_image_to_avif(uploaded_file, quality=60, speed=4)
         except Exception as e:
             return JsonResponse({'error': f'خطا در پردازش تصویر: {e}'}, status=500)
 
