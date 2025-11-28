@@ -6,7 +6,7 @@ from PIL import Image
 import pillow_avif  # noqa: F401 -> Registered plugin
 
 
-def convert_image_to_avif(image_field, max_width=1920, quality=75, speed=4):
+def convert_image_to_avif(image_field, max_dimension=1920, quality=75, speed=4):
     """
     ورودی: یک ImageField/File
     خروجی: یک ContentFile که فرمتش AVIF هست و آماده‌ی ذخیره تو ImageField
@@ -15,20 +15,30 @@ def convert_image_to_avif(image_field, max_width=1920, quality=75, speed=4):
     # فایل رو با Pillow باز می‌کنیم
     img = Image.open(image_field)
 
-    # به RGB تبدیل می‌کنیم (برای PNG/transparent و غیره)
-    if img.mode not in ("RGB", "L"):
-        img = img.convert("RGB")
+    # پروفایل رنگی رو استخراج می‌کنیم تا بعدا به عکس جدید اضافه بشه
+    icc_profile = img.info.get("icc_profile")
 
-    # اگر خیلی بزرگ بود، کوچیکش کن
-    if img.width > max_width:
-        ratio = max_width / float(img.width)
-        new_height = int(float(img.height) * ratio)
-        img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
+    # برای حفظ شفافیت، عکس‌هایی با مُد RGBA را تبدیل نمی‌کنیم.
+    # سایر مُدها مثل CMYK یا P به RGBA تبدیل می‌شوند تا شفافیت احتمالی حفظ شود.
+    if img.mode not in ("RGB", "L", "RGBA"):
+        img = img.convert("RGBA")
+
+    # اگر عرض یا ارتفاع عکس خیلی بزرگ بود، کوچیکش کن
+    if img.width > max_dimension or img.height > max_dimension:
+        img.thumbnail((max_dimension, max_dimension), Image.Resampling.LANCZOS)
 
     # توی buffer به فرمت AVIF ذخیره می‌کنیم
     buffer = BytesIO()
-    # speed=4 provides a good balance between compression time and file size.
-    img.save(buffer, format="AVIF", quality=quality, speed=speed, strip=True)
+    save_kwargs = {
+        "format": "AVIF",
+        "quality": quality,
+        "speed": speed,
+        "strip": True,
+    }
+    if icc_profile:
+        save_kwargs["icc_profile"] = icc_profile
+
+    img.save(buffer, **save_kwargs)
     buffer.seek(0)
 
     # اسم فایل رو .avif می‌کنیم
