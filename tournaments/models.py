@@ -2,11 +2,12 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 from common.fields import OptimizedImageField, OptimizedVideoField
+from common.utils.files import get_sanitized_upload_path
 
 
 class Rank(models.Model):
     name = models.CharField(max_length=100)
-    image = OptimizedImageField(upload_to="ranks/")
+    image = OptimizedImageField(upload_to=get_sanitized_upload_path)
     required_score = models.IntegerField()
 
     def __str__(self):
@@ -66,7 +67,7 @@ class GameImage(models.Model):
     )
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="images")
     image_type = models.CharField(max_length=20, choices=IMAGE_TYPE_CHOICES)
-    image = OptimizedImageField(upload_to="game_images/")
+    image = OptimizedImageField(upload_to=get_sanitized_upload_path)
 
     def __str__(self):
         return f"{self.game.name} - {self.get_image_type_display()}"
@@ -74,7 +75,7 @@ class GameImage(models.Model):
 
 class TournamentImage(models.Model):
     name = models.CharField(max_length=100, unique=True)
-    image = OptimizedImageField(upload_to="tournament_images/")
+    image = OptimizedImageField(upload_to=get_sanitized_upload_path)
 
     def __str__(self):
         return self.name
@@ -288,7 +289,7 @@ class Match(models.Model):
         blank=True,
     )
     result_proof = OptimizedImageField(
-        upload_to="private_result_proofs/", null=True, blank=True
+        upload_to=get_sanitized_upload_path, null=True, blank=True
     )
     is_confirmed = models.BooleanField(default=False)
     is_disputed = models.BooleanField(default=False)
@@ -340,7 +341,7 @@ class Report(models.Model):
     )
     match = models.ForeignKey(Match, on_delete=models.CASCADE)
     description = models.TextField()
-    evidence = OptimizedImageField(upload_to="report_evidence/", null=True, blank=True)
+    evidence = OptimizedImageField(upload_to=get_sanitized_upload_path, null=True, blank=True)
     status = models.CharField(
         max_length=20, choices=REPORT_STATUS_CHOICES, default="pending"
     )

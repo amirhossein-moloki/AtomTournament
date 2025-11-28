@@ -1,23 +1,18 @@
-# common/utils/files.py
 import os
 import uuid
 from django.utils.text import slugify
 
 def get_sanitized_filename(filename):
     """
-    Generates a sanitized, unique filename.
-
-    - Splits the filename into a base name and extension.
-    - Slugifies the base name to make it URL-friendly.
-    - Appends a short unique ID to prevent collisions.
-    - Recombines with the original extension.
+    Generates a sanitized filename.
     """
-    base_name, extension = os.path.splitext(filename)
-    slugified_name = slugify(base_name)
-    unique_id = str(uuid.uuid4())[:8]
+    base, ext = os.path.splitext(filename)
+    return f"{slugify(base)}{ext}"
 
-    # Ensure there's a name to work with after slugifying
-    if not slugified_name:
-        slugified_name = "untitled"
-
-    return f"{slugified_name}-{unique_id}{extension}"
+def get_sanitized_upload_path(instance, filename):
+    """
+    Generates a sanitized, unique filename using UUID.
+    """
+    ext = filename.split('.')[-1]
+    filename = f"{uuid.uuid4()}.{ext}"
+    return os.path.join('uploads', filename)
