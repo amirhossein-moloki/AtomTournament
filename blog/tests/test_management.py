@@ -3,8 +3,10 @@ from unittest.mock import patch, MagicMock
 from django.core.management import call_command
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.db.models.signals import post_save
 
 from blog.factories import UserFactory
+from blog.signals import queue_media_image_processing
 from blog.models import Post, Category, Tag, AuthorProfile, Media
 
 User = get_user_model()
@@ -12,6 +14,9 @@ User = get_user_model()
 class CreateRandomPostsTest(TestCase):
 
     def setUp(self):
+        super().setUp()
+        post_save.disconnect(queue_media_image_processing, sender=Media)
+
         # Create a mock for requests.get that will be used in all tests
         self.patcher = patch('blog.management.commands.create_random_posts.requests.get')
         self.mock_get = self.patcher.start()
@@ -26,6 +31,8 @@ class CreateRandomPostsTest(TestCase):
     def tearDown(self):
         # Stop the patcher to clean up
         self.patcher.stop()
+        post_save.connect(queue_media_image_processing, sender=Media)
+        super().tearDown()
 
     def test_command_creates_posts(self):
         """Test that the command creates the specified number of posts."""

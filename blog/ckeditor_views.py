@@ -6,7 +6,6 @@ from django.contrib.auth.decorators import login_required
 from common.utils.files import get_sanitized_filename
 from common.utils.images import convert_image_to_avif
 from .models import Media
-from .tasks import process_media_image
 
 @login_required
 @csrf_exempt
@@ -40,9 +39,8 @@ def ckeditor_upload_view(request):
             type='image'
         )
 
-        # Trigger the Celery task for image processing if it's an image
-        if media.type == 'image':
-            process_media_image.delay(media.id)
+        # The post_save signal on the Media model will automatically trigger
+        # any necessary background processing, like the AVIF conversion task.
 
         return JsonResponse({'url': file_url})
 

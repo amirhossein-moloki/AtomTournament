@@ -21,7 +21,7 @@ from .serializers import (
 from .filters import PostFilter
 from .pagination import CustomPageNumberPagination
 from .permissions import IsOwnerOrReadOnly, IsAdminUserOrReadOnly
-from .tasks import process_media_image, notify_author_on_new_comment
+from .tasks import notify_author_on_new_comment
 from .exceptions import custom_exception_handler
 from rest_framework.views import APIView
 
@@ -155,9 +155,7 @@ class MediaViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         uploaded_file = self.request.FILES.get('file')
         title = uploaded_file.name if uploaded_file else 'default_title'
-        instance = serializer.save(uploaded_by=self.request.user, title=title)
-        if 'image' in instance.mime:
-            process_media_image.delay(instance.id)
+        serializer.save(uploaded_by=self.request.user, title=title)
 
 
 class AuthorProfileViewSet(viewsets.ModelViewSet):

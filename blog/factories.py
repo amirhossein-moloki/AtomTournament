@@ -1,5 +1,7 @@
 import factory
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.files.storage import default_storage
 from django.utils import timezone
 from faker import Faker
 
@@ -123,14 +125,29 @@ class MediaFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Media
 
-    storage_key = factory.LazyAttribute(lambda _: fake.uuid4())
-    url = factory.LazyAttribute(lambda _: fake.url())
-    type = 'image'
-    mime = 'image/jpeg'
-    size_bytes = factory.LazyAttribute(lambda _: fake.random_int(min=1000, max=50000))
-    alt_text = factory.LazyAttribute(lambda _: fake.sentence())
-    title = factory.LazyAttribute(lambda _: fake.sentence())
+    file = factory.LazyFunction(
+        lambda: SimpleUploadedFile(
+            name=fake.file_name(category='image', extension='jpg'),
+            content=b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00\x21\xf9\x04\x01\x0a\x00\x01\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02\x44\x01\x00\x3b', # A tiny valid GIF
+            content_type='image/jpeg',
+        )
+    )
     uploaded_by = factory.SubFactory(UserFactory)
+    alt_text = factory.Faker('sentence')
+
+    @classmethod
+    def _create(cls, model_class, *args, **kwargs):
+        uploaded_file = kwargs.pop('file')
+        storage_key = default_storage.save(uploaded_file.name, uploaded_file)
+
+        kwargs['storage_key'] = storage_key
+        kwargs['url'] = default_storage.url(storage_key)
+        kwargs['mime'] = uploaded_file.content_type
+        kwargs['type'] = 'image'
+        kwargs['size_bytes'] = uploaded_file.size
+        kwargs['title'] = uploaded_file.name
+
+        return super()._create(model_class, *args, **kwargs)
 
 
 class RevisionFactory(factory.django.DjangoModelFactory):
