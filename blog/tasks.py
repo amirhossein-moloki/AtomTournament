@@ -25,7 +25,7 @@ from django.core.files.storage import default_storage
 from .models import Media
 
 @shared_task
-def process_media_image(media_id):
+def convert_media_image_to_avif_task(media_id):
     """
     Celery task to process an uploaded image, convert it to AVIF,
     update the Media model, and delete the original file.

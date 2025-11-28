@@ -1,5 +1,0 @@
-# Ignore all jpg files
-*.jpg
-
-# Do not ignore test.jpg
-!test.jpg

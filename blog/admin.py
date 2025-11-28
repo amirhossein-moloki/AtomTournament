@@ -9,7 +9,6 @@ from .models import (
 from django.core.files.storage import default_storage
 from common.utils.files import get_sanitized_filename
 from .forms import MediaAdminForm, PageAdminForm, PostAdminForm
-from .tasks import process_media_image
 
 @admin.register(Media)
 class MediaAdmin(admin.ModelAdmin):
@@ -42,8 +41,6 @@ class MediaAdmin(admin.ModelAdmin):
             obj.uploaded_by = request.user
 
         super().save_model(request, obj, form, change)
-        if 'image' in obj.mime:
-            transaction.on_commit(lambda: process_media_image.delay(obj.id))
 
 
 @admin.register(AuthorProfile)
