@@ -1,4 +1,5 @@
 from django.contrib import admin, messages
+from django.db import transaction
 from .models import (
     AuthorProfile, Category, Tag, Post, PostTag, Series, Media, Revision,
     Comment, Reaction, Page, Menu, MenuItem, PostMedia
@@ -41,7 +42,7 @@ class MediaAdmin(admin.ModelAdmin):
 
         super().save_model(request, obj, form, change)
         if 'image' in obj.mime:
-            process_media_image.delay(obj.id)
+            transaction.on_commit(lambda: process_media_image.delay(obj.id))
 
 
 @admin.register(AuthorProfile)
