@@ -1,11 +1,12 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+from common.fields import OptimizedImageField, OptimizedVideoField
 
 
 class Rank(models.Model):
     name = models.CharField(max_length=100)
-    image = models.ImageField(upload_to="ranks/")
+    image = OptimizedImageField(upload_to="ranks/")
     required_score = models.IntegerField()
 
     def __str__(self):
@@ -65,7 +66,7 @@ class GameImage(models.Model):
     )
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="images")
     image_type = models.CharField(max_length=20, choices=IMAGE_TYPE_CHOICES)
-    image = models.ImageField(upload_to="game_images/")
+    image = OptimizedImageField(upload_to="game_images/")
 
     def __str__(self):
         return f"{self.game.name} - {self.get_image_type_display()}"
@@ -73,7 +74,7 @@ class GameImage(models.Model):
 
 class TournamentImage(models.Model):
     name = models.CharField(max_length=100, unique=True)
-    image = models.ImageField(upload_to="tournament_images/")
+    image = OptimizedImageField(upload_to="tournament_images/")
 
     def __str__(self):
         return self.name
@@ -286,7 +287,7 @@ class Match(models.Model):
         null=True,
         blank=True,
     )
-    result_proof = models.ImageField(
+    result_proof = OptimizedImageField(
         upload_to="private_result_proofs/", null=True, blank=True
     )
     is_confirmed = models.BooleanField(default=False)
@@ -339,7 +340,7 @@ class Report(models.Model):
     )
     match = models.ForeignKey(Match, on_delete=models.CASCADE)
     description = models.TextField()
-    evidence = models.ImageField(upload_to="report_evidence/", null=True, blank=True)
+    evidence = OptimizedImageField(upload_to="report_evidence/", null=True, blank=True)
     status = models.CharField(
         max_length=20, choices=REPORT_STATUS_CHOICES, default="pending"
     )
@@ -357,7 +358,7 @@ class WinnerSubmission(models.Model):
     )
     winner = models.ForeignKey("users.User", on_delete=models.CASCADE)
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
-    video = models.FileField(upload_to="winner_submissions/")
+    video = OptimizedVideoField(upload_to="winner_submissions/")
     status = models.CharField(
         max_length=20, choices=SUBMISSION_STATUS_CHOICES, default="pending"
     )
