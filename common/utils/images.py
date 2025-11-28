@@ -15,9 +15,10 @@ def convert_image_to_avif(image_field, max_width=1920, quality=75, speed=4):
     # فایل رو با Pillow باز می‌کنیم
     img = Image.open(image_field)
 
-    # به RGB تبدیل می‌کنیم (برای PNG/transparent و غیره)
-    if img.mode not in ("RGB", "L"):
-        img = img.convert("RGB")
+    # برای حفظ شفافیت، عکس‌هایی با مُد RGBA را تبدیل نمی‌کنیم.
+    # سایر مُدها مثل CMYK یا P به RGBA تبدیل می‌شوند تا شفافیت احتمالی حفظ شود.
+    if img.mode not in ("RGB", "L", "RGBA"):
+        img = img.convert("RGBA")
 
     # اگر خیلی بزرگ بود، کوچیکش کن
     if img.width > max_width:
