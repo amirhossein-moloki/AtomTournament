@@ -21,7 +21,8 @@ from .serializers import (
     WalletSerializer,
     WithdrawalRequestSerializer,
 )
-from .services import ZibalService, verify_and_process_deposit
+from .services import ZibalService
+from .tasks import verify_deposit_task
 
 logger = logging.getLogger(__name__)
 
@@ -118,18 +119,14 @@ class VerifyDepositAPIView(APIView):
                 logger.error(f"Transaction not found for failed payment callback. order_id={order_id}, track_id={track_id}")
             return redirect(settings.ZIBAL_PAYMENT_FAILED_URL)
 
-        # Verify the deposit synchronously.
-        verify_and_process_deposit(track_id=track_id, order_id=order_id)
+        # Enqueue the verification task.
+        verify_deposit_task.delay(track_id=track_id, order_id=order_id)
 
-        # Redirect based on the final status of the transaction.
-        try:
-            tx = Transaction.objects.get(order_id=order_id)
-            if tx.status == "success":
-                return redirect(settings.ZIBAL_PAYMENT_SUCCESS_URL)
-            else:
-                return redirect(settings.ZIBAL_PAYMENT_FAILED_URL)
-        except Transaction.DoesNotExist:
-            return redirect(settings.ZIBAL_PAYMENT_FAILED_URL)
+        # Redirect to a success page. The actual transaction update will happen in the background.
+        # The frontend should handle polling or WebSocket updates to reflect the final status.
+        return redirect(
+            f"{settings.ZIBAL_PAYMENT_SUCCESS_URL}?orderId={order_id}&trackId={track_id}"
+        )
 
 
 class WithdrawalRequestAPIView(generics.CreateAPIView):
