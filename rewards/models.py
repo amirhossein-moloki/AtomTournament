@@ -3,6 +3,7 @@ from django.db import models
 from tournaments.models import Rank
 from users.models import User
 from common.fields import OptimizedImageField
+from common.utils.files import get_sanitized_upload_path
 
 
 class Wheel(models.Model):
@@ -16,7 +17,7 @@ class Wheel(models.Model):
 class Prize(models.Model):
     wheel = models.ForeignKey(Wheel, on_delete=models.CASCADE, related_name="prizes")
     name = models.CharField(max_length=100)
-    image = OptimizedImageField(upload_to="prizes/")
+    image = OptimizedImageField(upload_to=get_sanitized_upload_path)
     chance = models.FloatField()
 
     def __str__(self):

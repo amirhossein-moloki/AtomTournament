@@ -3,6 +3,7 @@ from django.db import models
 from tournaments.models import Game
 from users.models import User
 from common.fields import OptimizedFileField
+from common.utils.files import get_sanitized_upload_path
 
 
 class Ticket(models.Model):
@@ -55,7 +56,7 @@ class TicketAttachment(models.Model):
     ticket_message = models.ForeignKey(
         TicketMessage, on_delete=models.CASCADE, related_name="attachments"
     )
-    file = OptimizedFileField(upload_to="support_attachments/")
+    file = OptimizedFileField(upload_to=get_sanitized_upload_path)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

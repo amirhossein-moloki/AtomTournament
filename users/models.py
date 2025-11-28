@@ -4,12 +4,13 @@ from django.db import models
 from django.db.models.signals import post_save
 from phonenumber_field.modelfields import PhoneNumberField
 from common.fields import OptimizedImageField
+from common.utils.files import get_sanitized_upload_path
 
 
 class User(AbstractUser):
     phone_number = PhoneNumberField(unique=True)
     profile_picture = OptimizedImageField(
-        upload_to="profile_pictures/", null=True, blank=True
+        upload_to=get_sanitized_upload_path, null=True, blank=True
     )
     score = models.IntegerField(default=0)
     rank = models.ForeignKey(

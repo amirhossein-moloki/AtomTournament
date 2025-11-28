@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from common.fields import OptimizedImageField
+from common.utils.files import get_sanitized_upload_path
 
 
 class Team(models.Model):
@@ -12,7 +13,7 @@ class Team(models.Model):
     members = models.ManyToManyField(
         settings.AUTH_USER_MODEL, through="TeamMembership", related_name="teams"
     )
-    team_picture = OptimizedImageField(upload_to="team_pictures/", null=True, blank=True)
+    team_picture = OptimizedImageField(upload_to=get_sanitized_upload_path, null=True, blank=True)
     max_members = models.PositiveIntegerField(default=5)
 
     def __str__(self):
