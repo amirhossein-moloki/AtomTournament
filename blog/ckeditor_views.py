@@ -3,6 +3,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.files.storage import default_storage
 from django.contrib.auth.decorators import login_required
 
+from common.utils.files import get_sanitized_filename
 from common.utils.images import convert_image_to_avif
 from .models import Media
 from .tasks import process_media_image
@@ -24,7 +25,8 @@ def ckeditor_upload_view(request):
             return JsonResponse({'error': f'خطا در پردازش تصویر: {e}'}, status=500)
 
         # Save the converted file using default storage
-        storage_key = default_storage.save(avif_file.name, avif_file)
+        sanitized_name = get_sanitized_filename(avif_file.name)
+        storage_key = default_storage.save(sanitized_name, avif_file)
         file_url = default_storage.url(storage_key)
 
         # Create a Media object for the new AVIF image
@@ -33,7 +35,7 @@ def ckeditor_upload_view(request):
             url=file_url,
             mime='image/avif',  # Explicitly set the MIME type for AVIF
             size_bytes=avif_file.size,
-            title=avif_file.name,
+            title=sanitized_name,
             uploaded_by=request.user,
             type='image'
         )

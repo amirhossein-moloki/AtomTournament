@@ -7,8 +7,8 @@ from .models import (
 
 
 from django.core.files.storage import default_storage
+from common.utils.files import get_sanitized_filename
 from .forms import MediaAdminForm, PageAdminForm, PostAdminForm
-
 from .tasks import process_media_image
 
 @admin.register(Media)
@@ -22,14 +22,15 @@ class MediaAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         uploaded_file = form.cleaned_data.get('file')
         if uploaded_file:
-            storage_key = default_storage.save(uploaded_file.name, uploaded_file)
+            sanitized_name = get_sanitized_filename(uploaded_file.name)
+            storage_key = default_storage.save(sanitized_name, uploaded_file)
             file_url = default_storage.url(storage_key)
 
             obj.storage_key = storage_key
             obj.url = file_url
             obj.mime = uploaded_file.content_type
             obj.size_bytes = uploaded_file.size
-            obj.title = uploaded_file.name
+            obj.title = sanitized_name
             if 'image' in obj.mime:
                 obj.type = 'image'
             elif 'video' in obj.mime:
