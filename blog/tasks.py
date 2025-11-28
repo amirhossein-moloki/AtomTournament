@@ -34,11 +34,15 @@ def process_media_image(media_id):
         if "image" in media.mime and not media.storage_key.lower().endswith(".avif"):
             original_storage_key = media.storage_key
             try:
-                # Assuming media.storage_key is the path to the file
-                avif_file = convert_image_to_avif(media.storage_key)
+                # Open the file from storage to pass the file object to the conversion function
+                with default_storage.open(original_storage_key) as image_file:
+                    avif_file = convert_image_to_avif(image_file)
+
+                # Save the new file to storage
+                new_storage_key = default_storage.save(avif_file.name, avif_file)
 
                 # Update the media object with the new AVIF file details
-                media.storage_key = avif_file.name
+                media.storage_key = new_storage_key
                 media.mime = "image/avif"
                 media.url = default_storage.url(avif_file.name)
                 media.size_bytes = avif_file.size
