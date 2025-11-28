@@ -3,6 +3,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.files.storage import default_storage
 from django.contrib.auth.decorators import login_required
 from .models import Media
+from .tasks import process_media_image
 
 @login_required
 @csrf_exempt
@@ -23,6 +24,10 @@ def ckeditor_upload_view(request):
             uploaded_by=request.user,
             type='image' if 'image' in uploaded_file.content_type else 'file'
         )
+
+        # Trigger the Celery task for image processing if it's an image
+        if media.type == 'image':
+            process_media_image.delay(media.id)
 
         return JsonResponse({'url': file_url})
 

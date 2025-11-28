@@ -20,43 +20,56 @@ def increment_post_view_count(post_id):
 
 
 from common.utils.images import convert_image_to_avif
-
 from django.core.files.storage import default_storage
+from .models import Media
 
 @shared_task
 def process_media_image(media_id):
     """
-    Celery task to process an uploaded image, including converting to AVIF.
+    Celery task to process an uploaded image, convert it to AVIF,
+    update the Media model, and delete the original file.
     """
-    from .models import Media
+    logger.info(f"Starting image processing for Media ID: {media_id}")
     try:
         media = Media.objects.get(id=media_id)
-        if "image" in media.mime and not media.storage_key.lower().endswith(".avif"):
-            original_storage_key = media.storage_key
-            try:
-                # Open the file from storage to pass the file object to the conversion function
-                with default_storage.open(original_storage_key) as image_file:
-                    avif_file = convert_image_to_avif(image_file)
 
-                # Save the new file to storage
-                new_storage_key = default_storage.save(avif_file.name, avif_file)
+        # Ensure it's an image and not already processed
+        if "image" not in media.mime or media.storage_key.lower().endswith(".avif"):
+            logger.warning(f"Skipping processing for Media ID: {media_id}. Not an image or already AVIF.")
+            return
 
-                # Update the media object with the new AVIF file details
-                media.storage_key = new_storage_key
-                media.mime = "image/avif"
-                media.url = default_storage.url(avif_file.name)
-                media.size_bytes = avif_file.size
-                media.save()
+        original_storage_key = media.storage_key
 
-                # Delete the original file
-                default_storage.delete(original_storage_key)
+        try:
+            # Open the original file from storage
+            with default_storage.open(original_storage_key, 'rb') as image_file:
+                # Convert the image to AVIF
+                avif_file = convert_image_to_avif(image_file)
 
-                logger.info(f"Successfully converted image to AVIF for media: {media.title}")
+            # Save the new AVIF file to storage
+            new_storage_key = default_storage.save(avif_file.name, avif_file)
 
-            except Exception as e:
-                logger.error(f"Error converting image to AVIF for media ID {media_id}: {e}")
+            # Update the media object with the new file details
+            media.storage_key = new_storage_key
+            media.url = default_storage.url(new_storage_key)
+            media.mime = 'image/avif'
+            media.size_bytes = avif_file.size
+            media.title = avif_file.name # Update title to reflect the new file name
+            media.save()
+
+            # Delete the original file from storage
+            default_storage.delete(original_storage_key)
+
+            logger.info(f"Successfully converted Media ID {media_id} to AVIF. New key: {new_storage_key}")
+
+        except Exception as e:
+            logger.error(f"Error converting image to AVIF for Media ID {media_id}: {e}", exc_info=True)
+            # Optional: handle cleanup of the new file if it was created before the error
+            if 'new_storage_key' in locals() and default_storage.exists(new_storage_key):
+                default_storage.delete(new_storage_key)
+
     except Media.DoesNotExist:
-        logger.error(f"Media with id {media_id} not found for processing.")
+        logger.error(f"Media with ID {media_id} not found for processing.")
 
 
 @shared_task
