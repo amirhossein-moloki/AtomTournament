@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.core.files.storage import default_storage
 from markdownify import markdownify as html_to_markdown
 
+from common.utils.files import get_sanitized_filename
 from .models import (
     AuthorProfile, Category, Tag, Post, Series, Media,
     Comment, Reaction, Page, Menu, MenuItem, Revision, PostMedia
@@ -52,9 +53,14 @@ class MediaCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         uploaded_file = validated_data.pop('file')
 
-        # Save the file to the default storage
-        storage_key = default_storage.save(uploaded_file.name, uploaded_file)
+        # Sanitize the filename before saving
+        sanitized_name = get_sanitized_filename(uploaded_file.name)
+        storage_key = default_storage.save(sanitized_name, uploaded_file)
         file_url = default_storage.url(storage_key)
+
+        # If title is not provided, use the sanitized name
+        if not validated_data.get('title'):
+            validated_data['title'] = sanitized_name
 
         # Populate model fields
         validated_data['storage_key'] = storage_key

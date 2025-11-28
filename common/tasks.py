@@ -1,6 +1,7 @@
 from celery import shared_task
 from django.apps import apps
 from django.core.files.storage import default_storage
+from .utils.files import get_sanitized_filename
 from .utils.images import convert_image_to_avif
 import os
 
@@ -25,8 +26,9 @@ def convert_image_to_avif_task(self, app_label, model_name, instance_pk, field_n
         # 1. Convert the image to AVIF in memory. The utility returns a ContentFile.
         avif_content_file = convert_image_to_avif(image_field, quality=quality, speed=speed)
 
-        # 2. Save the new file to storage.
-        saved_name = default_storage.save(avif_content_file.name, avif_content_file)
+        # 2. Sanitize the filename and save the new file to storage.
+        sanitized_name = get_sanitized_filename(avif_content_file.name)
+        saved_name = default_storage.save(sanitized_name, avif_content_file)
 
         # 4. مدل را آپدیت کن
         setattr(instance, field_name, saved_name)

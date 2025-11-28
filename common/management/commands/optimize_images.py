@@ -2,6 +2,7 @@ from django.core.management.base import BaseCommand
 from django.db.models import Q
 from users.models import User
 from blog.models import Media
+from common.utils.files import get_sanitized_filename
 from common.utils.images import convert_image_to_avif
 from django.core.files.base import ContentFile
 import os
@@ -86,8 +87,12 @@ class Command(BaseCommand):
                 with default_storage.open(original_storage_key, 'rb') as f:
                     optimized_image_content = convert_image_to_avif(f, quality=quality, speed=speed)
 
-                # new path and url
-                new_storage_key = os.path.splitext(original_storage_key)[0] + '.avif'
+                # Get a sanitized name for the new file
+                sanitized_name = get_sanitized_filename(optimized_image_content.name)
+
+                # Ensure the final name has a .avif extension
+                base_name, _ = os.path.splitext(sanitized_name)
+                new_storage_key = f"{base_name}.avif"
 
                 # Save the new file
                 saved_path = default_storage.save(new_storage_key, optimized_image_content)

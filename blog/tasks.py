@@ -19,6 +19,7 @@ def increment_post_view_count(post_id):
         logger.error(f"Error incrementing view count for Post ID {post_id}: {e}")
 
 
+from common.utils.files import get_sanitized_filename
 from common.utils.images import convert_image_to_avif
 from django.core.files.storage import default_storage
 from .models import Media
@@ -47,14 +48,15 @@ def process_media_image(media_id):
                 avif_file = convert_image_to_avif(image_file, quality=55, speed=5)
 
             # Save the new AVIF file to storage
-            new_storage_key = default_storage.save(avif_file.name, avif_file)
+            sanitized_name = get_sanitized_filename(avif_file.name)
+            new_storage_key = default_storage.save(sanitized_name, avif_file)
 
             # Update the media object with the new file details
             media.storage_key = new_storage_key
             media.url = default_storage.url(new_storage_key)
             media.mime = 'image/avif'
             media.size_bytes = avif_file.size
-            media.title = avif_file.name # Update title to reflect the new file name
+            media.title = sanitized_name # Update title to reflect the new file name
             media.save()
 
             # Delete the original file from storage
