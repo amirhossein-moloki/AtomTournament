@@ -23,6 +23,7 @@ from .pagination import CustomPageNumberPagination
 from .permissions import IsOwnerOrReadOnly, IsAdminUserOrReadOnly
 from .tasks import notify_author_on_new_comment
 from .exceptions import custom_exception_handler
+from .mixins import DynamicSerializerViewMixin
 from rest_framework.views import APIView
 
 class BaseBlogAPIView(APIView):
@@ -33,7 +34,7 @@ class BaseBlogAPIView(APIView):
         return custom_exception_handler(exc, self.get_exception_handler_context())
 
 
-class PostListCreateAPIView(generics.ListCreateAPIView):
+class PostListCreateAPIView(DynamicSerializerViewMixin, generics.ListCreateAPIView):
     queryset = Post.objects.all().order_by('-published_at')
     pagination_class = CustomPageNumberPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
@@ -47,11 +48,36 @@ class PostListCreateAPIView(generics.ListCreateAPIView):
         return PostListSerializer
 
     def get_queryset(self):
-        user = self.request.user
-        queryset = Post.objects.select_related('author', 'category') \
-                               .prefetch_related('tags', 'reactions') \
-                               .annotate(comments_count=Count('comments'))
+        queryset = Post.objects.all()
+        fields_query = self.request.query_params.get('fields')
+        fields = {f.strip() for f in fields_query.split(',')} if fields_query else set()
 
+        selects = set()
+        prefetches = set()
+
+        # Define a default set of fields for optimization if none are provided.
+        if not fields:
+            fields = {'slug', 'title', 'excerpt', 'author', 'category', 'cover_media', 'tags', 'likes_count', 'comments_count'}
+
+        if 'author' in fields:
+            selects.add('author__avatar')
+        if 'category' in fields:
+            selects.add('category')
+        if 'cover_media' in fields:
+            selects.add('cover_media')
+        if 'tags' in fields:
+            prefetches.add('tags')
+        if 'likes_count' in fields:
+            prefetches.add('reactions')
+
+        if selects:
+            queryset = queryset.select_related(*selects)
+        if prefetches:
+            queryset = queryset.prefetch_related(*prefetches)
+
+        queryset = queryset.annotate(comments_count=Count('comments'))
+
+        user = self.request.user
         if user.is_authenticated and user.is_staff:
             return queryset
         if user.is_authenticated:
@@ -69,12 +95,44 @@ class PostListCreateAPIView(generics.ListCreateAPIView):
         serializer.save(author=author_profile)
 
 
-class PostRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+class PostRetrieveUpdateDestroyAPIView(DynamicSerializerViewMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset = Post.objects.all()
     lookup_field = 'slug'
 
     def get_queryset(self):
-        return Post.objects.all()
+        queryset = Post.objects.all()
+        fields_query = self.request.query_params.get('fields')
+        fields = {f.strip() for f in fields_query.split(',')} if fields_query else {'all'}
+
+        selects = set()
+        prefetches = set()
+        all_fields = 'all' in fields
+
+        if all_fields or 'author' in fields:
+            selects.add('author__avatar')
+        if all_fields or 'category' in fields:
+            selects.add('category')
+        if all_fields or 'cover_media' in fields:
+            selects.add('cover_media')
+        if all_fields or 'series' in fields:
+            selects.add('series')
+        if all_fields or 'og_image' in fields:
+            selects.add('og_image')
+        if all_fields or 'tags' in fields:
+            prefetches.add('tags')
+        if all_fields or 'likes_count' in fields:
+            prefetches.add('reactions')
+        if all_fields or 'comments' in fields:
+            prefetches.add('comments__user')
+        if all_fields or 'media_attachments' in fields:
+            prefetches.add('media_attachments__media')
+
+        if selects:
+            queryset = queryset.select_related(*selects)
+        if prefetches:
+            queryset = queryset.prefetch_related(*prefetches)
+
+        return queryset
     permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
 
     def get_serializer_class(self):
