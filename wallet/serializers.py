@@ -54,8 +54,11 @@ class WalletSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
+        request = self.context.get("request")
+        if not request:
+            return representation
 
-        include = self.context.get("request").query_params.get("include")
+        include = request.query_params.get("include")
 
         if include == "summary":
             # Remove detailed transactions and keep only the summary

@@ -44,7 +44,6 @@ flake8==7.3.0
 pip-tools==7.5.0
 
 # Payments
-zarinpal
 
 # Other
 shortuuid==1.0.11

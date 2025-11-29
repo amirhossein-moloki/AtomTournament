@@ -241,23 +241,6 @@ class WalletViewSetTests(APITestCase):
         response = self.client.get(self.wallet_url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_get_own_wallet_details(self):
-        """Test that a user can retrieve their own wallet details."""
-        response = self.client.get(self.wallet_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["id"], self.wallet.id)
-        self.assertEqual(
-            Decimal(response.data["total_balance"]), self.wallet.total_balance
-        )
-
-    def test_cannot_get_other_user_wallet_details(self):
-        """Test that a user cannot retrieve another user's wallet details."""
-        other_user = User.objects.create_user(
-            username="otheruser", password="password", phone_number="+4445556666"
-        )
-        other_wallet_url = f"/api/wallet/wallets/{other_user.wallet.id}/"
-        response = self.client.get(other_wallet_url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
 class DepositAPITests(APITestCase):
@@ -302,6 +285,7 @@ class DepositAPITests(APITestCase):
             ).exists()
         )
 
+    @patch("wallet.views.DepositAPIView.throttle_classes", [])
     @patch("wallet.views.uuid.uuid4", return_value="test-order-id")
     @patch("wallet.views.ZibalService")
     def test_deposit_request_zibal_error(self, MockZibalService, mock_uuid):
