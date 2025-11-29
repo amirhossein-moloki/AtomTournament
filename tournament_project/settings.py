@@ -110,6 +110,7 @@ if "test" not in sys.argv and "pytest" not in sys.modules:
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "tournaments.upload_handlers.UploadErrorHandlerMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
