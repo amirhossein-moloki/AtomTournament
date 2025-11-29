@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Case, When
 from django.http import FileResponse, Http404
 from django.utils import timezone
 from django.utils.decorators import method_decorator
@@ -232,8 +232,16 @@ class GameViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing games.
     """
-
-    queryset = Game.objects.all().prefetch_related("images")
+    pagination_class = StandardResultsSetPagination
+    queryset = Game.objects.all().prefetch_related("images").annotate(
+        status_order=Case(
+            When(status='active', then=1),
+            When(status='coming_soon', then=2),
+            When(status='inactive', then=3),
+            default=4,
+            output_field=models.IntegerField(),
+        )
+    ).order_by('status_order')
 
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:
