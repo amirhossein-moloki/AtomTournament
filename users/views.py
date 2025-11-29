@@ -32,9 +32,16 @@ from .serializers import (RoleSerializer,
                           UserReadOnlySerializer, UserSerializer)
 from .services import (ApplicationError, send_otp_service,
                        verify_otp_service)
+from common.throttles import (
+    VeryStrictThrottle,
+    StrictThrottle,
+    MediumThrottle,
+    RelaxedThrottle,
+)
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
+    throttle_classes = [VeryStrictThrottle]
     serializer_class = CustomTokenObtainPairSerializer
 
     def post(self, request, *args, **kwargs):
@@ -88,8 +95,10 @@ class UserViewSet(viewsets.ModelViewSet):
         return UserSerializer  # For update, partial_update, etc.
 
     def get_permissions(self):
-        if self.action in ["send_otp", "verify_otp", "list", "retrieve"]:
+        if self.action in ["send_otp", "verify_otp"]:
             return [AllowAny()]
+        if self.action in ["list", "retrieve"]:
+            return [IsAuthenticatedOrReadOnly()]
         return super().get_permissions()
 
     @action(detail=True, methods=["get"])
@@ -103,6 +112,17 @@ class UserViewSet(viewsets.ModelViewSet):
             tournaments, many=True, context={"request": request}
         )
         return Response(serializer.data)
+
+    def get_throttles(self):
+        if self.action in ['send_otp', 'verify_otp']:
+            self.throttle_classes = [VeryStrictThrottle]
+        elif self.action in ['create', 'update', 'partial_update', 'destroy']:
+            self.throttle_classes = [StrictThrottle]
+        elif self.action in ['list', 'retrieve']:
+            self.throttle_classes = [MediumThrottle]
+        else:
+            self.throttle_classes = [RelaxedThrottle]
+        return super().get_throttles()
 
     @action(detail=False, methods=["post"])
     def send_otp(self, request):

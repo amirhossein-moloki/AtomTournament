@@ -8,10 +8,15 @@ from datetime import timedelta
 from django.shortcuts import redirect
 from django.db import transaction
 from rest_framework import generics, status, viewsets
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from common.throttles import (
+    VeryStrictThrottle,
+    StrictThrottle,
+    MediumThrottle,
+)
 from .models import Transaction, Wallet, WithdrawalRequest
 from .serializers import (
     AdminWithdrawalRequestUpdateSerializer,
@@ -30,6 +35,7 @@ logger = logging.getLogger(__name__)
 class DepositAPIView(generics.GenericAPIView):
     serializer_class = PaymentSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = [VeryStrictThrottle]
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -132,6 +138,7 @@ class VerifyDepositAPIView(APIView):
 class WithdrawalRequestAPIView(generics.CreateAPIView):
     serializer_class = CreateWithdrawalRequestSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = [VeryStrictThrottle]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -198,7 +205,8 @@ class WithdrawalRequestAPIView(generics.CreateAPIView):
 class AdminWithdrawalRequestViewSet(viewsets.ModelViewSet):
     queryset = WithdrawalRequest.objects.all()
     serializer_class = WithdrawalRequestSerializer
-    permission_classes = [IsAuthenticated]  # Should be IsAdminUser in a real app
+    permission_classes = [IsAdminUser]
+    throttle_classes = [StrictThrottle]
 
     def get_serializer_class(self):
         if self.action in ["update", "partial_update"]:
@@ -260,6 +268,7 @@ class WalletViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Wallet.objects.all()
     serializer_class = WalletSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = [MediumThrottle]
 
     def get_queryset(self):
         return Wallet.objects.filter(user=self.request.user).prefetch_related(
@@ -275,6 +284,7 @@ class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = [MediumThrottle]
 
     def get_queryset(self):
         return (

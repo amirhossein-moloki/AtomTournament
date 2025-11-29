@@ -1,12 +1,11 @@
 # Framework
-Django==5.2.5
+Django==5.2.8
 djangorestframework==3.16.1
 django-cors-headers==4.7.0
 django-filter==25.1
 django-phonenumber-field==8.1.0
 phonenumbers==9.0.12
 django-axes==8.0.0
-django-ratelimit==4.1.0
 django-redis==6.0.0
 django-sslserver-v2==1.0
 django_celery_results==2.6.0
@@ -69,5 +68,7 @@ django-tempus-dominus
 django-formtools
 django-jalali-date
 django-ckeditor-5
-markdownify==0.13.1
+markdownify==0.14.1
 brotli
+whitenoise
+pip-audit

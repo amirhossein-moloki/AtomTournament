@@ -82,7 +82,6 @@ INSTALLED_APPS = [
     "django_celery_results",
     "djoser",
     "support",
-    "django_ratelimit",
     "sslserver",
     "verification",
     "rewards",
@@ -110,6 +109,7 @@ if "test" not in sys.argv and "pytest" not in sys.modules:
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -345,9 +345,6 @@ UNFOLD = {
 }
 
 # Django REST Framework Settings
-anon_throttle_rate = os.environ.get("API_THROTTLE_RATE_ANON", "1000/day")
-user_throttle_rate = os.environ.get("API_THROTTLE_RATE_USER", "10000/day")
-
 REST_FRAMEWORK = {
     # This line is required for drf-spectacular
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
@@ -355,20 +352,19 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-    "DEFAULT_THROTTLE_CLASSES": [
-        "rest_framework.throttling.AnonRateThrottle",
-        "rest_framework.throttling.UserRateThrottle",
-    ],
+    # Default throttle classes are removed to enforce endpoint-specific throttling.
+    "DEFAULT_THROTTLE_CLASSES": [],
     "DEFAULT_THROTTLE_RATES": {
-        "anon": anon_throttle_rate,
-        "user": user_throttle_rate,
+        'very_strict': '1/minute',
+        'strict': '10/minute',
+        'medium': '100/10minutes',
+        'relaxed': '500/hour',
+        # Legacy throttles are kept for reference but should not be used directly.
+        "anon": os.environ.get("API_THROTTLE_RATE_ANON", "1000/day"),
+        "user": os.environ.get("API_THROTTLE_RATE_USER", "10000/day"),
     },
     'EXCEPTION_HANDLER': 'blog.exceptions.custom_exception_handler',
 }
-
-if is_testing_db:
-    REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = []
-    REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {}
 
 SPECTACULAR_SETTINGS = {
     "TITLE": f"{SITE_NAME} API",
@@ -415,23 +411,19 @@ else:
 # We disable this during tests as the test client makes plain HTTP requests.
 is_testing = "test" in sys.argv or 'pytest' in sys.modules
 
-SECURE_SSL_REDIRECT = False
+SECURE_SSL_REDIRECT = not DEBUG and not is_testing
 # In production, use secure cookies.
 SESSION_COOKIE_SECURE = not DEBUG and not is_testing
 CSRF_COOKIE_SECURE = not DEBUG and not is_testing
 
-if not is_testing:
+if not DEBUG and not is_testing:
     MIDDLEWARE.insert(2, "silk.middleware.SilkyMiddleware")
 
 CORS_ALLOWED_ORIGINS = [
     origin for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if origin
 ]
 
-CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "False").lower() in (
-    "true",
-    "1",
-    "t",
-)
+CORS_ALLOW_ALL_ORIGINS = False
 ZIBAL_PAYMENT_SUCCESS_URL = "https://atom-game.ir/payment/success.html"
 ZIBAL_PAYMENT_FAILED_URL = "https://atom-game.ir/payment/failed.html"
 
@@ -481,14 +473,10 @@ CELERY_RESULT_EXPIRES = timedelta(
     hours=int(os.environ.get("CELERY_RESULT_EXPIRES_HOURS", "24"))
 )
 
-if "test" in sys.argv:
-    CELERY_TASK_ALWAYS_EAGER = True
-    RATELIMIT_ENABLED = False
-    # Disable guardian's anonymous user during tests to prevent test failures
-    ANONYMOUS_USER_NAME = None
-
 if "test" in sys.argv or "pytest" in sys.modules:
     CELERY_TASK_ALWAYS_EAGER = True
+    # Disable guardian's anonymous user during tests to prevent test failures
+    ANONYMOUS_USER_NAME = None
 
 # SMS.ir Configuration
 SMSIR_API_KEY = os.environ.get("SMSIR_API_KEY")
@@ -520,19 +508,15 @@ CACHES = {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
     },
-    # "connection-errors": {
-    #     "BACKEND": "django_ratelimit.tests.MockCache",
-    #     "LOCATION": "connection-errors",
-    # },
-    # "connection-errors-redis": {
-    #     "BACKEND": "django_ratelimit.tests.MockRedisCache",
-    #     "LOCATION": "connection-errors-redis",
-    # },
-    # "instant-expiration": {
-    #     "BACKEND": "django_ratelimit.tests.MockCache",
-    #     "LOCATION": "instant-expiration",
-    # },
 }
+
+if "test" in sys.argv or "pytest" in sys.modules:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "unique-snowflake",
+        }
+    }
 
 CKEDITOR_5_UPLOAD_PATH = "uploads/"
 CKEDITOR_5_CONFIGS = {

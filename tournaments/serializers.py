@@ -31,7 +31,7 @@ class TournamentColorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TournamentColor
-        fields = "__all__"
+        fields = ("id", "name", "rgb_code")
 
 
 class GameCreateUpdateSerializer(serializers.ModelSerializer):
@@ -381,7 +381,7 @@ class ScoringSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Scoring
-        fields = "__all__"
+        fields = ("id", "tournament", "user", "score")
 
 
 class RankSerializer(serializers.ModelSerializer):
@@ -389,7 +389,7 @@ class RankSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Rank
-        fields = "__all__"
+        fields = ("id", "name", "image", "required_score")
 
 
 class GameManagerSerializer(serializers.ModelSerializer):
@@ -397,4 +397,4 @@ class GameManagerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = GameManager
-        fields = "__all__"
+        fields = ("id", "user", "game")
