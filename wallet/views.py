@@ -17,10 +17,11 @@ from common.throttles import (
     StrictThrottle,
     MediumThrottle,
 )
-from .models import Transaction, Wallet, WithdrawalRequest
+from .models import Refund, Transaction, Wallet, WithdrawalRequest
 from .serializers import (
     AdminWithdrawalRequestUpdateSerializer,
     CreateWithdrawalRequestSerializer,
+    RefundRequestSerializer,
     PaymentSerializer,
     TransactionSerializer,
     WalletSerializer,
@@ -292,3 +293,72 @@ class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
             .order_by("-timestamp")
             .select_related("wallet")
         )
+
+# --- New Views based on Zibal Documentation ---
+
+class RefundAPIView(generics.GenericAPIView):
+    """
+    API view to request a refund for a successful transaction.
+    """
+    serializer_class = RefundRequestSerializer
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [VeryStrictThrottle]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        track_id = serializer.validated_data["track_id"]
+        amount = serializer.validated_data.get("amount")
+
+        try:
+            transaction_to_refund = Transaction.objects.get(authority=track_id, status='success', wallet__user=request.user)
+        except Transaction.DoesNotExist:
+            return Response({"error": "تراکنش موفق با این شناسه یافت نشد."}, status=status.HTTP_404_NOT_FOUND)
+
+        if transaction_to_refund.is_refunded:
+            return Response({"error": "این تراکنش قبلا استرداد شده است."}, status=status.HTTP_400_BAD_REQUEST)
+
+        zibal = ZibalService()
+        refund_response = zibal.request_refund(track_id=track_id, amount=int(amount) if amount else None)
+
+        if refund_response.get("result") == 1:
+            try:
+                with transaction.atomic():
+                    refund_data = refund_response.get("data", {})
+                    # The status is pending until confirmed by Zibal webhook or further checks
+                    new_refund = Refund.objects.create(
+                        transaction=transaction_to_refund,
+                        amount=amount or transaction_to_refund.amount,
+                        refund_id=refund_data.get("refundId"),
+                        status=Refund.Status.PENDING,
+                        description=refund_response.get("message")
+                    )
+
+                    # Mark the original transaction as refunded to prevent double refunds
+                    transaction_to_refund.is_refunded = True
+                    transaction_to_refund.save()
+
+                return Response({"message": "درخواست استرداد با موفقیت ثبت شد.", "data": refund_response}, status=status.HTTP_200_OK)
+            except Exception as e:
+                logger.error(f"Could not process refund for track_id {track_id} due to db error: {e}")
+                return Response({"error": "خطای داخلی در پردازش استرداد."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            return Response({"error": refund_response.get("message", "خطا در استرداد وجه.")}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ZibalWalletListView(APIView):
+    """
+    Lists all wallets available on Zibal for the merchant.
+    """
+    permission_classes = [IsAdminUser] # Only admins should see the list of all merchant wallets
+    throttle_classes = [MediumThrottle]
+
+    def get(self, request, *args, **kwargs):
+        zibal = ZibalService()
+        wallets_response = zibal.list_wallets()
+
+        if wallets_response.get("result") == 1:
+            return Response(wallets_response.get("data"), status=status.HTTP_200_OK)
+        else:
+            return Response({"error": wallets_response.get("message", "Failed to fetch wallets.")}, status=status.HTTP_400_BAD_REQUEST)
