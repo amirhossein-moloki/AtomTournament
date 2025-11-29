@@ -17,10 +17,6 @@ aiosignal==1.4.0
     # via aiohttp
 amqp==5.3.1
     # via kombu
-annotated-types==0.6.0
-    # via
-    #   pydantic
-    #   zarinpal
 asgiref==3.9.1
     # via
     #   channels
@@ -66,17 +62,13 @@ celery==5.5.3
     #   -r requirements.in
     #   django-celery-results
 certifi==2023.7.22
-    # via
-    #   requests
-    #   zarinpal
+    # via requests
 cffi==1.17.1
     # via cryptography
 channels==4.3.1
     # via -r requirements.in
 charset-normalizer==3.3.2
-    # via
-    #   requests
-    #   zarinpal
+    # via requests
 click==8.2.1
     # via
     #   black
@@ -114,7 +106,7 @@ diff-match-patch==20241021
     # via django-import-export
 dj-database-url==3.0.1
     # via -r requirements.in
-django==5.2.5
+django==5.2.8
     # via
     #   -r requirements.in
     #   channels
@@ -227,7 +219,6 @@ idna==3.4
     #   requests
     #   twisted
     #   yarl
-    #   zarinpal
 incremental==24.7.2
     # via twisted
 inflection==0.5.1
@@ -252,7 +243,7 @@ license-expression==30.4.4
     # via cyclonedx-python-lib
 markdown-it-py==4.0.0
     # via rich
-markdownify==0.13.1
+markdownify==0.14.1
     # via -r requirements.in
 mccabe==0.7.0
     # via flake8
@@ -326,12 +317,6 @@ pycodestyle==2.14.0
     # via flake8
 pycparser==2.22
     # via cffi
-pydantic==2.5.0
-    # via zarinpal
-pydantic-core==2.14.1
-    # via
-    #   pydantic
-    #   zarinpal
 pyflakes==3.4.0
     # via flake8
 pygments==2.19.2
@@ -378,7 +363,6 @@ requests==2.31.0
     #   requests-oauthlib
     #   social-auth-core
     #   twilio
-    #   zarinpal
 requests-oauthlib==2.0.0
     # via social-auth-core
 rich==14.2.0
@@ -433,11 +417,8 @@ typing-extensions==4.8.0
     # via
     #   aiosignal
     #   beautifulsoup4
-    #   pydantic
-    #   pydantic-core
     #   referencing
     #   twisted
-    #   zarinpal
 tzdata==2025.2
     # via
     #   faker
@@ -448,7 +429,6 @@ urllib3==2.1.0
     # via
     #   botocore
     #   requests
-    #   zarinpal
 vine==5.1.0
     # via
     #   amqp
@@ -462,8 +442,6 @@ whitenoise==6.11.0
     # via -r requirements.in
 yarl==1.20.1
     # via aiohttp
-zarinpal==1.0.0
-    # via -r requirements.in
 zope-interface==7.2
     # via twisted
 
