@@ -40,6 +40,12 @@ from .services import (approve_winner_submission_service, confirm_match_result,
                        reject_report_service, reject_winner_submission_service,
                        resolve_report_service)
 from .tasks import generate_matches_task, approve_winner_submission_task
+from common.throttles import (
+    VeryStrictThrottle,
+    StrictThrottle,
+    MediumThrottle,
+    RelaxedThrottle,
+)
 
 
 class StandardResultsSetPagination(PageNumberPagination):
@@ -105,6 +111,15 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
+
+    def get_throttles(self):
+        if self.action == 'join':
+            self.throttle_classes = [StrictThrottle]
+        elif self.action in ['list', 'retrieve']:
+            self.throttle_classes = [MediumThrottle]
+        else:
+            self.throttle_classes = [RelaxedThrottle]
+        return super().get_throttles()
 
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
     def join(self, request, pk=None):
@@ -187,6 +202,15 @@ class MatchViewSet(viewsets.ModelViewSet):
             return [IsAdminUser()]
         return [IsAuthenticated()]
 
+    def get_throttles(self):
+        if self.action in ['confirm_result', 'dispute_result']:
+            self.throttle_classes = [StrictThrottle]
+        elif self.action in ['list', 'retrieve']:
+            self.throttle_classes = [MediumThrottle]
+        else:
+            self.throttle_classes = [RelaxedThrottle]
+        return super().get_throttles()
+
     @action(detail=True, methods=["post"])
     def confirm_result(self, request, pk=None):
         """
@@ -201,7 +225,7 @@ class MatchViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            confirm_match_result(match, winner_id=winner_id)
+            confirm_match_result(match, winner_id=winner_id, user=request.user)
             return Response({"message": "Match result confirmed successfully."})
         except (ApplicationError, PermissionDenied, ValidationError) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

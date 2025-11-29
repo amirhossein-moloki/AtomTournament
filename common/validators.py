@@ -1,21 +1,35 @@
+import re
 from django.core.exceptions import ValidationError
-from django.utils.translation import gettext_lazy as _
 
-def validate_file(file):
+
+def validate_file(value):
     """
-    Custom validator for file size and content type.
+    Validates file size and type.
     """
-    max_size = 1024 * 1024 * 20  # 20 MB
-    allowed_content_types = [
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "image/gif",
-        "video/mp4",
-    ]
+    filesize = value.size
+    if filesize > 10 * 1024 * 1024:
+        raise ValidationError("حداکثر حجم فایل ۱۰ مگابایت است.")
 
-    if file.size > max_size:
-        raise ValidationError(_(f"File size cannot exceed {max_size / 1024 / 1024} MB."))
+    allowed_extensions = ['.jpg', '.jpeg', '.png', '.mp4', '.mov']
+    ext = str(value).split('.')[-1]
+    if not any(ext.lower() == ext_allowed.replace('.', '') for ext_allowed in allowed_extensions):
+        raise ValidationError(f"فرمت فایل {ext} مجاز نیست.")
 
-    if file.content_type not in allowed_content_types:
-        raise ValidationError(_("Invalid file type."))
+
+def validate_sheba(value):
+    """
+    Validates a SHEBA number.
+    A valid SHEBA number starts with 'IR' followed by 24 digits.
+    """
+    if not re.match(r'^IR\d{24}$', value):
+        raise ValidationError('شماره شبا نامعتبر است. باید با IR شروع شده و شامل ۲۴ عدد باشد.')
+
+
+def validate_card_number(value):
+    """
+    Validates a bank card number.
+    A valid card number is a 16-digit number.
+    This is a basic check and does not perform checksum validation.
+    """
+    if not re.match(r'^\d{16}$', value):
+        raise ValidationError('شماره کارت نامعتبر است. باید ۱۶ رقم باشد.')

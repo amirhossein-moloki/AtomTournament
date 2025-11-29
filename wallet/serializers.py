@@ -4,6 +4,7 @@ import re
 from rest_framework import serializers
 
 from .models import Transaction, Wallet, WithdrawalRequest
+from common.validators import validate_card_number, validate_sheba
 
 
 logger = logging.getLogger(__name__)
@@ -101,8 +102,8 @@ class AdminWithdrawalRequestUpdateSerializer(serializers.ModelSerializer):
 
 class CreateWithdrawalRequestSerializer(serializers.Serializer):
     amount = serializers.DecimalField(max_digits=10, decimal_places=2)
-    card_number = serializers.CharField(max_length=16)
-    sheba_number = serializers.CharField(max_length=26)
+    card_number = serializers.CharField(max_length=16, validators=[validate_card_number])
+    sheba_number = serializers.CharField(max_length=26, validators=[validate_sheba])
 
     def validate_amount(self, value):
         if value <= 0:
