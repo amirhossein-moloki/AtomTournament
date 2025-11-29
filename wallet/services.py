@@ -13,12 +13,60 @@ logger = logging.getLogger(__name__)
 
 
 class ZibalService:
-    def __init__(self):
-        self.merchant_id = getattr(settings, "ZIBAL_MERCHANT_ID", "zibal")
-        self.api_base_url = "https://gateway.zibal.ir/v1"
+    """
+    سرویس برای تعامل با APIهای مختلف زیبال.
+    این سرویس شامل متدهایی برای پرداخت، کیف پول، استرداد و گزارش‌گیری است.
+    """
 
+    def __init__(self):
+        # توکن دسترسی برای APIهای جدید (کیف پول، استرداد و...)
+        self.access_token = getattr(settings, "ZIBAL_ACCESS_TOKEN", None)
+        # شناسه مرچنت برای APIهای قدیمی درگاه پرداخت
+        self.merchant_id = getattr(settings, "ZIBAL_MERCHANT_ID", "zibal")
+
+        self.api_base_url = "https://api.zibal.ir/v1"
+        self.gateway_base_url = "https://gateway.zibal.ir/v1"
+
+    def _get_auth_headers(self):
+        """هدر احراز هویت را برمی‌گرداند."""
+        if not self.access_token:
+            raise ValueError("ZIBAL_ACCESS_TOKEN is not configured in settings.")
+        return {"Authorization": f"Bearer {self.access_token}"}
+
+    def _post_request(self, url, payload=None, is_gateway=False):
+        """یک درخواست POST به سرور زیبال ارسال می‌کند."""
+        base_url = self.gateway_base_url if is_gateway else self.api_base_url
+        full_url = f"{base_url}{url}"
+        headers = {} if is_gateway else self._get_auth_headers()
+
+        try:
+            response = requests.post(full_url, json=payload, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"HTTP Error for {full_url}: {e.response.text}")
+            return {"error": "HTTP Error", "details": e.response.text}
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request Exception for {full_url}: {e}")
+            return {"error": str(e)}
+
+    def _get_request(self, url):
+        """یک درخواست GET به سرور زیبال ارسال می‌کند."""
+        full_url = f"{self.api_base_url}{url}"
+        try:
+            response = requests.get(full_url, headers=self._get_auth_headers())
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"HTTP Error for {full_url}: {e.response.text}")
+            return {"error": "HTTP Error", "details": e.response.text}
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request Exception for {full_url}: {e}")
+            return {"error": str(e)}
+
+    # --- متدهای درگاه پرداخت ---
     def create_payment(self, amount, description, callback_url, order_id, mobile=None):
-        url = f"{self.api_base_url}/request"
+        """ایجاد یک تراکنش جدید در درگاه پرداخت."""
         payload = {
             "merchant": self.merchant_id,
             "amount": amount,
@@ -27,41 +75,68 @@ class ZibalService:
             "orderId": order_id,
             "mobile": mobile,
         }
-        try:
-            response = requests.post(url, json=payload)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            return {"error": str(e)}
+        return self._post_request("/request", payload, is_gateway=True)
 
     def verify_payment(self, track_id, amount):
-        url = f"{self.api_base_url}/verify"
+        """تایید یک تراکنش پرداخت."""
         payload = {
             "merchant": self.merchant_id,
             "trackId": track_id,
             "amount": amount,
         }
-        try:
-            response = requests.post(url, json=payload)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            return {"error": str(e)}
-
-    def inquiry_payment(self, track_id):
-        url = f"{self.api_base_url}/inquiry"
-        payload = {"merchant": self.merchant_id, "trackId": track_id}
-        try:
-            response = requests.post(url, json=payload)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            return {"error": str(e)}
+        return self._post_request("/verify", payload, is_gateway=True)
 
     def generate_payment_url(self, track_id):
+        """URL صفحه پرداخت را تولید می‌کند."""
         return f"https://gateway.zibal.ir/start/{track_id}"
 
+    # --- متدهای کیف پول ---
+    def list_wallets(self):
+        """لیست کیف پول‌های موجود را برمی‌گرداند."""
+        return self._get_request("/wallet/list")
 
+    def get_wallet_balance(self, wallet_id):
+        """موجودی یک کیف پول مشخص را برمی‌گرداند."""
+        return self._post_request("/wallet/balance", {"id": wallet_id})
+
+    # --- متدهای استرداد وجه ---
+    def request_refund(self, track_id, amount=None, card_number=None, description=None):
+        """درخواست استرداد وجه برای یک تراکنش موفق."""
+        payload = {
+            "trackId": track_id,
+            "amount": amount,
+            "cardNumber": card_number,
+            "description": description,
+        }
+        # حذف کلیدهایی که مقدار ندارند
+        payload = {k: v for k, v in payload.items() if v is not None}
+        return self._post_request("/account/refund", payload)
+
+    # --- متدهای گزارش‌گیری ---
+    def get_checkout_report(self, from_date=None, to_date=None, page=1, size=100):
+        """گزارش تسویه‌ها را دریافت می‌کند."""
+        payload = {
+            "fromDate": from_date,
+            "toDate": to_date,
+            "page": page,
+            "size": size,
+        }
+        payload = {k: v for k, v in payload.items() if v is not None}
+        return self._post_request("/report/checkout", payload)
+
+    def get_gateway_transactions_report(self, from_date=None, to_date=None, page=1, size=100):
+        """گزارش تراکنش‌های درگاه پرداخت را دریافت می‌کند."""
+        payload = {
+            "fromDate": from_date,
+            "toDate": to_date,
+            "page": page,
+            "size": size,
+        }
+        payload = {k: v for k, v in payload.items() if v is not None}
+        return self._post_request("/gateway/report/transaction", payload)
+
+
+# سایر توابع سرویس لایه که منطق بیزینس را مدیریت می‌کنند
 def process_transaction(
     user, amount: Decimal, transaction_type: str, description: str = ""
 ) -> (Transaction, str):

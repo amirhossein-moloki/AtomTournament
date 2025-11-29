@@ -3,7 +3,7 @@ import re
 
 from rest_framework import serializers
 
-from .models import Transaction, Wallet, WithdrawalRequest
+from .models import Refund, Transaction, Wallet, WithdrawalRequest
 from common.validators import validate_card_number, validate_sheba
 
 
@@ -112,3 +112,28 @@ class CreateWithdrawalRequestSerializer(serializers.Serializer):
         if value <= 0:
             raise serializers.ValidationError("Amount must be positive.")
         return value
+
+
+# --- New Serializers for Refund Functionality ---
+
+class RefundRequestSerializer(serializers.Serializer):
+    """
+    Serializer for validating refund requests.
+    """
+    track_id = serializers.CharField(max_length=255)
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+
+    def validate_track_id(self, value):
+        # Basic validation for track_id format (can be improved)
+        if not value.isdigit():
+            raise serializers.ValidationError("Track ID must be a numeric value.")
+        return value
+
+class RefundSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Refund model.
+    """
+    class Meta:
+        model = Refund
+        fields = ('id', 'transaction', 'amount', 'refund_id', 'status', 'description', 'created_at')
+        read_only_fields = fields

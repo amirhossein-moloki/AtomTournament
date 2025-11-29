@@ -4,10 +4,12 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     AdminWithdrawalRequestViewSet,
     DepositAPIView,
+    RefundAPIView,  # Added
     TransactionViewSet,
     VerifyDepositAPIView,
     WalletViewSet,
     WithdrawalRequestAPIView,
+    ZibalWalletListView,  # Added
 )
 
 router = DefaultRouter()
@@ -29,4 +31,7 @@ urlpatterns = [
         WithdrawalRequestAPIView.as_view(),
         name="create-withdrawal-request",
     ),
+    # New URLs
+    path("refund/", RefundAPIView.as_view(), name="refund"),
+    path("admin/zibal-wallets/", ZibalWalletListView.as_view(), name="zibal-wallets"),
 ]

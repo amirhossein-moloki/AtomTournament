@@ -87,9 +87,33 @@ class Transaction(models.Model):
     status = models.CharField(
         max_length=10, choices=STATUS_CHOICES, default="pending", db_index=True
     )
+    is_refunded = models.BooleanField(default=False, help_text="آیا این تراکنش استرداد شده است؟")
+
 
     def __str__(self):
         return f"{self.wallet.user.username} - {self.transaction_type} - {self.amount}"
 
     class Meta:
         app_label = "wallet"
+
+
+class Refund(models.Model):
+    """مدلی برای ذخیره اطلاعات استرداد وجه."""
+    class Status(models.TextChoices):
+        PENDING = "pending", "در انتظار"
+        SUCCESS = "success", "موفق"
+        FAILED = "failed", "ناموفق"
+
+    transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE, related_name="refunds")
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    refund_id = models.CharField(max_length=255, unique=True, help_text="شناسه استرداد از زیبال")
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    description = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Refund of {self.amount} for transaction {self.transaction.id}"
+
+    class Meta:
+        app_label = "wallet"
+        ordering = ["-created_at"]
