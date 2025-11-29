@@ -8,6 +8,8 @@ from .models import (
     AuthorProfile, Category, Tag, Post, Series, Media,
     Comment, Reaction, Page, Menu, MenuItem, Revision, PostMedia
 )
+from .mixins import DynamicFieldsMixin
+
 
 User = get_user_model()
 
@@ -121,7 +123,7 @@ class CommentForPostSerializer(serializers.ModelSerializer):
         fields = ('id', 'user', 'content', 'created_at', 'parent')
 
 
-class PostListSerializer(serializers.ModelSerializer):
+class PostListSerializer(DynamicFieldsMixin, serializers.ModelSerializer):
     author = AuthorForPostSerializer(read_only=True)
     category = serializers.StringRelatedField()
     cover_media = MediaDetailSerializer(read_only=True)
