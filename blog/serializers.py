@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.core.files.storage import default_storage
 from markdownify import markdownify as html_to_markdown
 
+from common.validators import validate_file
 from common.utils.files import get_sanitized_filename
 from .models import (
     AuthorProfile, Category, Tag, Post, Series, Media,
@@ -46,7 +47,7 @@ class MediaDetailSerializer(serializers.ModelSerializer):
         )
 
 class MediaCreateSerializer(serializers.ModelSerializer):
-    file = serializers.FileField(write_only=True)
+    file = serializers.FileField(write_only=True, validators=[validate_file])
 
     class Meta:
         model = Media

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-
+from common.validators import validate_file
 from .models import SupportAssignment, Ticket, TicketAttachment, TicketMessage
 
 
@@ -12,7 +12,7 @@ class TicketAttachmentSerializer(serializers.ModelSerializer):
 class TicketMessageSerializer(serializers.ModelSerializer):
     attachments = TicketAttachmentSerializer(many=True, read_only=True)
     uploaded_files = serializers.ListField(
-        child=serializers.FileField(), write_only=True, required=False
+        child=serializers.FileField(validators=[validate_file]), write_only=True, required=False
     )
 
     class Meta:
@@ -31,7 +31,7 @@ class TicketMessageSerializer(serializers.ModelSerializer):
 class TicketSerializer(serializers.ModelSerializer):
     messages = TicketMessageSerializer(many=True, read_only=True)
     content = serializers.CharField(write_only=True)
-    attachment = serializers.FileField(write_only=True, required=False)
+    attachment = serializers.FileField(write_only=True, required=False, validators=[validate_file])
 
     class Meta:
         model = Ticket

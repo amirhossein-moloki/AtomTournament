@@ -33,7 +33,7 @@ from .serializers import (GameCreateUpdateSerializer, GameReadOnlySerializer,
                           TournamentCreateUpdateSerializer,
                           TournamentImageSerializer,
                           TournamentListSerializer, TournamentReadOnlySerializer,
-                          WinnerSubmissionSerializer)
+                          WinnerSubmissionSerializer, WinnerSubmissionCreateSerializer)
 from .services import (approve_winner_submission_service, confirm_match_result,
                        create_report_service, create_winner_submission_service,
                        dispute_match_result, generate_matches, join_tournament,
@@ -368,8 +368,12 @@ class WinnerSubmissionViewSet(viewsets.ModelViewSet):
     """
 
     queryset = WinnerSubmission.objects.all()
-    serializer_class = WinnerSubmissionSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return WinnerSubmissionCreateSerializer
+        return WinnerSubmissionSerializer
 
     def get_queryset(self):
         user = self.request.user
@@ -390,18 +394,11 @@ class WinnerSubmissionViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        if not serializer.is_valid():
-            print("Serializer errors:", serializer.errors)
-        validated_data = serializer.validated_data
-        try:
-            create_winner_submission_service(
-                user=self.request.user,
-                tournament=validated_data["tournament"],
-                video=validated_data["video"],
-            )
-        except ApplicationError as e:
-            # DRF's exception handler will turn this into a 400 response
-            raise ValidationError(str(e))
+        create_winner_submission_service(
+            user=self.request.user,
+            tournament=serializer.validated_data["tournament"],
+            video=serializer.validated_data["video"],
+        )
 
     @action(detail=True, methods=["post"], permission_classes=[IsTournamentCreatorOrAdmin])
     def approve(self, request, pk=None):
