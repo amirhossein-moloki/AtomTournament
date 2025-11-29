@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from django.db import transaction
 from django.db.models import Count
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from notifications.services import send_notification
 from notifications.tasks import send_email_notification, send_sms_notification
@@ -11,7 +11,6 @@ from teams.models import Team
 from users.models import User
 from verification.models import Verification
 from wallet.services import process_transaction, process_token_transaction
-from .exceptions import ApplicationError
 from .models import Match, Participant, Report, Tournament, WinnerSubmission
 
 
@@ -463,11 +462,12 @@ def create_winner_submission_service(user: User, tournament: Tournament, video):
 
     if tournament.type == "team":
         is_winner = _is_user_in_winning_teams(user, winners)
+        if not is_winner:
+            raise ValidationError("You are not a member of a winning team.")
     else:
         is_winner = user in winners
-
-    if not is_winner:
-        raise ApplicationError("You are not one of the tournament winners.")
+        if not is_winner:
+            raise ValidationError("You are not one of the tournament winners.")
 
     submission = WinnerSubmission.objects.create(
         winner=user, tournament=tournament, video=video

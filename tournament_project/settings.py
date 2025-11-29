@@ -110,7 +110,6 @@ if "test" not in sys.argv and "pytest" not in sys.modules:
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "tournaments.upload_handlers.UploadErrorHandlerMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -396,7 +395,6 @@ DJOSER = {
 
 
 FILE_UPLOAD_HANDLERS = [
-    "tournaments.upload_handlers.SafeFileUploadHandler",
     "django.core.files.uploadhandler.MemoryFileUploadHandler",
     "django.core.files.uploadhandler.TemporaryFileUploadHandler",
 ]

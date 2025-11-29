@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from .models import Verification
+from common.validators import validate_file
 
 
 class VerificationSerializer(serializers.ModelSerializer):
@@ -21,8 +22,8 @@ class VerificationSerializer(serializers.ModelSerializer):
 
 
 class VerificationLevel2Serializer(serializers.ModelSerializer):
-    id_card_image = serializers.ImageField(required=True)
-    selfie_image = serializers.ImageField(required=True)
+    id_card_image = serializers.ImageField(required=True, validators=[validate_file])
+    selfie_image = serializers.ImageField(required=True, validators=[validate_file])
 
     class Meta:
         model = Verification
@@ -30,7 +31,7 @@ class VerificationLevel2Serializer(serializers.ModelSerializer):
 
 
 class VerificationLevel3Serializer(serializers.ModelSerializer):
-    video = serializers.FileField(required=True)
+    video = serializers.FileField(required=True, validators=[validate_file])
 
     class Meta:
         model = Verification

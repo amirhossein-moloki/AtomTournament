@@ -3,11 +3,11 @@ from rest_framework import serializers
 
 from teams.serializers import TeamSerializer
 from users.serializers import UserReadOnlySerializer
+from common.validators import validate_file
 
 from .models import (Game, GameImage, GameManager, Match, Participant, Rank,
                      Report, Scoring, Tournament, TournamentColor,
                      TournamentImage, WinnerSubmission)
-from .validators import FileValidator
 
 
 class GameImageSerializer(serializers.ModelSerializer):
@@ -265,11 +265,7 @@ class MatchUpdateSerializer(serializers.ModelSerializer):
 
     result_proof = serializers.ImageField(
         required=True,
-        validators=[
-            FileValidator(
-                max_size=1024 * 1024 * 2, content_types=("image/jpeg", "image/png")
-            )
-        ],
+        validators=[validate_file],
     )
 
     class Meta:
@@ -367,6 +363,17 @@ class WinnerSubmissionSerializer(serializers.ModelSerializer):
             "created_at",
         )
         read_only_fields = ("id", "winner", "status", "created_at")
+
+
+class WinnerSubmissionCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating a WinnerSubmission."""
+
+    video = serializers.FileField(validators=[validate_file])
+    tournament = serializers.PrimaryKeyRelatedField(queryset=Tournament.objects.all())
+
+    class Meta:
+        model = WinnerSubmission
+        fields = ("video", "tournament")
 
 
 class ScoringSerializer(serializers.ModelSerializer):
