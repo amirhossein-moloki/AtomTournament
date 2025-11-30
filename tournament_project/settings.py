@@ -49,6 +49,14 @@ DOMAIN = os.environ.get("DOMAIN", "localhost")
 SITE_NAME = os.environ.get("SITE_NAME", "Tournament Platform")
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 
+# Google Login Configuration
+# IMPORTANT: Replace these with your actual Google API credentials.
+# You can obtain them from the Google Cloud Console: https://console.cloud.google.com/
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "your-google-client-id")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "your-google-client-secret")
+GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "http://localhost:8000/api/auth/google/callback/")
+
+
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", f"localhost,127.0.0.1,{DOMAIN}").split(",")
 
 

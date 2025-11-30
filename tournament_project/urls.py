@@ -52,6 +52,7 @@ urlpatterns = [
 
     # --- App URLs ---
     path("api/users/", include("users.urls")),
+    path("api/auth/google/", include("users.google_urls")),
     path("api/teams/", include("teams.urls")),
     path("api/tournaments/", include("tournaments.urls")),
     path("api/chat/", include("chat.urls")),
