@@ -270,6 +270,10 @@ LOGGING = {
             "format": "{levelname} {message}",
             "style": "{",
         },
+        "json": {
+            "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "format": "%(asctime)s %(name)s %(levelname)s %(module)s %(lineno)d %(message)s",
+        },
     },
     "handlers": {
         "console": {
@@ -277,13 +281,21 @@ LOGGING = {
             "class": "logging.StreamHandler",
             "formatter": "simple",
         },
-        "file": {
+        "file_info": {
             "level": "INFO",
             "class": "logging.handlers.RotatingFileHandler",
             "filename": BASE_DIR / "logs/app.log",
             "maxBytes": 1024 * 1024 * 5,  # 5 MB
             "backupCount": 2,
             "formatter": "verbose",
+        },
+        "file_error": {
+            "level": "ERROR",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": BASE_DIR / "logs/error.log",
+            "maxBytes": 1024 * 1024 * 5,  # 5 MB
+            "backupCount": 2,
+            "formatter": "json",
         },
         "smtp_file": {
             "level": "INFO",
@@ -301,12 +313,12 @@ LOGGING = {
     },
     "loggers": {
         "django": {
-            "handlers": ["console", "file"],
+            "handlers": ["console", "file_info", "file_error"],
             "level": "INFO",
             "propagate": True,
         },
         "django.request": {
-            "handlers": ["mail_admins"],
+            "handlers": ["mail_admins", "file_error"],
             "level": "ERROR",
             "propagate": False,
         },
@@ -316,20 +328,20 @@ LOGGING = {
             "propagate": True,
         },
         "root": {
-            "handlers": ["console", "file"],
+            "handlers": ["console", "file_info", "file_error"],
             "level": "INFO",
         },
     },
 }
 
-# Use console logging in development and file logging in production
+# Use console logging in development and file/email logging in production
 if DEBUG or "test" in sys.argv or "pytest" in sys.modules:
     LOGGING["loggers"]["django"]["handlers"] = ["console"]
     LOGGING["loggers"]["root"]["handlers"] = ["console"]
 else:
-    LOGGING["loggers"]["django"]["handlers"] = ["file"]
+    LOGGING["loggers"]["django"]["handlers"] = ["file_info", "file_error"]
     LOGGING["loggers"]["django"]["propagate"] = False
-    LOGGING["loggers"]["root"]["handlers"] = ["file", "mail_admins"]
+    LOGGING["loggers"]["root"]["handlers"] = ["file_info", "file_error", "mail_admins"]
 
 
 UNFOLD = {

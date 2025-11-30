@@ -71,3 +71,4 @@ markdownify==0.14.1
 brotli
 whitenoise
 pip-audit
+python-json-logger
