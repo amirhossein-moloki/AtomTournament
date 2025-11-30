@@ -369,7 +369,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         'very_strict': '1/minute',
         'strict': '10/minute',
-        'medium': '100/10minutes',
+        'medium': '100/minute',
         'relaxed': '500/hour',
         # Legacy throttles are kept for reference but should not be used directly.
         "anon": os.environ.get("API_THROTTLE_RATE_ANON", "1000/day"),
