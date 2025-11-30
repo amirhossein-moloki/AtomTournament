@@ -1,9 +1,13 @@
+import logging
 from rest_framework.views import exception_handler
 from rest_framework.response import Response
 from rest_framework import status
 from django.http import Http404
 from rest_framework.exceptions import APIException, NotAuthenticated, PermissionDenied, NotFound
 from django.conf import settings
+
+# Get an instance of a logger
+logger = logging.getLogger(__name__)
 
 
 def custom_exception_handler(exc, context):
@@ -35,6 +39,18 @@ def custom_exception_handler(exc, context):
         status_code = exc.status_code
     else:
         # برای خطاهای پیش‌بینی نشده (خطاهای داخلی سرور)
+        # Log the exception with traceback
+        logger.error(
+            "Internal Server Error: %s",
+            str(exc),
+            exc_info=True,
+            extra={
+                'view': context['view'].__class__.__name__,
+                'request_path': context['request'].path,
+                'request_method': context['request'].method,
+            }
+        )
+
         # در حالت DEBUG، جزئیات خطا را نمایش می‌دهیم تا به دیباگ کمک کند
         if settings.DEBUG:
             detail = f"خطای داخلی سرور: {str(exc)}"
@@ -43,7 +59,13 @@ def custom_exception_handler(exc, context):
         error_code = "internal_server_error"
         status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
 
-    # ساخت پاسخ سفارشی
+    # اگر handler پیش‌فرض پاسخی برگردانده، از آن استفاده می‌کنیم.
+    if response is not None:
+        # می‌توانید فیلدهای دلخواه را به پاسخ اضافه کنید، اما مراقب تکرار نباشید.
+        # برای سادگی، فعلاً پاسخ اصلی را برمی‌گردانیم.
+        return response
+
+    # ساخت پاسخ سفارشی برای خطاهایی که توسط handler پیش‌فرض مدیریت نشده‌اند.
     custom_response_data = {
         'detail': detail,
         'error_code': error_code
