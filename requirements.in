@@ -72,3 +72,4 @@ brotli
 whitenoise
 pip-audit
 python-json-logger
+google-auth
