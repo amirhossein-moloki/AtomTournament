@@ -159,7 +159,10 @@ server {
         limit_req zone=api_limit burst=20 nodelay;
 
         set $api_cache_bypass 0;
-        if ($http_authorization != "" or $http_cookie ~* "(sessionid|csrftoken)") {
+        if ($http_authorization) {
+            set $api_cache_bypass 1;
+        }
+        if ($http_cookie ~* "(sessionid|csrftoken)") {
             set $api_cache_bypass 1;
         }
 
