@@ -3,11 +3,13 @@ from decimal import Decimal
 
 from django.db import transaction
 from django.db.models import Count
+from django.template.loader import render_to_string
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from notifications.services import send_notification
 from notifications.tasks import send_email_notification, send_sms_notification
 from teams.models import Team
+from .exceptions import ApplicationError
 from users.models import User
 from verification.models import Verification
 from wallet.services import process_transaction, process_token_transaction
@@ -289,11 +291,14 @@ def join_tournament(
             "room_id": "placeholder-room-id",  # Replace with actual room ID
         }
         for member in members:
+            html_content = render_to_string(
+                "notifications/email/tournament_joined.html", context
+            )
             send_email_notification.delay(
-                member.email,
-                "Tournament Joined",
-                "notifications/email/tournament_joined.html",
-                context,
+                recipient_list=[member.email],
+                subject="Tournament Joined",
+                template_name="notifications/email/tournament_joined.html",
+                context=context,
             )
             send_sms_notification.delay(str(member.phone_number), context)
 

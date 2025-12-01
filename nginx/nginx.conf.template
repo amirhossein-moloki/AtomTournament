@@ -152,6 +152,12 @@ server {
         add_header Cache-Control "public, max-age=2592000" always;
     }
 
+    # Internal location for protected media
+    location /protected/ {
+        internal;
+        alias /app/private_media/;
+    }
+
     ################################
     # API Caching (Public Endpoints)
     ################################

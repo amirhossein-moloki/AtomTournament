@@ -4,6 +4,7 @@ from celery import shared_task
 from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 from sms_ir import SmsIr
 
 logger = logging.getLogger(__name__)
@@ -55,21 +56,28 @@ def send_sms_notification(self, phone_number, context):
     queue='high_priority'
 )
 def send_email_notification(
-    self, subject, message, recipient_list, html_message=None
+    self, recipient_list, subject, template_name, context=None
 ):
     """
-    Sends an email notification. It can be plain text, HTML, or both.
+    Sends an email notification using a template.
     """
+    if context is None:
+        context = {}
+
     if not isinstance(recipient_list, list):
         recipient_list = [recipient_list]
 
     logger.info(
         f"Attempting to send email to {recipient_list} with subject '{subject}'"
     )
+
+    html_message = render_to_string(template_name, context)
+    plain_message = strip_tags(html_message)
+
     try:
         send_mail(
             subject,
-            message,
+            plain_message,
             settings.EMAIL_HOST_USER,
             recipient_list,
             fail_silently=False,

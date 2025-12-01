@@ -2,6 +2,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 from common.fields import OptimizedImageField, OptimizedVideoField
+from .managers import TournamentManager
 from common.utils.files import get_sanitized_upload_path
 
 
@@ -23,7 +24,7 @@ class Game(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField()
     status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default="active"
+        max_length=20, choices=STATUS_CHOICES, default="active", db_index=True
     )
 
     def __str__(self):
@@ -181,6 +182,8 @@ class Tournament(models.Model):
         "teams.Team", related_name="top_placements", blank=True
     )
 
+    objects = TournamentManager()
+
     def clean(self):
         super().clean()
         if self.start_date and self.end_date and self.start_date >= self.end_date:
@@ -226,6 +229,7 @@ class Participant(models.Model):
             ("eliminated", "Eliminated"),
         ),
         default="registered",
+        db_index=True,
     )
     rank = models.IntegerField(null=True, blank=True)
     prize = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)

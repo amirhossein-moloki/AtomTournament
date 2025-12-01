@@ -90,10 +90,20 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
         """
         Prefetch related data to optimize performance and avoid N+1 queries.
         """
+        now = timezone.now()
+        game_queryset_with_counts = Game.objects.annotate(
+            held_tournaments_count=models.Count('tournament', filter=models.Q(tournament__end_date__lt=now)),
+            active_tournaments_count=models.Count('tournament', filter=models.Q(tournament__end_date__gte=now))
+        )
         participant_queryset = Participant.objects.select_related("user")
-        return Tournament.objects.prefetch_related(
-            Prefetch("participant_set", queryset=participant_queryset), "teams", "game"
-        ).order_by("start_date")
+
+        queryset = Tournament.objects.with_details(user=self.request.user).prefetch_related(
+            Prefetch("participant_set", queryset=participant_queryset),
+            "teams",
+            Prefetch("game", queryset=game_queryset_with_counts)
+        )
+
+        return queryset.order_by("start_date")
 
     def get_permissions(self):
         if self.action in ["list", "retrieve"]:
@@ -257,15 +267,24 @@ class GameViewSet(viewsets.ModelViewSet):
     ViewSet for managing games.
     """
     pagination_class = StandardResultsSetPagination
-    queryset = Game.objects.all().prefetch_related("images").annotate(
-        status_order=Case(
-            When(status='active', then=1),
-            When(status='coming_soon', then=2),
-            When(status='inactive', then=3),
-            default=4,
-            output_field=models.IntegerField(),
-        )
-    ).order_by('status_order')
+
+    def get_queryset(self):
+        now = timezone.now()
+        return Game.objects.all().prefetch_related("images").annotate(
+            status_order=Case(
+                When(status='active', then=1),
+                When(status='coming_soon', then=2),
+                When(status='inactive', then=3),
+                default=4,
+                output_field=models.IntegerField(),
+            ),
+            held_tournaments_count=models.Count(
+                'tournament', filter=models.Q(tournament__end_date__lt=now)
+            ),
+            active_tournaments_count=models.Count(
+                'tournament', filter=models.Q(tournament__end_date__gte=now)
+            )
+        ).order_by('status_order')
 
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:
@@ -330,8 +349,10 @@ def private_media_view(request, path):
             is_participant = True
 
     if is_participant or request.user.is_staff:
-        file_path = f"{settings.PRIVATE_MEDIA_ROOT}/{path}"
-        return FileResponse(open(file_path, "rb"))
+        response = Response(status=status.HTTP_200_OK)
+        response["X-Accel-Redirect"] = f"/protected/{path}"
+        response["Content-Type"] = ""  # Let Nginx determine the content type
+        return response
     else:
         return Response(
             {"error": "You do not have permission to access this file."}, status=403
@@ -550,7 +571,17 @@ class UserTournamentHistoryView(generics.ListAPIView):
         for the currently authenticated user.
         """
         user = self.request.user
-        participant_queryset = Participant.objects.select_related("user")
-        return Tournament.objects.filter(participants=user).prefetch_related(
-            Prefetch("participant_set", queryset=participant_queryset), "teams", "game"
+        now = timezone.now()
+        game_queryset_with_counts = Game.objects.annotate(
+            held_tournaments_count=models.Count('tournament', filter=models.Q(tournament__end_date__lt=now)),
+            active_tournaments_count=models.Count('tournament', filter=models.Q(tournament__end_date__gte=now))
         )
+        participant_queryset = Participant.objects.select_related("user")
+
+        queryset = Tournament.objects.with_details(user=user).filter(participants=user).prefetch_related(
+            Prefetch("participant_set", queryset=participant_queryset),
+            "teams",
+            Prefetch("game", queryset=game_queryset_with_counts)
+        )
+
+        return queryset
