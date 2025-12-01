@@ -6,4 +6,4 @@ class ChatConfig(AppConfig):
     name = "chat"
 
     def ready(self):
-        import chat.signals # این خط سیگنال‌ها را import می‌کند
+        import chat.signals  # noqa

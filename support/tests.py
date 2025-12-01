@@ -122,3 +122,25 @@ class TicketAPITest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("uploaded_files", response.data)
         self.assertIn("فرمت فایل ‘.txt’ پشتیبانی نمی‌شود.", response.data["uploaded_files"][0][0])
+
+    def test_create_ticket_message_with_oversized_file(self):
+        self.client.force_authenticate(user=self.user)
+        ticket = Ticket.objects.create(user=self.user, title="Oversized File Test")
+        # Create a file larger than 10MB
+        oversized_content = b"a" * (11 * 1024 * 1024)
+        oversized_file = SimpleUploadedFile(
+            "large_file.jpg", oversized_content, content_type="image/jpeg"
+        )
+        data = {
+            "uploaded_files": [oversized_file],
+        }
+        response = self.client.post(
+            f"/api/support/tickets/{ticket.id}/messages/", data, format="multipart"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("uploaded_files", response.data)
+        self.assertIn(
+            "حجم فایل شما بیشتر از ۱۰ مگابایت است.",
+            response.data["uploaded_files"][0][0],
+        )

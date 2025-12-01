@@ -1,7 +1,6 @@
 from django.db import models
 from support.models import Ticket
 from users.models import User
-from common.fields import OptimizedImageField
 
 
 class Conversation(models.Model):
@@ -44,7 +43,7 @@ class Attachment(models.Model):
     message = models.ForeignKey(
         Message, on_delete=models.CASCADE, related_name="attachments"
     )
-    file = OptimizedImageField(upload_to="attachments/")
+    file = models.FileField(upload_to="attachments/")
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
