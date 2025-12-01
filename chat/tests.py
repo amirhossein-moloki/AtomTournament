@@ -1,4 +1,5 @@
 from io import BytesIO
+from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth import get_user_model
@@ -67,7 +68,8 @@ class AttachmentAPITests(APITestCase):
             filename, buffer.read(), content_type=f"image/{image_format.lower()}"
         )
 
-    def test_create_attachment_successfully(self):
+    @patch("chat.signals.convert_image_to_avif_task.delay")
+    def test_create_attachment_successfully(self, mock_convert_task):
         image_file = self._create_image()
         data = {"file": image_file}
         response = self.client.post(self.url, data, format="multipart")
@@ -76,6 +78,20 @@ class AttachmentAPITests(APITestCase):
         attachment = Attachment.objects.first()
         self.assertEqual(attachment.message, self.message)
         self.assertTrue(attachment.file.name.endswith(".jpg"))
+        # Verify that the optimization task was called
+        mock_convert_task.assert_called_once()
+
+    @patch("chat.signals.convert_image_to_avif_task.delay")
+    def test_create_attachment_with_non_image_file(self, mock_convert_task):
+        video_file = SimpleUploadedFile(
+            "test.mp4", b"file_content", content_type="video/mp4"
+        )
+        data = {"file": video_file}
+        response = self.client.post(self.url, data, format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Attachment.objects.count(), 1)
+        # Verify that the optimization task was NOT called
+        mock_convert_task.assert_not_called()
 
     def test_create_attachment_with_invalid_file_type(self):
         invalid_file = SimpleUploadedFile(
