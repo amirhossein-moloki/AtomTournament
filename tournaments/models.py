@@ -23,7 +23,7 @@ class Game(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField()
     status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default="active"
+        max_length=20, choices=STATUS_CHOICES, default="active", db_index=True
     )
 
     def __str__(self):
@@ -132,8 +132,8 @@ class Tournament(models.Model):
         related_name="tournaments",
     )
     game = models.ForeignKey(Game, on_delete=models.CASCADE)
-    start_date = models.DateTimeField()
-    end_date = models.DateTimeField()
+    start_date = models.DateTimeField(db_index=True)
+    end_date = models.DateTimeField(db_index=True)
     is_free = models.BooleanField(default=True)
     is_token_based = models.BooleanField(default=False)
     entry_fee = models.DecimalField(
@@ -226,6 +226,7 @@ class Participant(models.Model):
             ("eliminated", "Eliminated"),
         ),
         default="registered",
+        db_index=True,
     )
     rank = models.IntegerField(null=True, blank=True)
     prize = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
@@ -343,7 +344,7 @@ class Report(models.Model):
     description = models.TextField()
     evidence = OptimizedImageField(upload_to=get_sanitized_upload_path, null=True, blank=True)
     status = models.CharField(
-        max_length=20, choices=REPORT_STATUS_CHOICES, default="pending"
+        max_length=20, choices=REPORT_STATUS_CHOICES, default="pending", db_index=True
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

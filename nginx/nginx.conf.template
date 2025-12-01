@@ -184,9 +184,20 @@ server {
     }
 
     #####################################
+    # Private Media (X-Accel-Redirect)
+    #####################################
+    location /protected_media/ {
+        internal;
+        alias /app/private_media/;
+        # No caching for private files
+        expires off;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+    }
+
+    #####################################
     # Django - Non-Cached (API & Admin)
     #####################################
-    location ~ ^/(api|admin|select2|private-media|blog) {
+    location ~ ^/(api|admin|select2|blog) {
         limit_req zone=api_limit burst=20 nodelay;
 
         # CSP شل‌تر برای Django (برای اینکه ادمین و باندل‌ها گیر نکنن)

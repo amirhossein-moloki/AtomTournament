@@ -380,11 +380,14 @@ def private_media_view(request, path):
             is_participant = True
 
     if is_participant or request.user.is_staff:
-        file_path = f"{settings.PRIVATE_MEDIA_ROOT}/{path}"
-        return FileResponse(open(file_path, "rb"))
+        response = Response(status=status.HTTP_200_OK)
+        response["X-Accel-Redirect"] = f"/protected_media/{path}"
+        response["Content-Type"] = ""  # Let Nginx determine the content type
+        return response
     else:
         return Response(
-            {"error": "You do not have permission to access this file."}, status=403
+            {"error": "You do not have permission to access this file."},
+            status=status.HTTP_403_FORBIDDEN,
         )
 
 
