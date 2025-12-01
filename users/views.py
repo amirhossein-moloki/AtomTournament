@@ -7,6 +7,8 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django.views.decorators.vary import vary_on_headers
 from django_filters.rest_framework import DjangoFilterBackend
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import (
@@ -316,3 +318,60 @@ class UserMatchHistoryView(generics.ListAPIView):
         ).distinct()
 
 
+class GoogleLoginView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [VeryStrictThrottle]
+
+    def post(self, request):
+        try:
+            token = request.data.get("id_token")
+            if not token:
+                return Response(
+                    {"error": "ID token is required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Verify the token
+            id_info = id_token.verify_oauth2_token(
+                token,
+                google_requests.Request(),
+                settings.GOOGLE_CLIENT_ID
+            )
+
+            email = id_info.get("email")
+            if not email:
+                return Response(
+                    {"error": "Email not found in token."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Check if user exists
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                return Response(
+                    {"error": "User with this email does not exist."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            # Generate tokens for the user
+            refresh = RefreshToken.for_user(user)
+            return Response(
+                {
+                    "refresh": str(refresh),
+                    "access": str(refresh.access_token),
+                }
+            )
+
+        except ValueError as e:
+            # Invalid token
+            return Response(
+                {"error": f"Invalid token: {e}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            # In a real-world scenario, you would log the error `e` here
+            return Response(
+                {"error": "An unexpected error occurred. Please try again later."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
