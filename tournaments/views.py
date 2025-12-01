@@ -90,10 +90,51 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
         """
         Prefetch related data to optimize performance and avoid N+1 queries.
         """
+        now = timezone.now()
+        game_queryset_with_counts = Game.objects.annotate(
+            held_tournaments_count=models.Count('tournament', filter=models.Q(tournament__end_date__lt=now)),
+            active_tournaments_count=models.Count('tournament', filter=models.Q(tournament__end_date__gte=now))
+        )
         participant_queryset = Participant.objects.select_related("user")
-        return Tournament.objects.prefetch_related(
-            Prefetch("participant_set", queryset=participant_queryset), "teams", "game"
-        ).order_by("start_date")
+        queryset = Tournament.objects.prefetch_related(
+            Prefetch("participant_set", queryset=participant_queryset),
+            "teams",
+            Prefetch("game", queryset=game_queryset_with_counts)
+        )
+
+        # Annotate spots_left
+        spots_left_annotation = models.Case(
+            models.When(
+                type='individual',
+                then=models.F('max_participants') - models.Count('participants', distinct=True)
+            ),
+            models.When(
+                type='team',
+                then=models.F('max_participants') - models.Count('teams', distinct=True)
+            ),
+            default=models.Value(None),
+            output_field=models.IntegerField()
+        )
+        queryset = queryset.annotate(spots_left=spots_left_annotation)
+
+        # Annotate user-specific fields if authenticated
+        user = self.request.user
+        if user and user.is_authenticated:
+            participant_info = Participant.objects.filter(
+                tournament=models.OuterRef('pk'),
+                user=user
+            )
+            queryset = queryset.annotate(
+                final_rank=models.Subquery(participant_info.values('rank')[:1]),
+                prize_won=models.Subquery(participant_info.values('prize')[:1])
+            )
+        else:
+            queryset = queryset.annotate(
+                final_rank=models.Value(None, output_field=models.IntegerField()),
+                prize_won=models.Value(None, output_field=models.DecimalField())
+            )
+
+        return queryset.order_by("start_date")
 
     def get_permissions(self):
         if self.action in ["list", "retrieve"]:
@@ -257,15 +298,24 @@ class GameViewSet(viewsets.ModelViewSet):
     ViewSet for managing games.
     """
     pagination_class = StandardResultsSetPagination
-    queryset = Game.objects.all().prefetch_related("images").annotate(
-        status_order=Case(
-            When(status='active', then=1),
-            When(status='coming_soon', then=2),
-            When(status='inactive', then=3),
-            default=4,
-            output_field=models.IntegerField(),
-        )
-    ).order_by('status_order')
+
+    def get_queryset(self):
+        now = timezone.now()
+        return Game.objects.all().prefetch_related("images").annotate(
+            status_order=Case(
+                When(status='active', then=1),
+                When(status='coming_soon', then=2),
+                When(status='inactive', then=3),
+                default=4,
+                output_field=models.IntegerField(),
+            ),
+            held_tournaments_count=models.Count(
+                'tournament', filter=models.Q(tournament__end_date__lt=now)
+            ),
+            active_tournaments_count=models.Count(
+                'tournament', filter=models.Q(tournament__end_date__gte=now)
+            )
+        ).order_by('status_order')
 
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:
@@ -550,7 +600,41 @@ class UserTournamentHistoryView(generics.ListAPIView):
         for the currently authenticated user.
         """
         user = self.request.user
-        participant_queryset = Participant.objects.select_related("user")
-        return Tournament.objects.filter(participants=user).prefetch_related(
-            Prefetch("participant_set", queryset=participant_queryset), "teams", "game"
+        now = timezone.now()
+        game_queryset_with_counts = Game.objects.annotate(
+            held_tournaments_count=models.Count('tournament', filter=models.Q(tournament__end_date__lt=now)),
+            active_tournaments_count=models.Count('tournament', filter=models.Q(tournament__end_date__gte=now))
         )
+        participant_queryset = Participant.objects.select_related("user")
+        queryset = Tournament.objects.filter(participants=user).prefetch_related(
+            Prefetch("participant_set", queryset=participant_queryset),
+            "teams",
+            Prefetch("game", queryset=game_queryset_with_counts)
+        )
+
+        # Annotate spots_left
+        spots_left_annotation = models.Case(
+            models.When(
+                type='individual',
+                then=models.F('max_participants') - models.Count('participants', distinct=True)
+            ),
+            models.When(
+                type='team',
+                then=models.F('max_participants') - models.Count('teams', distinct=True)
+            ),
+            default=models.Value(None),
+            output_field=models.IntegerField()
+        )
+        queryset = queryset.annotate(spots_left=spots_left_annotation)
+
+        # Annotate user-specific fields
+        participant_info = Participant.objects.filter(
+            tournament=models.OuterRef('pk'),
+            user=user
+        )
+        queryset = queryset.annotate(
+            final_rank=models.Subquery(participant_info.values('rank')[:1]),
+            prize_won=models.Subquery(participant_info.values('prize')[:1])
+        )
+
+        return queryset

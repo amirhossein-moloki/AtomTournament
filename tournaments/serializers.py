@@ -47,20 +47,27 @@ class GameReadOnlySerializer(serializers.ModelSerializer):
 
     images = GameImageSerializer(many=True, read_only=True)
     tournaments_count = serializers.SerializerMethodField()
+    held_tournaments_count = serializers.IntegerField(read_only=True)
+    active_tournaments_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Game
-        fields = ("id", "name", "description", "images", "status", "tournaments_count")
+        fields = (
+            "id",
+            "name",
+            "description",
+            "images",
+            "status",
+            "tournaments_count",
+            "held_tournaments_count",
+            "active_tournaments_count",
+        )
         read_only_fields = fields
 
     def get_tournaments_count(self, obj):
-        now = timezone.now()
-        held_tournaments = obj.tournament_set.filter(end_date__lt=now).count()
-        active_tournaments = obj.tournament_set.filter(end_date__gte=now).count()
-
         return {
-            "held": held_tournaments,
-            "active": active_tournaments,
+            "held": obj.held_tournaments_count,
+            "active": obj.active_tournaments_count,
         }
 
 
@@ -113,9 +120,11 @@ class TournamentReadOnlySerializer(serializers.ModelSerializer):
     game = GameReadOnlySerializer(read_only=True)
     creator = UserReadOnlySerializer(read_only=True)
 
-    final_rank = serializers.SerializerMethodField()
-    prize_won = serializers.SerializerMethodField()
-    spots_left = serializers.SerializerMethodField()
+    final_rank = serializers.IntegerField(read_only=True, allow_null=True)
+    prize_won = serializers.DecimalField(
+        read_only=True, max_digits=10, decimal_places=2, allow_null=True
+    )
+    spots_left = serializers.IntegerField(read_only=True, allow_null=True)
 
     class Meta:
         model = Tournament
@@ -151,34 +160,6 @@ class TournamentReadOnlySerializer(serializers.ModelSerializer):
             "spots_left",
         )
         read_only_fields = fields
-
-    def get_spots_left(self, obj):
-        if obj.max_participants is None:
-            return None
-        if obj.type == "individual":
-            return obj.max_participants - obj.participants.count()
-        else:
-            return obj.max_participants - obj.teams.count()
-
-    def get_final_rank(self, obj):
-        request = self.context.get("request")
-        if not request or not request.user.is_authenticated:
-            return None
-
-        for p in obj.participant_set.all():
-            if p.user_id == request.user.id:
-                return p.rank
-        return None
-
-    def get_prize_won(self, obj):
-        request = self.context.get("request")
-        if not request or not request.user.is_authenticated:
-            return None
-
-        for p in obj.participant_set.all():
-            if p.user_id == request.user.id:
-                return p.prize
-        return None
 
     def to_representation(self, instance):
         """
