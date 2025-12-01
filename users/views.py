@@ -15,6 +15,9 @@ from rest_framework.permissions import (
     IsAuthenticatedOrReadOnly,
 )
 from rest_framework.response import Response
+import requests
+from django.shortcuts import redirect
+from urllib.parse import urlencode
 from rest_framework.views import APIView
 
 from tournaments.models import Participant, Tournament
@@ -34,14 +37,69 @@ from .serializers import (RoleSerializer,
                           TopPlayerByRankSerializer, TopPlayerSerializer,
                           UserCreateSerializer,
                           UserReadOnlySerializer, UserSerializer)
-from .services import (ApplicationError, send_otp_service,
-                       verify_otp_service)
+from .services import (ApplicationError, google_login_service,
+                       send_otp_service, verify_otp_service)
 from common.throttles import (
     VeryStrictThrottle,
     StrictThrottle,
     MediumThrottle,
     RelaxedThrottle,
 )
+
+
+class GoogleLoginRedirectView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        auth_url = "https://accounts.google.com/o/oauth2/v2/auth"
+        params = {
+            "client_id": settings.GOOGLE_CLIENT_ID,
+            "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+            "response_type": "code",
+            "scope": "openid email profile",
+            "access_type": "offline",
+        }
+        return redirect(f"{auth_url}?{urlencode(params)}")
+
+
+class GoogleLoginCallbackView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        code = request.GET.get("code")
+        if not code:
+            return Response({"error": "Code not provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        token_url = "https://oauth2.googleapis.com/token"
+        token_data = {
+            "code": code,
+            "client_id": settings.GOOGLE_CLIENT_ID,
+            "client_secret": settings.GOOGLE_CLIENT_SECRET,
+            "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+            "grant_type": "authorization_code",
+        }
+        token_response = requests.post(token_url, data=token_data)
+        token_json = token_response.json()
+
+        id_token_jwt = token_json.get("id_token")
+        if not id_token_jwt:
+            return Response({"error": "ID token not found in response"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = google_login_service(id_token=id_token_jwt)
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+
+            frontend_redirect_url = f"{settings.FRONTEND_URL}/auth/callback"
+            params = {
+                "access_token": access_token,
+                "refresh_token": str(refresh),
+            }
+            return redirect(f"{frontend_redirect_url}?{urlencode(params)}")
+
+        except ApplicationError as e:
+            error_url = f"{settings.FRONTEND_URL}/auth/error?message={str(e)}"
+            return redirect(error_url)
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):

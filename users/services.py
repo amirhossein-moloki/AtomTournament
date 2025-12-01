@@ -1,8 +1,11 @@
 import random
 import string
 
+from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
+from google.auth.transport import requests
+from google.oauth2 import id_token as google_id_token
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from notifications.tasks import send_email_notification, send_sms_notification
@@ -97,5 +100,39 @@ def verify_otp_service(identifier=None, code=None):
     if not is_email and not user.is_phone_verified:
         user.is_phone_verified = True
         user.save(update_fields=["is_phone_verified"])
+
+    return user
+
+
+def google_login_service(id_token=None):
+    """
+    Verifies the Google ID token and returns a user.
+    """
+    if not id_token:
+        raise ApplicationError("ID token is required.")
+
+    try:
+        id_info = google_id_token.verify_oauth2_token(
+            id_token, requests.Request(), settings.GOOGLE_CLIENT_ID
+        )
+    except ValueError:
+        raise ApplicationError("Invalid Google ID token.")
+
+    email = id_info.get("email")
+    if not email:
+        raise ApplicationError("Email not found in Google token.")
+
+    user, created = User.objects.get_or_create(
+        email=email,
+        defaults={
+            "username": email,
+            "first_name": id_info.get("given_name"),
+            "last_name": id_info.get("family_name"),
+        },
+    )
+
+    if created:
+        user.set_unusable_password()
+        user.save()
 
     return user

@@ -494,6 +494,11 @@ if "test" in sys.argv or "pytest" in sys.modules:
 SMSIR_API_KEY = os.environ.get("SMSIR_API_KEY")
 SMSIR_LINE_NUMBER = os.environ.get("SMSIR_LINE_NUMBER")
 
+# Google Login
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
+GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI")
+
 # Email Configuration
 EMAIL_BACKEND = os.environ.get(
     "EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend"
