@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from common.validators import validate_file
 from users.models import User
 from users.serializers import UserReadOnlySerializer
 
@@ -61,6 +62,10 @@ class AttachmentCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Attachment
         fields = ("file",)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["file"].validators.append(validate_file)
 
 
 class AttachmentSerializer(serializers.ModelSerializer):
