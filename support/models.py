@@ -16,7 +16,7 @@ class Ticket(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
     status = models.CharField(
-        max_length=20, choices=TICKET_STATUS_CHOICES, default="open"
+        max_length=20, choices=TICKET_STATUS_CHOICES, default="open", db_index=True
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
