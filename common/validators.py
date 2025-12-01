@@ -8,12 +8,14 @@ def validate_file(value):
     """
     filesize = value.size
     if filesize > 10 * 1024 * 1024:
-        raise ValidationError("حداکثر حجم فایل ۱۰ مگابایت است.")
+        raise ValidationError("حجم فایل شما بیشتر از ۱۰ مگابایت است. لطفا یک فایل کوچکتر آپلود کنید.")
 
-    allowed_extensions = ['.jpg', '.jpeg', '.png', '.mp4', '.mov']
-    ext = str(value).split('.')[-1]
-    if not any(ext.lower() == ext_allowed.replace('.', '') for ext_allowed in allowed_extensions):
-        raise ValidationError(f"فرمت فایل {ext} مجاز نیست.")
+    allowed_extensions = ['.jpg', '.jpeg', '.png', '.mp4', '.mov', '.webp', '.gif', '.heic', '.avif']
+    ext = str(value).split('.')[-1].lower()
+    if f".{ext}" not in allowed_extensions:
+        raise ValidationError(
+            f"فرمت فایل ‘.{ext}’ پشتیبانی نمی‌شود. لطفا یکی از فرمت‌های مجاز را امتحان کنید: {', '.join(allowed_extensions)}"
+        )
 
 
 def validate_sheba(value):

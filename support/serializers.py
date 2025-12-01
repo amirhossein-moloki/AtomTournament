@@ -12,7 +12,15 @@ class TicketAttachmentSerializer(serializers.ModelSerializer):
 class TicketMessageSerializer(serializers.ModelSerializer):
     attachments = TicketAttachmentSerializer(many=True, read_only=True)
     uploaded_files = serializers.ListField(
-        child=serializers.FileField(validators=[validate_file]), write_only=True, required=False
+        child=serializers.FileField(
+            validators=[validate_file],
+            error_messages={
+                "required": "ارسال حداقل یک فایل الزامی است.",
+                "invalid": "فایل ارسال شده نامعتبر است.",
+            },
+        ),
+        write_only=True,
+        required=False,
     )
 
     class Meta:
@@ -27,6 +35,29 @@ class TicketMessageSerializer(serializers.ModelSerializer):
             "uploaded_files",
         )
         read_only_fields = ("id", "user", "created_at", "ticket")
+        extra_kwargs = {
+            "message": {
+                "error_messages": {
+                    "blank": "متن پیام نمی‌تواند خالی باشد.",
+                    "required": "متن پیام الزامی است.",
+                }
+            }
+        }
+
+    def validate(self, data):
+        """
+        Check that either a message or an uploaded file is provided.
+        """
+        message = data.get("message")
+        uploaded_files = data.get("uploaded_files")
+
+        if not message and not uploaded_files:
+            raise serializers.ValidationError(
+                "شما باید یا یک پیام بنویسید یا حداقل یک فایل ارسال کنید."
+            )
+
+        return data
+
 
 class TicketSerializer(serializers.ModelSerializer):
     messages = TicketMessageSerializer(many=True, read_only=True)
