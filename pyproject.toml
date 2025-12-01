@@ -16,3 +16,64 @@ exclude = '''
   | migrations
 )/
 '''
+
+[tool.deptry]
+known_first_party = ["users", "tournaments", "wallet", "chat", "blog", "common", "support", "teams", "verification", "tournament_project"]
+exclude = [
+    "gunicorn",
+    "celery",
+    "psycopg2-binary",
+    "dj-database-url",
+    "python-dotenv",
+    "redis",
+    "daphne",
+    "whitenoise",
+    "boto3",
+    "django-storages",
+    "djoser",
+    "django-sslserver-v2",
+    "django_celery_results",
+    "shortuuid",
+    "scikit-learn",
+    "pillow-avif-plugin",
+    "brotli",
+    "pip-audit",
+    "requests",
+    "pyopenssl",
+    "fakeredis",
+    "coverage",
+    "factory-boy",
+    "Faker",
+    "black",
+    "flake8",
+    "pip-tools",
+    "smsir-python",
+]
+
+[tool.deptry.package_module_name_map]
+djangorestframework = ["rest_framework"]
+django-filter = ["django_filters"]
+django-phonenumber-field = ["phonenumber-field"]
+django-axes = ["axes"]
+drf-nested-routers = ["rest_framework_nested"]
+drf-spectacular = ["drf_spectacular"]
+pillow = ["PIL"]
+django-unfold = ["unfold"]
+django-guardian = ["guardian"]
+django-import-export = ["import_export"]
+django-simple-history = ["simple_history"]
+django-silk = ["silk"]
+django-select2 = ["django_select2"]
+django-tempus-dominus = ["tempus_dominus"]
+django-formtools = ["formtools"]
+django-jalali-date = ["jalali_date"]
+django-ckeditor-5 = ["ckeditor5", "django_ckeditor_5"]
+python-json-logger = ["pythonjsonlogger"]
+google-auth = ["google"]
+djoser = ["djoser", "rest_framework_simplejwt"]
+smsir-python = ["sms_ir"]
+python-dotenv = ["dotenv"]
+celery = ["kombu"]
+factory-boy = ["factory"]
+pillow-avif-plugin = ["pillow_avif"]
+channels = ["asgiref"]

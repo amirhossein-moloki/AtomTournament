@@ -4,17 +4,6 @@
 #
 #    pip-compile --output-file=requirements.txt requirements.in
 #
-aiohappyeyeballs==2.6.1
-    # via aiohttp
-aiohttp==3.12.15
-    # via
-    #   -r requirements.in
-    #   aiohttp-retry
-    #   twilio
-aiohttp-retry==2.9.1
-    # via twilio
-aiosignal==1.4.0
-    # via aiohttp
 amqp==5.3.1
     # via kombu
 asgiref==3.9.1
@@ -26,7 +15,6 @@ asgiref==3.9.1
     #   django-cors-headers
 attrs==25.3.0
     # via
-    #   aiohttp
     #   jsonschema
     #   referencing
     #   service-identity
@@ -203,10 +191,6 @@ filelock==3.20.0
     # via cachecontrol
 flake8==7.3.0
     # via -r requirements.in
-frozenlist==1.7.0
-    # via
-    #   aiohttp
-    #   aiosignal
 google-auth==2.43.0
     # via -r requirements.in
 gprof2dot==2025.4.14
@@ -222,7 +206,6 @@ idna==3.4
     #   hyperlink
     #   requests
     #   twisted
-    #   yarl
 incremental==24.7.2
     # via twisted
 inflection==0.5.1
@@ -255,10 +238,6 @@ mdurl==0.1.2
     # via markdown-it-py
 msgpack==1.1.2
     # via cachecontrol
-multidict==6.6.4
-    # via
-    #   aiohttp
-    #   yarl
 mypy-extensions==1.1.0
     # via black
 numpy==2.3.4
@@ -303,10 +282,6 @@ platformdirs==4.3.8
     #   pip-audit
 prompt-toolkit==3.0.51
     # via click-repl
-propcache==0.3.2
-    # via
-    #   aiohttp
-    #   yarl
 psycopg2-binary==2.9.10
     # via -r requirements.in
 py-serializable==2.1.0
@@ -332,7 +307,6 @@ pyjwt==2.10.1
     # via
     #   djangorestframework-simplejwt
     #   social-auth-core
-    #   twilio
 pyopenssl==24.3.0
     # via
     #   -r requirements.in
@@ -371,7 +345,6 @@ requests==2.31.0
     #   pip-audit
     #   requests-oauthlib
     #   social-auth-core
-    #   twilio
 requests-oauthlib==2.0.0
     # via social-auth-core
 rich==14.2.0
@@ -418,15 +391,12 @@ threadpoolctl==3.6.0
     # via scikit-learn
 toml==0.10.2
     # via pip-audit
-twilio==9.7.0
-    # via -r requirements.in
 twisted[tls]==25.5.0
     # via daphne
 txaio==25.6.1
     # via autobahn
 typing-extensions==4.8.0
     # via
-    #   aiosignal
     #   beautifulsoup4
     #   referencing
     #   twisted
@@ -451,8 +421,6 @@ wheel==0.45.1
     # via pip-tools
 whitenoise==6.11.0
     # via -r requirements.in
-yarl==1.20.1
-    # via aiohttp
 zope-interface==7.2
     # via twisted
 
