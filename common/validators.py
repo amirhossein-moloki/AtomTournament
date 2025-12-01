@@ -10,7 +10,7 @@ def validate_file(value):
     if filesize > 10 * 1024 * 1024:
         raise ValidationError("حداکثر حجم فایل ۱۰ مگابایت است.")
 
-    allowed_extensions = ['.jpg', '.jpeg', '.png', '.mp4', '.mov']
+    allowed_extensions = ['.jpg', '.jpeg', '.png', '.mp4', '.mov', '.webp', '.gif', '.heic', '.avif']
     ext = str(value).split('.')[-1]
     if not any(ext.lower() == ext_allowed.replace('.', '') for ext_allowed in allowed_extensions):
         raise ValidationError(f"فرمت فایل {ext} مجاز نیست.")

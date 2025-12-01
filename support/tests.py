@@ -55,3 +55,24 @@ class TicketAPITest(TestCase):
         self.assertIsNotNone(attachment.file)
         # The file should be converted to .avif
         self.assertTrue(attachment.file.name.endswith(".avif"))
+
+    def test_create_ticket_message_with_webp_attachment(self):
+        self.client.force_authenticate(user=self.user)
+        ticket = Ticket.objects.create(user=self.user, title="Test Ticket")
+        image_file = self._create_image(filename="test.webp", image_format="WEBP")
+        data = {
+            "message": "Here is a webp file.",
+            "uploaded_files": [image_file],
+        }
+        response = self.client.post(
+            f"/api/support/tickets/{ticket.id}/messages/", data, format="multipart"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(TicketMessage.objects.count(), 1)
+        self.assertEqual(TicketAttachment.objects.count(), 1)
+
+        attachment = TicketAttachment.objects.first()
+        self.assertIsNotNone(attachment.file)
+        # The OptimizedFileField converts images, so we check for the output format
+        self.assertTrue(attachment.file.name.endswith(".avif"))
