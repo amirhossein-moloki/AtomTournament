@@ -1,7 +1,18 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Prefetch, Case, When
+from django.db.models import (
+    Case,
+    CharField,
+    F,
+    OuterRef,
+    Prefetch,
+    Q,
+    Subquery,
+    Value,
+    When,
+)
+from django.db.models.functions import Coalesce, Concat, NullIf
 from django.http import FileResponse, Http404
 from django.utils import timezone
 from django.utils.decorators import method_decorator
@@ -16,6 +27,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from notifications.tasks import send_tournament_credentials
+from teams.models import Team
 from teams.serializers import TeamSerializer
 from wallet.models import Transaction
 
@@ -63,10 +75,46 @@ class TournamentParticipantListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
+        """
+        Optimized queryset to fetch participant data including the correct
+        display picture URL in a single query.
+        """
         tournament_id = self.kwargs["pk"]
-        return Participant.objects.filter(tournament_id=tournament_id).select_related(
-            "user"
+
+        # Subquery to get the team picture URL for a participant's user
+        # in the context of the participant's tournament.
+        team_picture_subquery = Team.objects.filter(
+            members=OuterRef("user_id"), tournaments=OuterRef("tournament_id")
+        ).values("team_picture")[:1]
+
+        # Expression to get the user's profile picture path,
+        # replacing empty string with null.
+        user_profile_picture = NullIf(F("user__profile_picture"), Value(""))
+
+        # Expression to get the team picture path from the subquery,
+        # replacing empty string with null.
+        team_picture = NullIf(
+            Subquery(team_picture_subquery, output_field=CharField()), Value("")
         )
+
+        queryset = (
+            Participant.objects.filter(tournament_id=tournament_id)
+            .select_related("user", "tournament")
+            .annotate(
+                display_picture_url=Case(
+                    When(
+                        tournament__type="team",
+                        then=Coalesce(
+                            Concat(Value(settings.MEDIA_URL), team_picture),
+                            Concat(Value(settings.MEDIA_URL), user_profile_picture),
+                        ),
+                    ),
+                    default=Concat(Value(settings.MEDIA_URL), user_profile_picture),
+                    output_field=CharField(),
+                )
+            )
+        )
+        return queryset
 
 
 class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
@@ -95,11 +143,36 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
             held_tournaments_count=models.Count('tournament', filter=models.Q(tournament__end_date__lt=now)),
             active_tournaments_count=models.Count('tournament', filter=models.Q(tournament__end_date__gte=now))
         )
-        participant_queryset = Participant.objects.select_related("user")
-        queryset = Tournament.objects.prefetch_related(
-            Prefetch("participant_set", queryset=participant_queryset),
-            "teams",
-            Prefetch("game", queryset=game_queryset_with_counts)
+        team_picture_subquery = Team.objects.filter(
+            members=OuterRef("user_id"), tournaments=OuterRef("tournament_id")
+        ).values("team_picture")[:1]
+        user_profile_picture = NullIf(F("user__profile_picture"), Value(""))
+        team_picture = NullIf(
+            Subquery(team_picture_subquery, output_field=CharField()), Value("")
+        )
+        participant_queryset = Participant.objects.select_related(
+            "user", "tournament"
+        ).annotate(
+            display_picture_url=Case(
+                When(
+                    tournament__type="team",
+                    then=Coalesce(
+                        Concat(Value(settings.MEDIA_URL), team_picture),
+                        Concat(Value(settings.MEDIA_URL), user_profile_picture),
+                    ),
+                ),
+                default=Concat(Value(settings.MEDIA_URL), user_profile_picture),
+                output_field=CharField(),
+            )
+        )
+
+        queryset = (
+            Tournament.objects.select_related("image", "color", "creator")
+            .prefetch_related(
+                Prefetch("participant_set", queryset=participant_queryset),
+                "teams",
+                Prefetch("game", queryset=game_queryset_with_counts),
+            )
         )
 
         # Annotate spots_left

@@ -290,11 +290,11 @@ class ParticipantSerializer(serializers.ModelSerializer):
     """Serializer for the Participant model."""
 
     username = serializers.CharField(source="user.username", read_only=True)
-    display_picture = serializers.SerializerMethodField()
+    display_picture = serializers.CharField(source="display_picture_url", read_only=True)
 
     class Meta:
         model = Participant
-        fields = [
+        fields = (
             "user",
             "tournament",
             "username",
@@ -302,14 +302,7 @@ class ParticipantSerializer(serializers.ModelSerializer):
             "rank",
             "prize",
             "display_picture",
-        ]
-
-    def get_display_picture(self, obj):
-        if obj.tournament.type == "team":
-            team = obj.user.teams.filter(tournaments=obj.tournament).first()
-            if team and team.team_picture:
-                return team.team_picture.url
-        return obj.user.profile_picture.url if obj.user.profile_picture else None
+        )
 
 
 class ReportSerializer(serializers.ModelSerializer):
