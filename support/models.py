@@ -32,7 +32,7 @@ class TicketMessage(models.Model):
         Ticket, on_delete=models.CASCADE, related_name="messages"
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    message = models.TextField()
+    message = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
