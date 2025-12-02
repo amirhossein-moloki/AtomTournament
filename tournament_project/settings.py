@@ -20,8 +20,6 @@ import dj_database_url
 from dotenv import load_dotenv
 from kombu import Exchange, Queue
 
-load_dotenv()
-
 # if sys.platform.startswith("win32"):
 #     locale.setlocale(locale.LC_ALL, "Persian_Iran.UTF-8")
 # else:
@@ -29,6 +27,8 @@ load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(BASE_DIR / ".env")
 
 # Create logs directory if it doesn't exist
 LOGS_DIR = BASE_DIR / "logs"
@@ -48,7 +48,7 @@ DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "t")
 DOMAIN = os.environ.get("DOMAIN", "localhost")
 SITE_NAME = os.environ.get("SITE_NAME", "Tournament Platform")
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
-GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
 
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", f"localhost,127.0.0.1,{DOMAIN}").split(",")
 
