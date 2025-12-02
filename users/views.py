@@ -331,6 +331,12 @@ class GoogleLoginView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
+            if not settings.GOOGLE_CLIENT_ID:
+                return Response(
+                    {"error": "Google OAuth is not configured on the server."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
             # Verify the token
             id_info = id_token.verify_oauth2_token(
                 token,
