@@ -198,9 +198,32 @@ server {
     }
 
     #####################################
-    # Django - Non-Cached (API & Admin)
+    # Django - Admin
     #####################################
-    location ~ ^/(api|admin|select2|blog) {
+    location /admin/ {
+        limit_req zone=api_limit burst=20 nodelay;
+
+        # Override security headers for API to be less restrictive
+        add_header X-Frame-Options "ALLOWALL" always;
+        add_header Referrer-Policy "no-referrer-when-downgrade" always;
+        add_header Cross-Origin-Opener-Policy "unsafe-none" always;
+
+        # CSP شل‌تر برای Django (برای اینکه ادمین و باندل‌ها گیر نکنن)
+        add_header Content-Security-Policy "default-src 'self' data: blob:; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com;" always;
+
+        proxy_pass http://django_server;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
+    #####################################
+    # Django - Non-Cached API
+    #####################################
+    location ~ ^/(api|select2|blog) {
         limit_req zone=api_limit burst=20 nodelay;
 
         # Override security headers for API to be less restrictive
