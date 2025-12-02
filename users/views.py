@@ -125,9 +125,9 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def get_throttles(self):
-        if self.action in ['send_otp', 'verify_otp']:
+        if self.action in ['send_otp']:
             self.throttle_classes = [VeryStrictThrottle]
-        elif self.action in ['create', 'update', 'partial_update', 'destroy']:
+        elif self.action in ['verify_otp', 'create', 'update', 'partial_update', 'destroy']:
             self.throttle_classes = [StrictThrottle]
         elif self.action in ['list', 'retrieve']:
             self.throttle_classes = [MediumThrottle]
