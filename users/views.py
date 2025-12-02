@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -9,6 +11,7 @@ from django.views.decorators.vary import vary_on_headers
 from django_filters.rest_framework import DjangoFilterBackend
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
+from google.auth import exceptions as google_exceptions
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import (
@@ -44,6 +47,8 @@ from common.throttles import (
     MediumThrottle,
     RelaxedThrottle,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -323,61 +328,59 @@ class GoogleLoginView(APIView):
     throttle_classes = [VeryStrictThrottle]
 
     def post(self, request):
+        token = request.data.get("id_token")
+        if not token:
+            return Response(
+                {"error": "ID token is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not settings.GOOGLE_CLIENT_ID:
+            logger.error("Google OAuth client ID is not configured")
+            return Response(
+                {"error": "Google OAuth is not configured on the server."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
         try:
-            token = request.data.get("id_token")
-            if not token:
-                return Response(
-                    {"error": "ID token is required."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            if not settings.GOOGLE_CLIENT_ID:
-                return Response(
-                    {"error": "Google OAuth is not configured on the server."},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                )
-
-            # Verify the token
             id_info = id_token.verify_oauth2_token(
                 token,
                 google_requests.Request(),
-                settings.GOOGLE_CLIENT_ID
+                settings.GOOGLE_CLIENT_ID,
             )
-
-            email = id_info.get("email")
-            if not email:
-                return Response(
-                    {"error": "Email not found in token."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Check if user exists
-            try:
-                user = User.objects.get(email=email)
-            except User.DoesNotExist:
-                return Response(
-                    {"error": "User with this email does not exist."},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-
-            # Generate tokens for the user
-            refresh = RefreshToken.for_user(user)
+        except ValueError as exc:
+            logger.warning("Invalid Google ID token: %s", exc)
             return Response(
-                {
-                    "refresh": str(refresh),
-                    "access": str(refresh.access_token),
-                }
+                {"error": f"Invalid token: {exc}"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-
-        except ValueError as e:
-            # Invalid token
+        except google_exceptions.TransportError as exc:
+            logger.error("Failed to verify Google token with Google services: %s", exc)
             return Response(
-                {"error": f"Invalid token: {e}"},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Unable to verify token with Google at this time."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except Exception as e:
-            # In a real-world scenario, you would log the error `e` here
+        except Exception:
+            logger.exception("Unexpected error during Google login")
             return Response(
                 {"error": "An unexpected error occurred. Please try again later."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+        email = id_info.get("email")
+        if not email:
+            return Response(
+                {"error": "Email not found in token."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "User with this email does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        refresh = RefreshToken.for_user(user)
+        return Response({"refresh": str(refresh), "access": str(refresh.access_token)})
