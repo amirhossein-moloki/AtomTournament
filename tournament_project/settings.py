@@ -435,7 +435,15 @@ CORS_ALLOWED_ORIGINS = [
     origin for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if origin
 ]
 
-CORS_ALLOW_ALL_ORIGINS = False
+if DEBUG:
+    CORS_ALLOWED_ORIGINS.extend(
+        [
+            "http://127.0.0.1:5501",
+            "http://localhost:5501",
+        ]
+    )
+
+CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "False").lower() in ("true", "1", "t")
 ZIBAL_PAYMENT_SUCCESS_URL = "https://atom-game.ir/payment/success.html"
 ZIBAL_PAYMENT_FAILED_URL = "https://atom-game.ir/payment/failed.html"
 
