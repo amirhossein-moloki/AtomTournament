@@ -21,6 +21,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
@@ -36,7 +37,8 @@ from .api_mixins import DynamicFieldsMixin
 from .filters import TournamentFilter
 from .models import (Game, Match, Participant, Report, Scoring, Tournament,
                      TournamentColor, TournamentImage, WinnerSubmission)
-from .permissions import IsGameManagerOrAdmin, IsTournamentCreatorOrAdmin
+from .permissions import (IsGameManagerOrAdmin, IsTournamentCreatorOrAdmin,
+                          IsMatchParticipant)
 from .serializers import (GameCreateUpdateSerializer, GameReadOnlySerializer,
                           MatchCreateSerializer, MatchReadOnlySerializer,
                           MatchUpdateSerializer, ParticipantSerializer,
@@ -291,6 +293,7 @@ class MatchViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing matches.
     """
+    parser_classes = (MultiPartParser, FormParser)
 
     queryset = Match.objects.all().select_related(
         "tournament",
@@ -314,6 +317,8 @@ class MatchViewSet(viewsets.ModelViewSet):
             return [AllowAny()]
         if self.action in ["create", "destroy"]:
             return [IsAdminUser()]
+        if self.action in ["update", "partial_update"]:
+            return [IsMatchParticipant()]
         return [IsAuthenticated()]
 
     def get_throttles(self):
@@ -364,7 +369,6 @@ class MatchViewSet(viewsets.ModelViewSet):
             return Response({"message": "Match result disputed successfully."})
         except (PermissionDenied, ValidationError) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
 
 class GameViewSet(viewsets.ModelViewSet):
     """
