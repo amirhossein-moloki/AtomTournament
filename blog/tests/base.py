@@ -1,27 +1,23 @@
-from django.db.models.signals import post_save
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from blog.factories import UserFactory
-from blog.models import AuthorProfile, Media
-from blog.signals import queue_media_image_processing
+from blog.models import AuthorProfile
 
 
 class BaseAPITestCase(APITestCase):
     def setUp(self):
         super().setUp()
-
-        # Disconnect the signal to prevent automatic AVIF conversion in unrelated tests
-        post_save.disconnect(queue_media_image_processing, sender=Media)
-
         self.user = UserFactory()
-        self.author_profile = AuthorProfile.objects.get(user=self.user)
+        self.author_profile, _ = AuthorProfile.objects.get_or_create(
+            user=self.user, defaults={'display_name': self.user.username}
+        )
         self.staff_user = UserFactory(is_staff=True)
-        self.staff_author_profile = AuthorProfile.objects.get(user=self.staff_user)
+        self.staff_author_profile, _ = AuthorProfile.objects.get_or_create(
+            user=self.staff_user, defaults={'display_name': self.staff_user.username}
+        )
 
     def tearDown(self):
-        # Reconnect the signal to ensure it's available for other tests
-        post_save.connect(queue_media_image_processing, sender=Media)
         super().tearDown()
 
     def _get_jwt_token(self, user):

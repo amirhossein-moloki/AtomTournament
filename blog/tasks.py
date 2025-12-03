@@ -19,61 +19,6 @@ def increment_post_view_count(post_id):
         logger.error(f"Error incrementing view count for Post ID {post_id}: {e}")
 
 
-from common.utils.files import get_sanitized_filename
-from common.utils.images import convert_image_to_avif
-from django.core.files.storage import default_storage
-from .models import Media
-
-@shared_task
-def convert_media_image_to_avif_task(media_id):
-    """
-    Celery task to process an uploaded image, convert it to AVIF,
-    update the Media model, and delete the original file.
-    """
-    logger.info(f"Starting image processing for Media ID: {media_id}")
-    try:
-        media = Media.objects.get(id=media_id)
-
-        # Ensure it's an image and not already processed
-        if "image" not in media.mime or media.storage_key.lower().endswith(".avif"):
-            logger.warning(f"Skipping processing for Media ID: {media_id}. Not an image or already AVIF.")
-            return
-
-        original_storage_key = media.storage_key
-
-        try:
-            # Open the original file from storage
-            with default_storage.open(original_storage_key, 'rb') as image_file:
-                # Convert the image to AVIF
-                avif_file = convert_image_to_avif(image_file, quality=55, speed=5)
-
-            # Save the new AVIF file to storage
-            sanitized_name = get_sanitized_filename(avif_file.name)
-            new_storage_key = default_storage.save(sanitized_name, avif_file)
-
-            # Update the media object with the new file details
-            media.storage_key = new_storage_key
-            media.url = default_storage.url(new_storage_key)
-            media.mime = 'image/avif'
-            media.size_bytes = avif_file.size
-            media.title = sanitized_name # Update title to reflect the new file name
-            media.save()
-
-            # Delete the original file from storage
-            default_storage.delete(original_storage_key)
-
-            logger.info(f"Successfully converted Media ID {media_id} to AVIF. New key: {new_storage_key}")
-
-        except Exception as e:
-            logger.error(f"Error converting image to AVIF for Media ID {media_id}: {e}", exc_info=True)
-            # Optional: handle cleanup of the new file if it was created before the error
-            if 'new_storage_key' in locals() and default_storage.exists(new_storage_key):
-                default_storage.delete(new_storage_key)
-
-    except Media.DoesNotExist:
-        logger.error(f"Media with ID {media_id} not found for processing.")
-
-
 @shared_task
 def notify_author_on_new_comment(comment_id):
     """

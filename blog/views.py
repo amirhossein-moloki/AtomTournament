@@ -215,6 +215,17 @@ class MediaViewSet(viewsets.ModelViewSet):
         title = uploaded_file.name if uploaded_file else 'default_title'
         serializer.save(uploaded_by=self.request.user, title=title)
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        # After creating, serialize with the detail serializer
+        detail_serializer = MediaDetailSerializer(serializer.instance)
+        headers = self.get_success_headers(detail_serializer.data)
+
+        return Response(detail_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
 
 class AuthorProfileViewSet(viewsets.ModelViewSet):
     queryset = AuthorProfile.objects.all()

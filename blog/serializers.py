@@ -3,6 +3,9 @@ from django.contrib.auth import get_user_model
 from django.core.files.storage import default_storage
 from markdownify import markdownify as html_to_markdown
 
+from PIL import Image
+
+from common.utils.images import convert_image_to_avif
 from common.validators import validate_file
 from common.utils.files import get_sanitized_filename
 from .models import (
@@ -54,7 +57,17 @@ class MediaCreateSerializer(serializers.ModelSerializer):
         fields = ('file', 'alt_text', 'title')
 
     def create(self, validated_data):
-        uploaded_file = validated_data.pop('file')
+        original_file = validated_data.pop('file')
+        original_content_type = original_file.content_type
+        is_image = 'image' in original_content_type
+
+        if is_image:
+            uploaded_file = convert_image_to_avif(original_file)
+            validated_data['mime'] = 'image/avif'
+        else:
+            uploaded_file = original_file
+            validated_data['mime'] = original_content_type
+
 
         # Sanitize the filename before saving
         sanitized_name = get_sanitized_filename(uploaded_file.name)
@@ -68,13 +81,19 @@ class MediaCreateSerializer(serializers.ModelSerializer):
         # Populate model fields
         validated_data['storage_key'] = storage_key
         validated_data['url'] = file_url
-        validated_data['mime'] = uploaded_file.content_type
         validated_data['size_bytes'] = uploaded_file.size
 
-        # Determine the 'type' based on the mime type
-        if 'image' in validated_data['mime']:
+        if is_image:
             validated_data['type'] = 'image'
-        elif 'video' in validated_data['mime']:
+            try:
+                uploaded_file.seek(0)
+                with Image.open(uploaded_file) as img:
+                    validated_data['width'] = img.width
+                    validated_data['height'] = img.height
+            except Exception:
+                validated_data['width'] = None
+                validated_data['height'] = None
+        elif 'video' in original_content_type:
             validated_data['type'] = 'video'
         else:
             validated_data['type'] = 'file'
