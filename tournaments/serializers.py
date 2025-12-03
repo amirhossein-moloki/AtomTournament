@@ -20,10 +20,11 @@ class GameImageSerializer(serializers.ModelSerializer):
 
 class TournamentImageSerializer(serializers.ModelSerializer):
     """Serializer for the TournamentImage model."""
+    url = serializers.ImageField(source='image', read_only=True)
 
     class Meta:
         model = TournamentImage
-        fields = ("id", "name", "image")
+        fields = ("id", "name", "image", "url")
 
 
 class TournamentColorSerializer(serializers.ModelSerializer):
