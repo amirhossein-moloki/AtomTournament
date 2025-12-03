@@ -405,7 +405,7 @@ class TournamentViewSetTests(APITestCase):
         )
         self.client.force_authenticate(user=self.user)
         # Add status=all to include finished tournaments for ordering test
-        response = self.client.get(f"{self.tournaments_url}tournaments/?status=all")
+        response = self.client.get(f"{self.tournaments_url}tournaments/?status=all&ordering=start_date")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 3)  # 1 from setup, 2 from this test
         self.assertEqual(len(response.data["results"]), 3)

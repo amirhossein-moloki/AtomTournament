@@ -18,6 +18,7 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import OrderingFilter
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
@@ -125,7 +126,8 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
     """
 
     queryset = Tournament.objects.all()
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    ordering_fields = ['start_date', 'prize_pool', 'entry_fee']
     filterset_class = TournamentFilter
     pagination_class = StandardResultsSetPagination
 
@@ -209,7 +211,7 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
                 prize_won=models.Value(None, output_field=models.DecimalField())
             )
 
-        return queryset.order_by("start_date")
+        return queryset
 
     def get_permissions(self):
         if self.action in ["list", "retrieve"]:
