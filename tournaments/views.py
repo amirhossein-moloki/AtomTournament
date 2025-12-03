@@ -12,7 +12,7 @@ from django.db.models import (
     Value,
     When,
 )
-from django.db.models.functions import Coalesce, Concat, NullIf
+from django.db.models.functions import Cast, Coalesce, Concat, NullIf
 from django.http import FileResponse, Http404
 from django.utils import timezone
 from django.utils.decorators import method_decorator
@@ -92,7 +92,9 @@ class TournamentParticipantListView(generics.ListAPIView):
 
         # Expression to get the user's profile picture path,
         # replacing empty string with null.
-        user_profile_picture = NullIf(F("user__profile_picture"), Value(""))
+        user_profile_picture = NullIf(
+            Cast("user__profile_picture", CharField()), Value("")
+        )
 
         # Expression to get the team picture path from the subquery,
         # replacing empty string with null.
@@ -150,7 +152,9 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
         team_picture_subquery = Team.objects.filter(
             members=OuterRef("user_id"), tournaments=OuterRef("tournament_id")
         ).values("team_picture")[:1]
-        user_profile_picture = NullIf(F("user__profile_picture"), Value(""))
+        user_profile_picture = NullIf(
+            Cast("user__profile_picture", CharField()), Value("")
+        )
         team_picture = NullIf(
             Subquery(team_picture_subquery, output_field=CharField()), Value("")
         )
