@@ -9,6 +9,8 @@ from .views import (
     download_media
 )
 
+app_name = 'blog'
+
 router = DefaultRouter()
 router.register(r'authors', AuthorProfileViewSet)
 router.register(r'categories', CategoryViewSet)

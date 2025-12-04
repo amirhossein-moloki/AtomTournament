@@ -136,7 +136,7 @@ class CategorySerializer(serializers.ModelSerializer):
 class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
-        fields = ('slug', 'name')
+        fields = ('id', 'slug', 'name')
 
 
 class SeriesSerializer(serializers.ModelSerializer):
