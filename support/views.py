@@ -3,7 +3,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 
-from users.permissions import IsAdminUser
+from users.permissions import IsAdminUser, IsOwnerOrAdmin
 
 from .models import SupportAssignment, Ticket, TicketAttachment, TicketMessage
 from .serializers import (SupportAssignmentSerializer, TicketMessageSerializer,
@@ -13,7 +13,7 @@ from .serializers import (SupportAssignmentSerializer, TicketMessageSerializer,
 class TicketViewSet(viewsets.ModelViewSet):
     queryset = Ticket.objects.all()
     serializer_class = TicketSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
 
     def get_queryset(self):
         queryset = (
@@ -30,7 +30,7 @@ class TicketViewSet(viewsets.ModelViewSet):
 class TicketMessageViewSet(viewsets.ModelViewSet):
     queryset = TicketMessage.objects.all()
     serializer_class = TicketMessageSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
     parser_classes = [MultiPartParser, FormParser]
 
     def get_queryset(self):

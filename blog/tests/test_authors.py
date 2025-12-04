@@ -30,6 +30,19 @@ class AuthorProfileAPITest(BaseAPITestCase):
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_admin_can_update_other_author_profile(self):
+        """
+        Ensures an admin user can update another user's author profile.
+        """
+        self._authenticate_as_staff()
+        # Try to update the normal user's profile
+        url = reverse('authorprofile-detail', kwargs={'pk': self.author_profile.pk})
+        data = {'display_name': 'Admin Was Here'}
+        response = self.client.patch(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.author_profile.refresh_from_db()
+        self.assertEqual(self.author_profile.display_name, 'Admin Was Here')
+
     def test_list_author_profiles(self):
         """
         Ensures we can list author profiles.

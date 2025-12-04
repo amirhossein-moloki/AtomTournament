@@ -29,7 +29,7 @@ from wallet.models import Transaction
 from wallet.serializers import TransactionSerializer
 from teams.models import Team
 from .models import Role, User
-from .permissions import (IsAdminUser, IsOwnerOrReadOnly)
+from .permissions import (IsAdminUser, IsOwnerOrAdmin, IsOwnerOrReadOnly)
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
@@ -93,7 +93,7 @@ class UserViewSet(viewsets.ModelViewSet):
         .prefetch_related("in_game_ids")
         .select_related("verification", "rank")
     )
-    permission_classes = [IsOwnerOrReadOnly]
+    permission_classes = [IsAdminUser]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["username", "email"]
 
@@ -106,10 +106,12 @@ class UserViewSet(viewsets.ModelViewSet):
         return UserSerializer  # For update, partial_update, etc.
 
     def get_permissions(self):
-        if self.action in ["send_otp", "verify_otp"]:
+        if self.action in ["send_otp", "verify_otp", "create"]:
             return [AllowAny()]
         if self.action in ["list", "retrieve"]:
             return [IsAuthenticatedOrReadOnly()]
+        if self.action in ["update", "partial_update", "destroy", "tournaments"]:
+            return [IsOwnerOrAdmin()]
         return super().get_permissions()
 
     @action(detail=True, methods=["get"])

@@ -131,6 +131,20 @@ class PostAPITest(BaseAPITestCase):
         post.refresh_from_db()
         self.assertEqual(post.title, 'Updated Title')
 
+    def test_admin_can_update_other_users_post(self):
+        """
+        Ensures an admin can update a post they do not own.
+        """
+        self._authenticate_as_staff()
+        # self.user is the non-staff user, self.author_profile is their profile
+        post = PostFactory(author=self.author_profile)
+        url = reverse('post-detail', kwargs={'slug': post.slug})
+        data = {'title': 'Admin Edited Title'}
+        response = self.client.patch(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        post.refresh_from_db()
+        self.assertEqual(post.title, 'Admin Edited Title')
+
     def test_delete_post(self):
         self._authenticate_as_staff()
         post = PostFactory(author=self.staff_author_profile)
