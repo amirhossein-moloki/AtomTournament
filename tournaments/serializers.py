@@ -255,6 +255,15 @@ class MatchUpdateSerializer(serializers.ModelSerializer):
         fields = ("result_proof",)
 
 
+class MatchSubmitResultSerializer(serializers.Serializer):
+    """Serializer for submitting a match result."""
+    winner_id = serializers.IntegerField(required=True)
+    result_proof = serializers.ImageField(
+        required=True,
+        validators=[validate_file],
+    )
+
+
 class MatchReadOnlySerializer(serializers.ModelSerializer):
     """Serializer for reading match data."""
 
@@ -279,6 +288,8 @@ class MatchReadOnlySerializer(serializers.ModelSerializer):
             "winner_user",
             "winner_team",
             "result_proof",
+            "status",
+            "result_submitted_by",
             "is_confirmed",
             "is_disputed",
             "dispute_reason",
