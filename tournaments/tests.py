@@ -414,6 +414,37 @@ class TournamentViewSetTests(APITestCase):
         self.assertEqual(response.data["results"][1]["name"], "Test Tournament")
         self.assertEqual(response.data["results"][2]["name"], "Future Tournament")
 
+    def test_join_full_individual_tournament_fails(self):
+        """
+        Test that a user cannot join an individual tournament that is already full.
+        """
+        full_tournament = Tournament.objects.create(
+            name="Full Tournament",
+            game=self.game,
+            start_date=timezone.now() + timedelta(days=1),
+            end_date=timezone.now() + timedelta(days=2),
+            type="individual",
+            max_participants=1,
+        )
+        # First user joins successfully
+        first_user = User.objects.create_user(
+            username="firstuser", password="password", phone_number="+555"
+        )
+        Verification.objects.create(user=first_user, level=2)
+        self.client.force_authenticate(user=first_user)
+        response = self.client.post(
+            f"{self.tournaments_url}tournaments/{full_tournament.id}/join/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Second user tries to join, which should fail
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(
+            f"{self.tournaments_url}tournaments/{full_tournament.id}/join/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["error"], "This tournament is full.")
+
 
 class MatchViewSetTests(APITestCase):
     def setUp(self):
@@ -926,8 +957,8 @@ class WinnerSubmissionViewSetTests(APITestCase):
             "tournament": team_tournament.id,
             "video": self._generate_dummy_image("video.mp4"),
         }
-        with self.assertRaises(ValidationError):
-            self.client.post(self.submissions_url, data, format="multipart")
+        response = self.client.post(self.submissions_url, data, format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(
             WinnerSubmission.objects.filter(
                 winner=outsider, tournament=team_tournament
