@@ -13,7 +13,7 @@ class CommentAPITest(BaseAPITestCase):
     def test_create_comment(self, mock_task):
         self._authenticate()
         post = PostFactory()
-        url = reverse('comment-list')
+        url = reverse('blog:comment-list')
         data = {
             'post': post.pk,
             'author_name': 'Test User',
@@ -30,7 +30,7 @@ class CommentAPITest(BaseAPITestCase):
     def test_create_nested_comment(self, mock_task):
         self._authenticate()
         parent_comment = CommentFactory()
-        url = reverse('comment-list')
+        url = reverse('blog:comment-list')
         data = {
             'post': parent_comment.post.pk,
             'parent': parent_comment.pk,
@@ -46,7 +46,7 @@ class CommentAPITest(BaseAPITestCase):
         self._authenticate()
         post = PostFactory()
         CommentFactory.create_batch(3, post=post)
-        url = reverse('comment-list') + f'?post={post.pk}'
+        url = reverse('blog:comment-list') + f'?post={post.pk}'
         response = self.client.get(url, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 3)

@@ -68,7 +68,7 @@ urlpatterns = [
     path("api/reporting/", include("reporting.urls")),
     path("api/management/", include("management_dashboard.urls")),
     path("api/atomgamebot/", include("atomgamebot.urls")),
-    path("api/blog/", include("blog.urls")),
+    path("api/blog/", include("blog.urls", namespace="blog")),
     path("blog/", include("blog.ssr_urls")),
     path("blog/upload/", ckeditor_upload_view, name="ckeditor_upload"),
 ]

@@ -46,7 +46,7 @@ class MediaAPITest(TestCase):
         image_file = self._create_dummy_image(name="test_upload.jpg")
 
         # Upload the image via API
-        response = self.client.post(reverse('media-list'), {'file': image_file}, format='multipart')
+        response = self.client.post(reverse('blog:media-list'), {'file': image_file}, format='multipart')
 
         # Assert successful creation and response structure
         self.assertEqual(response.status_code, 201, f"API returned errors: {response.content.decode()}")

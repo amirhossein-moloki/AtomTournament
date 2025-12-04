@@ -13,7 +13,7 @@ class PostAPITest(BaseAPITestCase):
         self._authenticate_as_staff()
         category = CategoryFactory()
         tags = TagFactory.create_batch(2)
-        url = reverse('post-list-create')
+        url = reverse('blog:post-list-create')
         data = {
             'title': 'New Post',
             'slug': 'new-post',
@@ -34,14 +34,14 @@ class PostAPITest(BaseAPITestCase):
 
     def test_list_posts(self):
         PostFactory.create_batch(3)
-        url = reverse('post-list-create')
+        url = reverse('blog:post-list-create')
         response = self.client.get(url, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 3)
 
     def test_post_pagination(self):
         PostFactory.create_batch(15)
-        url = reverse('post-list-create')
+        url = reverse('blog:post-list-create')
         response = self.client.get(url, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 10)
@@ -56,7 +56,7 @@ class PostAPITest(BaseAPITestCase):
 
         PostFactory(series=series, visibility='private', category=category, tags=[tag1])
         PostFactory.create_batch(2, visibility='public', tags=[tag2])
-        url = reverse('post-list-create')
+        url = reverse('blog:post-list-create')
 
         # Filter by series
         response = self.client.get(url, {'series': series.pk}, format='json')
@@ -85,7 +85,7 @@ class PostAPITest(BaseAPITestCase):
     def test_post_date_filtering(self):
         PostFactory(published_at=timezone.now() - timedelta(days=5))
         PostFactory(published_at=timezone.now() - timedelta(days=15))
-        url = reverse('post-list-create')
+        url = reverse('blog:post-list-create')
 
         # Filter by published_after
         after_date = (timezone.now() - timedelta(days=10)).isoformat()
@@ -107,7 +107,7 @@ class PostAPITest(BaseAPITestCase):
         )
         post.save()  # Trigger the media attachment logic
 
-        url = reverse('post-detail', kwargs={'slug': post.slug})
+        url = reverse('blog:post-detail', kwargs={'slug': post.slug})
         response = self.client.get(url, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['title'], post.title)
@@ -124,7 +124,7 @@ class PostAPITest(BaseAPITestCase):
     def test_update_post(self):
         self._authenticate_as_staff()
         post = PostFactory(author=self.staff_author_profile)
-        url = reverse('post-detail', kwargs={'slug': post.slug})
+        url = reverse('blog:post-detail', kwargs={'slug': post.slug})
         data = {'title': 'Updated Title'}
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -138,7 +138,7 @@ class PostAPITest(BaseAPITestCase):
         self._authenticate_as_staff()
         # self.user is the non-staff user, self.author_profile is their profile
         post = PostFactory(author=self.author_profile)
-        url = reverse('post-detail', kwargs={'slug': post.slug})
+        url = reverse('blog:post-detail', kwargs={'slug': post.slug})
         data = {'title': 'Admin Edited Title'}
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -148,7 +148,7 @@ class PostAPITest(BaseAPITestCase):
     def test_delete_post(self):
         self._authenticate_as_staff()
         post = PostFactory(author=self.staff_author_profile)
-        url = reverse('post-detail', kwargs={'slug': post.slug})
+        url = reverse('blog:post-detail', kwargs={'slug': post.slug})
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Post.objects.filter(pk=post.pk).exists())
