@@ -3,9 +3,64 @@ from rest_framework import status
 from django.utils import timezone
 from datetime import timedelta
 
-from blog.factories import PostFactory, CategoryFactory, TagFactory, SeriesFactory, MediaFactory
-from blog.models import Post
+from django.db.models.signals import post_save
+from blog.factories import (
+    PostFactory, CategoryFactory, TagFactory, SeriesFactory, MediaFactory, UserFactory
+)
+from blog.models import Post, AuthorProfile
+from blog.signals import create_author_profile
 from blog.tests.base import BaseAPITestCase
+
+
+class PostPermissionAPITest(BaseAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.url = reverse('blog:post-list-create')
+        self.post_data = {
+            'title': 'Test Post by Author',
+            'slug': 'test-post-by-author',
+            'excerpt': 'An excerpt.',
+            'content': 'Some content.',
+        }
+
+    def test_guest_user_can_list_posts(self):
+        PostFactory.create_batch(3)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 3)
+
+    def test_guest_user_cannot_create_post(self):
+        response = self.client.post(self.url, self.post_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_authenticated_user_without_author_profile_cannot_create_post(self):
+        # Disconnect the signal that creates author profiles
+        post_save.disconnect(create_author_profile, sender=UserFactory._meta.model)
+
+        # Create a new user that doesn't have an author profile
+        regular_user = UserFactory()
+        self._authenticate(regular_user)
+        response = self.client.post(self.url, self.post_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Reconnect the signal to avoid affecting other tests
+        post_save.connect(create_author_profile, sender=UserFactory._meta.model)
+
+    def test_author_user_can_create_post(self):
+        # self.user from BaseAPITestCase already has an author profile
+        self._authenticate(self.user)
+        response = self.client.post(self.url, self.post_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(Post.objects.filter(slug=self.post_data['slug']).exists())
+
+    def test_staff_user_can_create_post(self):
+        self._authenticate_as_staff()
+        post_data = self.post_data.copy()
+        post_data['title'] = 'Test Post by Staff'
+        post_data['slug'] = 'test-post-by-staff'
+        response = self.client.post(self.url, post_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(Post.objects.filter(slug=post_data['slug']).exists())
 
 
 class PostAPITest(BaseAPITestCase):
