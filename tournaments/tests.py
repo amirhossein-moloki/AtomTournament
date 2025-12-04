@@ -439,25 +439,55 @@ class MatchViewSetTests(APITestCase):
             round=1,
         )
 
-    def test_confirm_result(self):
+    def _generate_dummy_image(self, name="test.png"):
+        file = BytesIO()
+        image = Image.new("RGB", (10, 10), "white")
+        image.save(file, "png")
+        file.name = name
+        file.seek(0)
+        return SimpleUploadedFile(name, file.read(), content_type="image/png")
+
+    def test_submit_confirm_dispute_flow(self):
+        # 1. user1 submits the result
+        self.match.status = 'ongoing'
+        self.match.save()
         self.client.force_authenticate(user=self.user1)
+        data = {
+            "winner_id": self.user2.id,
+            "result_proof": self._generate_dummy_image(),
+        }
         response = self.client.post(
-            f"{self.matches_url}{self.match.id}/confirm_result/",
-            {"winner_id": self.user1.id},
+            f"{self.matches_url}{self.match.id}/submit_result/", data, format="multipart"
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.match.refresh_from_db()
-        self.assertTrue(self.match.is_confirmed)
-        self.assertEqual(self.match.winner_user, self.user1)
+        self.assertEqual(self.match.status, "pending_confirmation")
+        self.assertEqual(self.match.winner_user, self.user2)
+        self.assertEqual(self.match.result_submitted_by, self.user1)
 
-    def test_dispute_result(self):
-        self.client.force_authenticate(user=self.user1)
+        # 2. user2 confirms the result
+        self.client.force_authenticate(user=self.user2)
+        response = self.client.post(
+            f"{self.matches_url}{self.match.id}/confirm_result/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.match.refresh_from_db()
+        self.assertEqual(self.match.status, "completed")
+        self.assertTrue(self.match.is_confirmed)
+
+        # 3. Reset and test dispute flow
+        self.match.status = "pending_confirmation"
+        self.match.is_confirmed = False
+        self.match.save()
+
+        self.client.force_authenticate(user=self.user2)
         response = self.client.post(
             f"{self.matches_url}{self.match.id}/dispute_result/",
             {"reason": "He cheated!"},
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.match.refresh_from_db()
+        self.assertEqual(self.match.status, "disputed")
         self.assertTrue(self.match.is_disputed)
 
 

@@ -31,6 +31,7 @@ from rest_framework.views import APIView
 from notifications.tasks import send_tournament_credentials
 from teams.models import Team
 from teams.serializers import TeamSerializer
+from users.models import User
 from wallet.models import Transaction
 
 from .exceptions import ApplicationError
@@ -44,6 +45,7 @@ from .serializers import (GameCreateUpdateSerializer, GameReadOnlySerializer,
                           MatchCreateSerializer, MatchReadOnlySerializer,
                           MatchUpdateSerializer, ParticipantSerializer,
                           ReportSerializer, ScoringSerializer,
+                          MatchSubmitResultSerializer,
                           TournamentColorSerializer,
                           TournamentCreateUpdateSerializer,
                           TournamentImageSerializer,
@@ -336,45 +338,94 @@ class MatchViewSet(viewsets.ModelViewSet):
             self.throttle_classes = [RelaxedThrottle]
         return super().get_throttles()
 
-    @action(detail=True, methods=["post"])
-    def confirm_result(self, request, pk=None):
+    @action(detail=True, methods=["post"], permission_classes=[IsMatchParticipant], parser_classes=[MultiPartParser, FormParser])
+    def submit_result(self, request, pk=None):
         """
-        Confirm the result of a match.
+        Submit the result of a match by one of its participants.
         """
         match = self.get_object()
-        winner_id = request.data.get("winner_id")
+        user = request.user
 
-        if not winner_id:
-            return Response(
-                {"error": "Winner ID not provided."}, status=status.HTTP_400_BAD_REQUEST
-            )
+        if match.status != "ongoing":
+            return Response({"error": "این مسابقه در وضعیت 'در حال برگزاری' قرار ندارد."}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            confirm_match_result(match, winner_id=winner_id, user=request.user)
-            return Response({"message": "Match result confirmed successfully."})
-        except (ApplicationError, PermissionDenied, ValidationError) as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        if match.result_submitted_by is not None:
+            return Response({"error": "نتیجه این مسابقه قبلاً ثبت شده است."}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=True, methods=["post"])
+        serializer = MatchSubmitResultSerializer(data=request.data)
+        if serializer.is_valid():
+            winner_id = serializer.validated_data['winner_id']
+            result_proof = serializer.validated_data['result_proof']
+
+            if match.match_type == 'individual':
+                if winner_id not in [match.participant1_user_id, match.participant2_user_id]:
+                     return Response({"error": "شناسه برنده نامعتبر است."}, status=status.HTTP_400_BAD_REQUEST)
+                try:
+                    winner_user = User.objects.get(id=winner_id)
+                    match.winner_user = winner_user
+                except User.DoesNotExist:
+                    return Response({"error": "کاربر برنده یافت نشد."}, status=status.HTTP_404_NOT_FOUND)
+            else:
+                if winner_id not in [match.participant1_team_id, match.participant2_team_id]:
+                     return Response({"error": "شناسه تیم برنده نامعتبر است."}, status=status.HTTP_400_BAD_REQUEST)
+                try:
+                    winner_team = Team.objects.get(id=winner_id)
+                    match.winner_team = winner_team
+                except Team.DoesNotExist:
+                    return Response({"error": "تیم برنده یافت نشد."}, status=status.HTTP_404_NOT_FOUND)
+
+            match.result_proof = result_proof
+            match.result_submitted_by = user
+            match.status = "pending_confirmation"
+            match.save()
+
+            return Response(MatchReadOnlySerializer(match, context={'request': request}).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsMatchParticipant])
+    def confirm_result(self, request, pk=None):
+        """
+        Confirm the match result submitted by the other participant.
+        """
+        match = self.get_object()
+        user = request.user
+
+        if match.status != "pending_confirmation":
+            return Response({"error": "این مسابقه در وضعیت 'در انتظار تایید' قرار ندارد."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if match.result_submitted_by == user:
+            return Response({"error": "شما نمی‌توانید نتیجه‌ای که خودتان ثبت کرده‌اید را تایید کنید."}, status=status.HTTP_400_BAD_REQUEST)
+
+        match.is_confirmed = True
+        match.status = "completed"
+        match.save()
+
+        return Response(MatchReadOnlySerializer(match, context={'request': request}).data)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsMatchParticipant])
     def dispute_result(self, request, pk=None):
         """
-        Dispute the result of a match.
+        Dispute the match result submitted by the other participant.
         """
         match = self.get_object()
         user = request.user
         reason = request.data.get("reason")
 
         if not reason:
-            return Response(
-                {"error": "Reason for dispute not provided."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response({"error": "دلیل اعتراض باید مشخص شود."}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            dispute_match_result(match, user, reason)
-            return Response({"message": "Match result disputed successfully."})
-        except (PermissionDenied, ValidationError) as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        if match.status != "pending_confirmation":
+            return Response({"error": "این مسابقه در وضعیت 'در انتظار تایید' قرار ندارد."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if match.result_submitted_by == user:
+            return Response({"error": "شما نمی‌توانید به نتیجه‌ای که خودتان ثبت کرده‌اید اعتراض کنید."}, status=status.HTTP_400_BAD_REQUEST)
+
+        match.is_disputed = True
+        match.status = "disputed"
+        match.dispute_reason = reason
+        match.save()
+
+        return Response(MatchReadOnlySerializer(match, context={'request': request}).data)
 
 class GameViewSet(viewsets.ModelViewSet):
     """

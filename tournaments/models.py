@@ -240,11 +240,22 @@ class Match(models.Model):
         ("individual", "Individual"),
         ("team", "Team"),
     )
+    MATCH_STATUS_CHOICES = (
+        ("pending", "Pending"),
+        ("ongoing", "Ongoing"),
+        ("pending_confirmation", "Pending Confirmation"),
+        ("completed", "Completed"),
+        ("disputed", "Disputed"),
+    )
+
     tournament = models.ForeignKey(
         Tournament, on_delete=models.CASCADE, related_name="matches"
     )
     match_type = models.CharField(
         max_length=20, choices=MATCH_TYPE_CHOICES, default="individual"
+    )
+    status = models.CharField(
+        max_length=20, choices=MATCH_STATUS_CHOICES, default="pending", db_index=True
     )
     round = models.IntegerField()
     participant1_user = models.ForeignKey(
@@ -286,6 +297,13 @@ class Match(models.Model):
         "teams.Team",
         on_delete=models.CASCADE,
         related_name="won_matches",
+        null=True,
+        blank=True,
+    )
+    result_submitted_by = models.ForeignKey(
+        "users.User",
+        on_delete=models.SET_NULL,
+        related_name="submitted_match_results",
         null=True,
         blank=True,
     )
