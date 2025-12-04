@@ -1,5 +1,28 @@
 from rest_framework import permissions
 
+from .models import AuthorProfile
+
+
+class IsAuthorOrAdminOrReadOnly(permissions.BasePermission):
+    """
+    Custom permission to allow read-only access to anyone,
+    but only allow post creation to authors and admin users.
+    """
+
+    def has_permission(self, request, view):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+
+        if not request.user.is_authenticated:
+            return False
+
+        if request.method == 'POST':
+            is_author = AuthorProfile.objects.filter(user=request.user).exists()
+            return is_author or request.user.is_staff
+
+        return True
+
+
 class IsOwnerOrReadOnly(permissions.BasePermission):
     """
     Custom permission to only allow owners of an object to edit it.
