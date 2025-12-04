@@ -120,7 +120,17 @@ class AuthorForPostSerializer(serializers.ModelSerializer):
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ('slug', 'name', 'parent')
+        fields = ('id', 'slug', 'name', 'parent')
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        if instance.parent:
+            representation['parent'] = {
+                'id': instance.parent.id,
+                'slug': instance.parent.slug,
+                'name': instance.parent.name
+            }
+        return representation
 
 
 class TagSerializer(serializers.ModelSerializer):
