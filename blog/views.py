@@ -234,7 +234,7 @@ class AuthorProfileViewSet(viewsets.ModelViewSet):
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
-    queryset = Category.objects.all()
+    queryset = Category.objects.select_related('parent').all()
     serializer_class = CategorySerializer
     permission_classes = [IsAdminUserOrReadOnly]
 
