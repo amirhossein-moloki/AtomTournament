@@ -272,6 +272,8 @@ class WalletViewSet(viewsets.ReadOnlyModelViewSet):
     throttle_classes = [MediumThrottle]
 
     def get_queryset(self):
+        if self.request.user.is_staff:
+            return Wallet.objects.all().prefetch_related("transactions")
         return Wallet.objects.filter(user=self.request.user).prefetch_related(
             "transactions"
         )
@@ -288,6 +290,8 @@ class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
     throttle_classes = [MediumThrottle]
 
     def get_queryset(self):
+        if self.request.user.is_staff:
+            return Transaction.objects.all().order_by("-timestamp").select_related("wallet")
         return (
             Transaction.objects.filter(wallet__user=self.request.user)
             .order_by("-timestamp")

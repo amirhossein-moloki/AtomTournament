@@ -32,6 +32,7 @@ from notifications.tasks import send_tournament_credentials
 from teams.models import Team
 from teams.serializers import TeamSerializer
 from users.models import User
+from users.permissions import IsOwnerOrAdmin
 from wallet.models import Transaction
 
 from .exceptions import ApplicationError
@@ -321,6 +322,8 @@ class MatchViewSet(viewsets.ModelViewSet):
         return MatchReadOnlySerializer
 
     def get_permissions(self):
+        if self.request.user and self.request.user.is_staff:
+            return [IsAdminUser()]
         if self.action in ["list", "retrieve"]:
             return [AllowAny()]
         if self.action in ["create", "destroy"]:
@@ -532,7 +535,7 @@ class ReportViewSet(viewsets.ModelViewSet):
 
     queryset = Report.objects.all()
     serializer_class = ReportSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
 
     def get_queryset(self):
         queryset = Report.objects.all().select_related(
@@ -579,7 +582,7 @@ class WinnerSubmissionViewSet(viewsets.ModelViewSet):
     """
 
     queryset = WinnerSubmission.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
 
     def get_serializer_class(self):
         if self.action == 'create':

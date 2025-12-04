@@ -76,7 +76,7 @@ class TicketSerializer(serializers.ModelSerializer):
             "content",
             "attachment",
         )
-        read_only_fields = ("id", "user", "status", "created_at", "messages")
+        read_only_fields = ("id", "user", "created_at", "messages")
 
     def create(self, validated_data):
         content = validated_data.pop("content")

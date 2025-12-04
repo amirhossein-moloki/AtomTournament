@@ -21,6 +21,7 @@ from .serializers import (
 from .filters import PostFilter
 from .pagination import CustomPageNumberPagination
 from .permissions import IsOwnerOrReadOnly, IsAdminUserOrReadOnly
+from users.permissions import IsOwnerOrAdmin
 from .tasks import notify_author_on_new_comment
 from .exceptions import custom_exception_handler
 from .mixins import DynamicSerializerViewMixin
@@ -133,7 +134,7 @@ class PostRetrieveUpdateDestroyAPIView(DynamicSerializerViewMixin, generics.Retr
             queryset = queryset.prefetch_related(*prefetches)
 
         return queryset
-    permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+    permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrAdmin]
 
     def get_serializer_class(self):
         if self.request.method in ['PUT', 'PATCH']:
@@ -198,7 +199,7 @@ def related_posts(request, slug):
 
 class MediaViewSet(viewsets.ModelViewSet):
     queryset = Media.objects.all().order_by('-created_at')
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrAdmin]
     pagination_class = CustomPageNumberPagination
     ordering = ['-created_at']
 
@@ -230,7 +231,7 @@ class MediaViewSet(viewsets.ModelViewSet):
 class AuthorProfileViewSet(viewsets.ModelViewSet):
     queryset = AuthorProfile.objects.all()
     serializer_class = AuthorProfileSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+    permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrAdmin]
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -254,13 +255,13 @@ class SeriesViewSet(viewsets.ModelViewSet):
 class RevisionViewSet(viewsets.ModelViewSet):
     queryset = Revision.objects.all()
     serializer_class = RevisionSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+    permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrAdmin]
 
 
 class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
+    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
 
     def get_queryset(self):
         user = self.request.user

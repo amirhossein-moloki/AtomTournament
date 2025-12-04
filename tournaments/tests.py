@@ -592,6 +592,36 @@ class ReportViewSetTests(APITestCase):
         report.refresh_from_db()
         self.assertEqual(report.status, "rejected")
 
+    def test_user_cannot_delete_other_report(self):
+        """
+        Ensures a regular user cannot delete a report they did not create.
+        """
+        other_reporter = User.objects.create_user(username="other", password="p", phone_number="+304")
+        report = Report.objects.create(
+            reporter=other_reporter,
+            reported_user=self.reported,
+            match=self.match,
+            description="d",
+        )
+        self.client.force_authenticate(user=self.reporter)
+        response = self.client.delete(f"{self.reports_url}{report.id}/")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_admin_can_delete_other_report(self):
+        """
+        Ensures an admin can delete any report.
+        """
+        report = Report.objects.create(
+            reporter=self.reporter,
+            reported_user=self.reported,
+            match=self.match,
+            description="d",
+        )
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.delete(f"{self.reports_url}{report.id}/")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Report.objects.filter(id=report.id).exists())
+
 
 class GetTournamentWinnersServiceTests(TestCase):
     def setUp(self):

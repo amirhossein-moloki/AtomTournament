@@ -28,6 +28,8 @@ class ConversationViewSet(
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        if self.request.user.is_staff:
+            return Conversation.objects.all().prefetch_related("participants", "messages")
         return self.request.user.conversations.prefetch_related(
             "participants", "messages"
         )
@@ -51,16 +53,17 @@ class MessageViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if "conversation_pk" in self.kwargs:
             conversation_pk = self.kwargs["conversation_pk"]
-            # Ensure user is a participant of the conversation
-            return (
-                Message.objects.filter(
-                    conversation__pk=conversation_pk,
-                    conversation__participants=self.request.user,
-                )
-                .select_related("sender")
-                .prefetch_related("attachments")
-                .order_by("timestamp")
-            )
+            queryset = Message.objects.filter(conversation__pk=conversation_pk)
+
+            if not self.request.user.is_staff:
+                # Ensure user is a participant of the conversation
+                queryset = queryset.filter(conversation__participants=self.request.user)
+
+            return queryset.select_related("sender").prefetch_related("attachments").order_by("timestamp")
+
+        if self.request.user.is_staff:
+            return Message.objects.all().select_related("sender").prefetch_related("attachments").order_by("timestamp")
+
         return Message.objects.none()
 
     def perform_create(self, serializer):
@@ -96,7 +99,10 @@ class AttachmentViewSet(viewsets.ModelViewSet):
         return AttachmentSerializer
 
     def get_queryset(self):
-        return Attachment.objects.filter(message__pk=self.kwargs["message_pk"])
+        queryset = Attachment.objects.filter(message__pk=self.kwargs["message_pk"])
+        if self.request.user.is_staff:
+            return queryset
+        return queryset.filter(message__conversation__participants=self.request.user)
 
     def perform_create(self, serializer):
         message = get_object_or_404(Message, pk=self.kwargs["message_pk"])
