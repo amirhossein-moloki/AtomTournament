@@ -11,6 +11,8 @@ from teams.models import Team
 from users.models import User
 from verification.models import Verification
 from wallet.services import process_transaction, process_token_transaction
+
+from .exceptions import ApplicationError
 from .models import Match, Participant, Report, Tournament, WinnerSubmission
 
 
