@@ -39,12 +39,21 @@ class ChatConsumer(AsyncWebsocketConsumer):
         elif message_type == "typing":
             await self.handle_typing(data)
 
+    def get_user_object(self, user):
+        return {
+            "id": user.id,
+            "username": user.username,
+            "profile_picture": user.profile_picture.url
+            if user.profile_picture
+            else None,
+        }
+
     async def handle_typing(self, data):
         await self.channel_layer.group_send(
             self.conversation_group_name,
             {
-                "type": "user.typing",
-                "user": self.user.username,
+                "type": "user_typing",
+                "user": self.get_user_object(self.user),
                 "is_typing": data.get("is_typing", False),
             },
         )
@@ -57,10 +66,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_send(
             self.conversation_group_name,
             {
-                "type": "chat.message",
+                "type": "chat_message",
                 "message": {
                     "id": message.id,
-                    "sender": self.user.username,
+                    "sender": self.get_user_object(self.user),
                     "content": message.content,
                     "timestamp": message.timestamp.isoformat(),
                 },
@@ -77,12 +86,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         message.content = new_content
         message.is_edited = True
-        await message.save()
+        await database_sync_to_async(message.save)()
 
         await self.channel_layer.group_send(
             self.conversation_group_name,
             {
-                "type": "message.edited",
+                "type": "message_edited",
                 "message": {
                     "id": message.id,
                     "content": message.content,
@@ -98,15 +107,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return  # Or handle error
 
         message.is_deleted = True
-        await message.save()
+        await database_sync_to_async(message.save)()
 
         await self.channel_layer.group_send(
             self.conversation_group_name,
-            {"type": "message.deleted", "message_id": message.id},
+            {"type": "message_deleted", "message_id": message.id},
         )
 
     async def chat_message(self, event):
-        await self.send(text_data=json.dumps(event["message"]))
+        await self.send(text_data=json.dumps(event))
 
     async def message_edited(self, event):
         await self.send(text_data=json.dumps(event))
