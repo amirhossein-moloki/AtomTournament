@@ -193,3 +193,22 @@
     "created_at": "2023-10-27T10:00:00Z"
 }
 ```
+
+**نحوه استفاده از `reported_player_id`:**
+
+- اگر شناسه کاربر (ID) را نمی‌دانید، می‌توانید آیدی داخل بازی را بفرستید.
+- حتماً `match` را هم ارسال کنید تا سیستم بتواند آیدی داخل بازی را با بازی همان مسابقه تطبیق دهد.
+- در بدنه درخواست فقط یکی از `reported_user` یا `reported_player_id` را قرار دهید.
+
+نمونه درخواست با آیدی داخل بازی:
+
+```http
+POST /api/tournaments/reports/
+Headers: Authorization: Bearer <token>
+Content-Type: multipart/form-data
+Body (form-data):
+  match: 42
+  reported_player_id: player_ABC_99
+  description: بازیکن وسط بازی خارج شد.
+  evidence: <تصویر/ویدئو، اختیاری>
+```
