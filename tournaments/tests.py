@@ -13,7 +13,7 @@ from rest_framework.test import APIClient, APITestCase
 
 from tournament_project.celery import app as celery_app
 from teams.models import Team, TeamMembership
-from users.models import User
+from users.models import InGameID, User
 from verification.models import Verification
 
 from .models import (Game, GameManager, Match, Report, Tournament, TournamentColor,
@@ -555,6 +555,22 @@ class ReportViewSetTests(APITestCase):
         self.client.force_authenticate(user=self.reporter)
         data = {
             "reported_user": self.reported.id,
+            "match": self.match.id,
+            "description": "He was rude.",
+        }
+        response = self.client.post(self.reports_url, data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(
+            Report.objects.filter(
+                reporter=self.reporter, reported_user=self.reported
+            ).exists()
+        )
+
+    def test_create_report_with_in_game_id(self):
+        InGameID.objects.create(user=self.reported, game=self.game, player_id="player123")
+        self.client.force_authenticate(user=self.reporter)
+        data = {
+            "reported_player_id": "player123",
             "match": self.match.id,
             "description": "He was rude.",
         }
