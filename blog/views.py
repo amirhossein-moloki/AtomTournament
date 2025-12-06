@@ -158,6 +158,32 @@ class PostViewSet(DynamicSerializerViewMixin, viewsets.ModelViewSet):
         serializer = PostListSerializer(similar_posts, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['get'], url_path='same-category')
+    def same_category(self, request, slug=None):
+        current_post = self.get_object()
+
+        if not current_post.category:
+            return Response([])
+
+        category_posts = Post.objects.filter(
+            status='published',
+            category=current_post.category,
+            published_at__lte=timezone.now()
+        ).exclude(pk=current_post.pk).order_by('-published_at')[:5]
+
+        serializer = PostListSerializer(category_posts, many=True, context=self.get_serializer_context())
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='slug/(?P<slug>[^/.]+)')
+    def by_slug(self, request, slug=None):
+        try:
+            post = self.get_queryset().get(slug=slug)
+        except Post.DoesNotExist:
+            raise NotFound('پستی با این اسلاگ یافت نشد.')
+
+        serializer = PostDetailSerializer(post, context=self.get_serializer_context())
+        return Response(serializer.data)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsOwnerOrReadOnly])
