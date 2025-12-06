@@ -15,7 +15,7 @@ from blog.tests.base import BaseAPITestCase
 class PostPermissionAPITest(BaseAPITestCase):
     def setUp(self):
         super().setUp()
-        self.url = reverse('blog:post-list-create')
+        self.url = reverse('blog:post-list')
         self.post_data = {
             'title': 'Test Post by Author',
             'slug': 'test-post-by-author',
@@ -68,7 +68,7 @@ class PostAPITest(BaseAPITestCase):
         self._authenticate_as_staff()
         category = CategoryFactory()
         tags = TagFactory.create_batch(2)
-        url = reverse('blog:post-list-create')
+        url = reverse('blog:post-list')
         data = {
             'title': 'New Post',
             'slug': 'new-post',
@@ -89,14 +89,14 @@ class PostAPITest(BaseAPITestCase):
 
     def test_list_posts(self):
         PostFactory.create_batch(3)
-        url = reverse('blog:post-list-create')
+        url = reverse('blog:post-list')
         response = self.client.get(url, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 3)
 
     def test_post_pagination(self):
         PostFactory.create_batch(15)
-        url = reverse('blog:post-list-create')
+        url = reverse('blog:post-list')
         response = self.client.get(url, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 10)
@@ -111,7 +111,7 @@ class PostAPITest(BaseAPITestCase):
 
         PostFactory(series=series, visibility='private', category=category, tags=[tag1])
         PostFactory.create_batch(2, visibility='public', tags=[tag2])
-        url = reverse('blog:post-list-create')
+        url = reverse('blog:post-list')
 
         # Filter by series
         response = self.client.get(url, {'series': series.pk}, format='json')
@@ -140,7 +140,7 @@ class PostAPITest(BaseAPITestCase):
     def test_post_date_filtering(self):
         PostFactory(published_at=timezone.now() - timedelta(days=5))
         PostFactory(published_at=timezone.now() - timedelta(days=15))
-        url = reverse('blog:post-list-create')
+        url = reverse('blog:post-list')
 
         # Filter by published_after
         after_date = (timezone.now() - timedelta(days=10)).isoformat()

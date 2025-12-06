@@ -164,7 +164,7 @@ class PostListSerializer(DynamicFieldsMixin, serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = (
-            'slug', 'title', 'excerpt', 'reading_time_sec', 'status',
+            'id', 'slug', 'title', 'excerpt', 'reading_time_sec', 'status',
             'published_at', 'author', 'category', 'cover_media',
             'views_count', 'likes_count', 'comments_count', 'tags'
         )

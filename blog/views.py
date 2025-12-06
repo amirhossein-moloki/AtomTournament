@@ -1,7 +1,7 @@
 from django.db.models import Count, Q
 from django.utils import timezone
 from rest_framework import generics, status, viewsets
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied, NotFound
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.response import Response
@@ -35,7 +35,7 @@ class BaseBlogAPIView(APIView):
         return custom_exception_handler(exc, self.get_exception_handler_context())
 
 
-class PostListCreateAPIView(DynamicSerializerViewMixin, generics.ListCreateAPIView):
+class PostViewSet(DynamicSerializerViewMixin, viewsets.ModelViewSet):
     queryset = Post.objects.all().order_by('-published_at')
     permission_classes = [IsAuthorOrAdminOrReadOnly]
     pagination_class = CustomPageNumberPagination
@@ -43,51 +43,88 @@ class PostListCreateAPIView(DynamicSerializerViewMixin, generics.ListCreateAPIVi
     filterset_class = PostFilter
     search_fields = ['title', 'content', 'excerpt']
     ordering_fields = ['published_at', 'views_count']
+    lookup_field = 'slug'
 
     def get_serializer_class(self):
-        if self.request.method == 'POST':
+        if self.action in ['create', 'update', 'partial_update']:
             return PostCreateUpdateSerializer
+        elif self.action == 'retrieve':
+            return PostDetailSerializer
         return PostListSerializer
 
     def get_queryset(self):
-        queryset = Post.objects.all()
-        fields_query = self.request.query_params.get('fields')
-        fields = {f.strip() for f in fields_query.split(',')} if fields_query else set()
+        if self.action == 'list':
+            queryset = Post.objects.all()
+            fields_query = self.request.query_params.get('fields')
+            fields = {f.strip() for f in fields_query.split(',')} if fields_query else set()
 
-        selects = set()
-        prefetches = set()
+            selects = set()
+            prefetches = set()
 
-        # Define a default set of fields for optimization if none are provided.
-        if not fields:
-            fields = {'slug', 'title', 'excerpt', 'author', 'category', 'cover_media', 'tags', 'likes_count', 'comments_count'}
+            # Define a default set of fields for optimization if none are provided.
+            if not fields:
+                fields = {'slug', 'title', 'excerpt', 'author', 'category', 'cover_media', 'tags', 'likes_count', 'comments_count'}
 
-        if 'author' in fields:
-            selects.add('author__avatar')
-        if 'category' in fields:
-            selects.add('category')
-        if 'cover_media' in fields:
-            selects.add('cover_media')
-        if 'tags' in fields:
-            prefetches.add('tags')
-        if 'likes_count' in fields:
-            prefetches.add('reactions')
+            if 'author' in fields:
+                selects.add('author__avatar')
+            if 'category' in fields:
+                selects.add('category')
+            if 'cover_media' in fields:
+                selects.add('cover_media')
+            if 'tags' in fields:
+                prefetches.add('tags')
+            if 'likes_count' in fields:
+                prefetches.add('reactions')
 
-        if selects:
-            queryset = queryset.select_related(*selects)
-        if prefetches:
-            queryset = queryset.prefetch_related(*prefetches)
+            if selects:
+                queryset = queryset.select_related(*selects)
+            if prefetches:
+                queryset = queryset.prefetch_related(*prefetches)
 
-        queryset = queryset.annotate(comments_count=Count('comments'))
+            queryset = queryset.annotate(comments_count=Count('comments'))
 
-        user = self.request.user
-        if user.is_authenticated and user.is_staff:
+            user = self.request.user
+            if user.is_authenticated and user.is_staff:
+                return queryset
+            if user.is_authenticated:
+                return queryset.filter(
+                    Q(status='published', published_at__lte=timezone.now()) |
+                    Q(author__user=user, status__in=['draft', 'review'])
+                ).distinct()
+            return queryset.filter(status='published', published_at__lte=timezone.now())
+        else:
+            queryset = Post.objects.all()
+            fields_query = self.request.query_params.get('fields')
+            fields = {f.strip() for f in fields_query.split(',')} if fields_query else {'all'}
+
+            selects = set()
+            prefetches = set()
+            all_fields = 'all' in fields
+
+            if all_fields or 'author' in fields:
+                selects.add('author__avatar')
+            if all_fields or 'category' in fields:
+                selects.add('category')
+            if all_fields or 'cover_media' in fields:
+                selects.add('cover_media')
+            if all_fields or 'series' in fields:
+                selects.add('series')
+            if all_fields or 'og_image' in fields:
+                selects.add('og_image')
+            if all_fields or 'tags' in fields:
+                prefetches.add('tags')
+            if all_fields or 'likes_count' in fields:
+                prefetches.add('reactions')
+            if all_fields or 'comments' in fields:
+                prefetches.add('comments__user')
+            if all_fields or 'media_attachments' in fields:
+                prefetches.add('media_attachments__media')
+
+            if selects:
+                queryset = queryset.select_related(*selects)
+            if prefetches:
+                queryset = queryset.prefetch_related(*prefetches)
             return queryset
-        if user.is_authenticated:
-            return queryset.filter(
-                Q(status='published', published_at__lte=timezone.now()) |
-                Q(author__user=user, status__in=['draft', 'review'])
-            ).distinct()
-        return queryset.filter(status='published', published_at__lte=timezone.now())
 
     def perform_create(self, serializer):
         author_profile, _ = AuthorProfile.objects.get_or_create(
@@ -96,58 +133,30 @@ class PostListCreateAPIView(DynamicSerializerViewMixin, generics.ListCreateAPIVi
         )
         serializer.save(author=author_profile)
 
+    def retrieve(self, request, *args, **kwargs):
+        obj = self.get_object()
+        obj.views_count += 1
+        obj.save(update_fields=['views_count'])
+        serializer = self.get_serializer(obj)
+        return Response(serializer.data)
 
-class PostRetrieveUpdateDestroyAPIView(DynamicSerializerViewMixin, generics.RetrieveUpdateDestroyAPIView):
-    queryset = Post.objects.all()
-    lookup_field = 'slug'
+    @action(detail=True, methods=['get'])
+    def similar(self, request, slug=None):
+        try:
+            current_post = self.get_object()
+        except Post.DoesNotExist:
+            raise NotFound('پست مورد نظر برای یافتن پست‌های مشابه پیدا نشد.')
 
-    def get_queryset(self):
-        queryset = Post.objects.all()
-        fields_query = self.request.query_params.get('fields')
-        fields = {f.strip() for f in fields_query.split(',')} if fields_query else {'all'}
+        if not current_post.category:
+            return Response([])
 
-        selects = set()
-        prefetches = set()
-        all_fields = 'all' in fields
+        similar_posts = Post.objects.filter(
+            status='published',
+            category=current_post.category
+        ).exclude(pk=current_post.pk).order_by('-published_at')[:5]
 
-        if all_fields or 'author' in fields:
-            selects.add('author__avatar')
-        if all_fields or 'category' in fields:
-            selects.add('category')
-        if all_fields or 'cover_media' in fields:
-            selects.add('cover_media')
-        if all_fields or 'series' in fields:
-            selects.add('series')
-        if all_fields or 'og_image' in fields:
-            selects.add('og_image')
-        if all_fields or 'tags' in fields:
-            prefetches.add('tags')
-        if all_fields or 'likes_count' in fields:
-            prefetches.add('reactions')
-        if all_fields or 'comments' in fields:
-            prefetches.add('comments__user')
-        if all_fields or 'media_attachments' in fields:
-            prefetches.add('media_attachments__media')
-
-        if selects:
-            queryset = queryset.select_related(*selects)
-        if prefetches:
-            queryset = queryset.prefetch_related(*prefetches)
-
-        return queryset
-    permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrAdmin]
-
-    def get_serializer_class(self):
-        if self.request.method in ['PUT', 'PATCH']:
-            return PostCreateUpdateSerializer
-        return PostDetailSerializer
-
-    def get_object(self):
-        obj = super().get_object()
-        if self.request.method == 'GET':
-            obj.views_count += 1
-            obj.save(update_fields=['views_count'])
-        return obj
+        serializer = PostListSerializer(similar_posts, many=True)
+        return Response(serializer.data)
 
 
 @api_view(['POST'])
