@@ -148,6 +148,58 @@ class PostAPITest(BaseAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
 
+    def test_same_category_endpoint_returns_latest_published_posts(self):
+        category = CategoryFactory()
+        current_post = PostFactory(status='published', category=category)
+
+        # Posts in the same category
+        PostFactory.create_batch(
+            6,
+            status='published',
+            category=category,
+            published_at=timezone.now() - timedelta(days=1)
+        )
+
+        # A draft post and a post from another category should be excluded
+        PostFactory(status='draft', category=category)
+        PostFactory(status='published')
+
+        # Future post in the same category should also be excluded
+        PostFactory(status='published', category=category, published_at=timezone.now() + timedelta(days=1))
+
+        url = reverse('blog:post-same-category', kwargs={'slug': current_post.slug})
+        response = self.client.get(url, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 5)
+
+        returned_ids = [post['id'] for post in response.data]
+        self.assertNotIn(current_post.id, returned_ids)
+
+        expected_ids = list(
+            Post.objects.filter(status='published', category=category, published_at__lte=timezone.now())
+            .exclude(pk=current_post.pk)
+            .order_by('-published_at')
+            .values_list('id', flat=True)[:5]
+        )
+        self.assertEqual(returned_ids, expected_ids)
+
+    def test_slug_endpoint_returns_id_and_author_avatar(self):
+        author_profile = self.author_profile
+        author_profile.avatar = MediaFactory()
+        author_profile.save()
+
+        post = PostFactory(status='published', author=author_profile)
+
+        url = reverse('blog:post-by-slug', kwargs={'slug': post.slug})
+        response = self.client.get(url, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['id'], post.id)
+        self.assertIn('author', response.data)
+        self.assertEqual(response.data['author']['display_name'], author_profile.display_name)
+        self.assertIsNotNone(response.data['author']['avatar'])
+
     def test_retrieve_post(self):
         yesterday = timezone.now() - timedelta(days=1)
         cover_media = MediaFactory()
