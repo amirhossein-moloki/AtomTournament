@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    PostListCreateAPIView, PostRetrieveUpdateDestroyAPIView,
+    PostViewSet,
     publish_post, related_posts,
     AuthorProfileViewSet, CategoryViewSet, TagViewSet, SeriesViewSet,
     MediaViewSet, RevisionViewSet, CommentViewSet, ReactionViewSet,
@@ -12,6 +12,7 @@ from .views import (
 app_name = 'blog'
 
 router = DefaultRouter()
+router.register(r'posts', PostViewSet, basename='post')
 router.register(r'authors', AuthorProfileViewSet)
 router.register(r'categories', CategoryViewSet)
 router.register(r'tags', TagViewSet)
@@ -25,8 +26,6 @@ router.register(r'menus', MenuViewSet)
 router.register(r'menu-items', MenuItemViewSet)
 
 urlpatterns = [
-    path('posts/', PostListCreateAPIView.as_view(), name='post-list-create'),
-    path('posts/<slug:slug>/', PostRetrieveUpdateDestroyAPIView.as_view(), name='post-detail'),
     path('posts/<slug:slug>/publish/', publish_post, name='post-publish'),
     path('posts/<slug:slug>/related/', related_posts, name='post-related'),
     path('media/<int:media_id>/download/', download_media, name='download_media'),
