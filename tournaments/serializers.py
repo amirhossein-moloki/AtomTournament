@@ -2,6 +2,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from teams.serializers import TeamSerializer
+from users.models import InGameID, User
 from users.serializers import UserReadOnlySerializer
 from common.validators import validate_file
 
@@ -320,6 +321,13 @@ class ParticipantSerializer(serializers.ModelSerializer):
 class ReportSerializer(serializers.ModelSerializer):
     """Serializer for the Report model."""
 
+    reported_user = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), required=False
+    )
+    reported_player_id = serializers.CharField(
+        write_only=True, required=False, allow_blank=False
+    )
+
     class Meta:
         model = Report
         fields = (
@@ -331,8 +339,47 @@ class ReportSerializer(serializers.ModelSerializer):
             "evidence",
             "status",
             "created_at",
+            "reported_player_id",
         )
         read_only_fields = ("id", "reporter", "status", "created_at")
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+
+        reported_user = attrs.get("reported_user")
+        reported_player_id = attrs.pop("reported_player_id", None)
+        match = attrs.get("match")
+
+        if not reported_user and not reported_player_id:
+            raise serializers.ValidationError(
+                {"reported_user": "reported_user or reported_player_id is required."}
+            )
+
+        if reported_user and reported_player_id:
+            raise serializers.ValidationError(
+                "Provide only one of reported_user or reported_player_id."
+            )
+
+        if reported_player_id:
+            if not match:
+                raise serializers.ValidationError(
+                    {"match": "Match is required when using reported_player_id."}
+                )
+
+            try:
+                ingame_id = InGameID.objects.get(
+                    game=match.tournament.game, player_id=reported_player_id
+                )
+            except InGameID.DoesNotExist:
+                raise serializers.ValidationError(
+                    {
+                        "reported_player_id": "No user found with this in-game ID for the match's game.",
+                    }
+                )
+
+            attrs["reported_user"] = ingame_id.user
+
+        return attrs
 
 
 class WinnerSubmissionSerializer(serializers.ModelSerializer):
