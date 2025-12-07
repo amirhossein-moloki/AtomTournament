@@ -59,14 +59,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
     async def handle_chat_message(self, data):
-        message_content = data["message"]
+        message_content = data["content"]
         conversation = await self.get_conversation()
         message = await self.save_message(conversation, self.user, message_content)
 
         await self.channel_layer.group_send(
             self.conversation_group_name,
             {
-                "type": "chat_message",
+                "type": "new_message",
                 "message": {
                     "id": message.id,
                     "sender": self.get_user_object(self.user),
@@ -114,7 +114,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             {"type": "message_deleted", "message_id": message.id},
         )
 
-    async def chat_message(self, event):
+    async def new_message(self, event):
         await self.send(text_data=json.dumps(event))
 
     async def message_edited(self, event):
