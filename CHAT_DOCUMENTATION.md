@@ -43,7 +43,7 @@ wss://yourdomain.com/ws/chat/{conversation_id}/
   ```json
   {
     "type": "chat_message",
-    "message": "این محتوای پیام جدید است."
+    "content": "این محتوای پیام جدید است."
   }
   ```
 
@@ -99,14 +99,14 @@ wss://yourdomain.com/ws/chat/{conversation_id}/
 
 سرور نیز رویدادها را در قالب JSON به تمام کلاینت‌های متصل به یک گفتگو ارسال می‌کند. تمام `type` ها از `snake_case` استفاده می‌کنند.
 
-#### نوع: `chat_message`
+#### نوع: `new_message`
 
 زمانی که یک پیام جدید در گفتگو ارسال می‌شود.
 
 - **ساختار پیام:**
   ```json
   {
-    "type": "chat_message",
+    "type": "new_message",
     "message": {
       "id": 124,
       "sender": {
