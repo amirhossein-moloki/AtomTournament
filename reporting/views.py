@@ -17,6 +17,7 @@ from .services import (
     generate_tournament_report,
     generate_financial_report,
     generate_marketing_report,
+    ensure_bot_user,
 )
 
 
@@ -104,6 +105,8 @@ class StatisticsAPIView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
+        ensure_bot_user()
+
         total_prizes_paid = (
             Transaction.objects.filter(
                 transaction_type="prize", status="success"
