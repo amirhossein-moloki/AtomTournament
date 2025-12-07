@@ -10,6 +10,41 @@ from tournaments.models import Tournament, Game, Participant
 from users.models import User, Referral
 
 
+BOT_USERNAME = "AtomGameBot"
+BOT_EMAIL = "atomgamebot@example.com"
+BOT_PHONE_NUMBER = "+989000000001"
+
+
+def ensure_bot_user():
+    """Ensure the AtomGameBot user exists and is active for reporting metrics."""
+    bot_user, created = User.objects.get_or_create(
+        username=BOT_USERNAME,
+        defaults={
+            "email": BOT_EMAIL,
+            "phone_number": BOT_PHONE_NUMBER,
+            "is_active": True,
+        },
+    )
+
+    updates = []
+    if created:
+        bot_user.set_unusable_password()
+        updates.append("password")
+
+    if not bot_user.is_active:
+        bot_user.is_active = True
+        updates.append("is_active")
+
+    if not bot_user.phone_number:
+        bot_user.phone_number = BOT_PHONE_NUMBER
+        updates.append("phone_number")
+
+    if updates:
+        bot_user.save(update_fields=updates)
+
+    return bot_user
+
+
 def generate_revenue_report(filters=None):
     """
     Generates a comprehensive revenue report based on provided filters.
@@ -75,6 +110,8 @@ def generate_players_report(filters=None):
     """
     if filters is None:
         filters = {}
+
+    ensure_bot_user()
 
     end_date = filters.get('end_date', timezone.now())
     start_date = filters.get('start_date', end_date - timedelta(days=30))
