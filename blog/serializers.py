@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.core.files.storage import default_storage
+from jalali_date import date2jalali
 from markdownify import markdownify as html_to_markdown
 
 from PIL import Image
@@ -16,6 +17,13 @@ from .mixins import DynamicFieldsMixin
 
 
 User = get_user_model()
+
+
+class JalaliDateTimeField(serializers.ReadOnlyField):
+    def to_representation(self, value):
+        if value:
+            return date2jalali(value).strftime('%Y/%m/%d %H:%M:%S')
+        return None
 
 
 class ContentNormalizationMixin:
@@ -41,6 +49,8 @@ class ContentNormalizationMixin:
         return data
 
 class MediaDetailSerializer(serializers.ModelSerializer):
+    created_at = JalaliDateTimeField()
+
     class Meta:
         model = Media
         fields = (
@@ -147,6 +157,7 @@ class SeriesSerializer(serializers.ModelSerializer):
 
 class CommentForPostSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField()
+    created_at = JalaliDateTimeField()
 
     class Meta:
         model = Comment
@@ -160,6 +171,7 @@ class PostListSerializer(DynamicFieldsMixin, serializers.ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
     likes_count = serializers.SerializerMethodField()
     comments_count = serializers.IntegerField(read_only=True)
+    published_at = JalaliDateTimeField()
 
     class Meta:
         model = Post
@@ -217,6 +229,8 @@ class PostCreateUpdateSerializer(ContentNormalizationMixin, serializers.ModelSer
     og_image = MediaDetailSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     category = CategorySerializer(read_only=True)
+    published_at = JalaliDateTimeField()
+    scheduled_at = JalaliDateTimeField()
 
     class Meta:
         model = Post
@@ -243,6 +257,7 @@ class RevisionSerializer(serializers.ModelSerializer):
 
 class CommentSerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(read_only=True)
+    created_at = JalaliDateTimeField()
 
     class Meta:
         model = Comment
@@ -253,6 +268,7 @@ from django.contrib.contenttypes.models import ContentType
 
 class ReactionSerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(read_only=True)
+    created_at = JalaliDateTimeField()
 
     class Meta:
         model = Reaction

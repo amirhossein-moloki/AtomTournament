@@ -581,3 +581,7 @@ CKEDITOR_5_CONFIGS = {
         "link": {"addTargetToExternalLinks": True},
     }
 }
+
+JALALI_DATE_DEFAULTS = {
+   'LIST_DISPLAY_AUTO_CONVERT': True
+}

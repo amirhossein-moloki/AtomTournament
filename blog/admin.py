@@ -1,5 +1,6 @@
 from django.contrib import admin, messages
 from django.db import transaction
+from jalali_date.admin import ModelAdminJalaliMixin
 from .models import (
     AuthorProfile, Category, Tag, Post, PostTag, Series, Media, Revision,
     Comment, Reaction, Page, Menu, MenuItem, PostMedia
@@ -11,7 +12,7 @@ from common.utils.files import get_sanitized_filename
 from .forms import MediaAdminForm, PageAdminForm, PostAdminForm
 
 @admin.register(Media)
-class MediaAdmin(admin.ModelAdmin):
+class MediaAdmin(ModelAdminJalaliMixin, admin.ModelAdmin):
     form = MediaAdminForm
     list_display = ('title', 'type', 'mime', 'size_bytes', 'created_at', 'get_download_url')
     list_filter = ('type', 'mime')
@@ -91,7 +92,7 @@ class PostMediaInline(admin.TabularInline):
 
 
 @admin.register(Post)
-class PostAdmin(admin.ModelAdmin):
+class PostAdmin(ModelAdminJalaliMixin, admin.ModelAdmin):
     form = PostAdminForm
     list_display = ('title', 'slug', 'author', 'category', 'status', 'published_at')
     list_filter = ('status', 'visibility', 'category', 'author')
@@ -131,14 +132,14 @@ class PostAdmin(admin.ModelAdmin):
 
 
 @admin.register(Revision)
-class RevisionAdmin(admin.ModelAdmin):
+class RevisionAdmin(ModelAdminJalaliMixin, admin.ModelAdmin):
     list_display = ('post', 'editor', 'created_at')
     list_filter = ('editor',)
     search_fields = ('post__title',)
 
 
 @admin.register(Comment)
-class CommentAdmin(admin.ModelAdmin):
+class CommentAdmin(ModelAdminJalaliMixin, admin.ModelAdmin):
     list_display = ('user', 'post', 'status', 'created_at')
     list_filter = ('status',)
     search_fields = ('user__username', 'content')
