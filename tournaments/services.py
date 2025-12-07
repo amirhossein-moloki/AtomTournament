@@ -386,7 +386,8 @@ def refund_entry_fees(tournament: Tournament, cheater):
 def create_report_service(
     reporter: User,
     reported_user_id: int,
-    match_id: int,
+    tournament: Tournament,
+    match: Match | None,
     description: str,
     evidence=None,
 ):
@@ -396,13 +397,14 @@ def create_report_service(
     report = Report.objects.create(
         reporter=reporter,
         reported_user_id=reported_user_id,
-        match_id=match_id,
+        tournament=tournament,
+        match=match,
         description=description,
         evidence=evidence,
     )
     send_notification(
         user=report.reported_user,
-        message=f"You have been reported in match {report.match}.",
+        message=f"You have been reported in tournament {report.tournament}.",
         notification_type="report_new",
     )
     return report

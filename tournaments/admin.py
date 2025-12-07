@@ -221,10 +221,21 @@ class MatchAdmin(SimpleHistoryAdmin, ModelAdmin):
 
 @admin.register(Report)
 class ReportAdmin(ModelAdmin):
-    list_display = ("reporter", "reported_user", "match", "status", "created_at")
-    list_filter = ("status",)
-    search_fields = ("reporter__username", "reported_user__username", "match__tournament__name")
-    autocomplete_fields = ("reporter", "reported_user", "match")
+    list_display = (
+        "reporter",
+        "reported_user",
+        "tournament",
+        "match",
+        "status",
+        "created_at",
+    )
+    list_filter = ("status", "tournament")
+    search_fields = (
+        "reporter__username",
+        "reported_user__username",
+        "tournament__name",
+    )
+    autocomplete_fields = ("reporter", "reported_user", "tournament", "match")
     actions = ["resolve_reports", "reject_reports"]
 
     def resolve_reports(self, request, queryset):

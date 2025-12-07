@@ -358,7 +358,8 @@ class Report(models.Model):
     reported_user = models.ForeignKey(
         "users.User", on_delete=models.CASCADE, related_name="received_reports"
     )
-    match = models.ForeignKey(Match, on_delete=models.CASCADE)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
+    match = models.ForeignKey(Match, on_delete=models.CASCADE, null=True, blank=True)
     description = models.TextField()
     evidence = OptimizedImageField(upload_to=get_sanitized_upload_path, null=True, blank=True)
     status = models.CharField(
@@ -367,7 +368,11 @@ class Report(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Report by {self.reporter.username} against {self.reported_user.username} in {self.match}"
+        location = self.match if self.match else self.tournament
+        return (
+            f"Report by {self.reporter.username} against {self.reported_user.username}"
+            f" in {location}"
+        )
 
 
 class WinnerSubmission(models.Model):
