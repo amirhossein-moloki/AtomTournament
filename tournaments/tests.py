@@ -566,6 +566,19 @@ class ReportViewSetTests(APITestCase):
             ).exists()
         )
 
+    def test_create_report_without_match(self):
+        self.client.force_authenticate(user=self.reporter)
+        data = {
+            "reported_user": self.reported.id,
+            "tournament": self.tournament.id,
+            "description": "He was rude.",
+        }
+        response = self.client.post(self.reports_url, data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        report = Report.objects.get(reporter=self.reporter, reported_user=self.reported)
+        self.assertEqual(report.tournament, self.tournament)
+        self.assertIsNone(report.match)
+
     def test_create_report_with_in_game_id(self):
         InGameID.objects.create(user=self.reported, game=self.game, player_id="player123")
         self.client.force_authenticate(user=self.reporter)
@@ -582,10 +595,21 @@ class ReportViewSetTests(APITestCase):
             ).exists()
         )
 
+    def test_create_report_requires_tournament_or_match(self):
+        self.client.force_authenticate(user=self.reporter)
+        data = {
+            "reported_user": self.reported.id,
+            "description": "Missing context",
+        }
+        response = self.client.post(self.reports_url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("tournament", response.data)
+
     def test_resolve_report(self):
         report = Report.objects.create(
             reporter=self.reporter,
             reported_user=self.reported,
+            tournament=self.tournament,
             match=self.match,
             description="d",
         )
@@ -599,6 +623,7 @@ class ReportViewSetTests(APITestCase):
         report = Report.objects.create(
             reporter=self.reporter,
             reported_user=self.reported,
+            tournament=self.tournament,
             match=self.match,
             description="d",
         )
@@ -616,6 +641,7 @@ class ReportViewSetTests(APITestCase):
         report = Report.objects.create(
             reporter=other_reporter,
             reported_user=self.reported,
+            tournament=self.tournament,
             match=self.match,
             description="d",
         )
@@ -630,6 +656,7 @@ class ReportViewSetTests(APITestCase):
         report = Report.objects.create(
             reporter=self.reporter,
             reported_user=self.reported,
+            tournament=self.tournament,
             match=self.match,
             description="d",
         )

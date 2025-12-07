@@ -539,7 +539,7 @@ class ReportViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = Report.objects.all().select_related(
-            "reporter", "reported_user", "match"
+            "reporter", "reported_user", "match", "tournament"
         )
         if not self.request.user.is_staff:
             queryset = queryset.filter(reporter=self.request.user)
@@ -550,7 +550,8 @@ class ReportViewSet(viewsets.ModelViewSet):
         create_report_service(
             reporter=self.request.user,
             reported_user_id=validated_data["reported_user"].id,
-            match_id=validated_data["match"].id,
+            tournament=validated_data["tournament"],
+            match=validated_data.get("match"),
             description=validated_data["description"],
             evidence=validated_data.get("evidence"),
         )

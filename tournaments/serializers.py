@@ -324,6 +324,12 @@ class ReportSerializer(serializers.ModelSerializer):
     reported_user = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), required=False
     )
+    tournament = serializers.PrimaryKeyRelatedField(
+        queryset=Tournament.objects.all(), required=False, allow_null=True
+    )
+    match = serializers.PrimaryKeyRelatedField(
+        queryset=Match.objects.all(), required=False, allow_null=True
+    )
     reported_player_id = serializers.CharField(
         write_only=True, required=False, allow_blank=False
     )
@@ -334,6 +340,7 @@ class ReportSerializer(serializers.ModelSerializer):
             "id",
             "reporter",
             "reported_user",
+            "tournament",
             "match",
             "description",
             "evidence",
@@ -348,7 +355,24 @@ class ReportSerializer(serializers.ModelSerializer):
 
         reported_user = attrs.get("reported_user")
         reported_player_id = attrs.pop("reported_player_id", None)
+        tournament = attrs.get("tournament")
         match = attrs.get("match")
+
+        if not tournament and not match:
+            raise serializers.ValidationError(
+                {"tournament": "Tournament is required when match is not provided."}
+            )
+
+        if match and tournament:
+            if match.tournament_id != tournament.id:
+                raise serializers.ValidationError(
+                    {"match": "Match does not belong to the provided tournament."}
+                )
+
+        if match and not tournament:
+            attrs["tournament"] = match.tournament
+
+        tournament = attrs.get("tournament")
 
         if not reported_user and not reported_player_id:
             raise serializers.ValidationError(
@@ -361,19 +385,19 @@ class ReportSerializer(serializers.ModelSerializer):
             )
 
         if reported_player_id:
-            if not match:
+            if not tournament:
                 raise serializers.ValidationError(
-                    {"match": "Match is required when using reported_player_id."}
+                    {"tournament": "Tournament is required when using reported_player_id."}
                 )
 
             try:
                 ingame_id = InGameID.objects.get(
-                    game=match.tournament.game, player_id=reported_player_id
+                    game=tournament.game, player_id=reported_player_id
                 )
             except InGameID.DoesNotExist:
                 raise serializers.ValidationError(
                     {
-                        "reported_player_id": "No user found with this in-game ID for the match's game.",
+                        "reported_player_id": "No user found with this in-game ID for the tournament's game.",
                     }
                 )
 
