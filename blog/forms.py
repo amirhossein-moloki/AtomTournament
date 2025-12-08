@@ -43,12 +43,8 @@ class PageAdminForm(forms.ModelForm):
 
 
 class MediaAdminForm(forms.ModelForm):
-    file = forms.FileField()
+    file = forms.FileField(required=False)
 
     class Meta:
         model = Media
-        fields = (
-            'file', 'alt_text', 'title',
-            'storage_key', 'url', 'type', 'mime', 'size_bytes',
-            'uploaded_by'
-        )
+        fields = ('file', 'alt_text', 'title')
