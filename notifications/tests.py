@@ -54,7 +54,7 @@ class NotificationTaskTests(TestCase):
         )
         instance = mock_smsir.return_value
         instance.send_bulk.assert_called_once_with(
-            "Your verification code is: 12345", [str(self.user1.phone_number)]
+            "کد تأیید شما: 12345", [str(self.user1.phone_number)]
         )
 
     @override_settings(SMSIR_API_KEY="dummy_api_key")
@@ -65,7 +65,7 @@ class NotificationTaskTests(TestCase):
         send_sms_notification(self.user1.phone_number, context)
         instance = mock_smsir.return_value
         instance.send_bulk.assert_called_once_with(
-            "You have joined the tournament: Test Tourney. Room ID: room123",
+            "شما به تورنمنت Test Tourney پیوستید. شناسه اتاق: room123",
             [str(self.user1.phone_number)],
         )
 
@@ -129,7 +129,7 @@ class NotificationTaskTests(TestCase):
 
         # Assertions for user1's notification
         kwargs_user1 = email_call_for_user1.kwargs
-        self.assertEqual(kwargs_user1["subject"], "Your Tournament Match Credentials")
+        self.assertEqual(kwargs_user1["subject"], "اطلاعات مسابقه شما")
         self.assertIn("room1", kwargs_user1["message"])
         self.assertIn(self.user2.username, kwargs_user1["html_message"])
         self.assertEqual(sms_call_for_user1.args[1]["opponent_name"], self.user2.username)
