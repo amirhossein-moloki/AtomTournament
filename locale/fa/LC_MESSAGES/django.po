@@ -18,10 +18,6 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
-#: blog/models.py:332 blog/models.py:333
-msgid "Post Media"
-msgstr "رسانه پست"
-
 #: notifications/models.py:9
 msgid "New Report"
 msgstr "گزارش جدید"
@@ -37,123 +33,6 @@ msgstr "نیازمند ارسال فرم برنده"
 #: notifications/models.py:14
 msgid "Winner Submission Status Change"
 msgstr "تغییر وضعیت فرم برنده"
-
-#: templates/admin/index.html:4
-msgid "Dashboard"
-msgstr "داشبورد"
-
-#: templates/admin/index.html:8
-msgid "Platform Analytics Dashboard"
-msgstr "داشبورد تحلیلی پلتفرم"
-
-#: templates/admin/index.html:13
-msgid "Total Revenue"
-msgstr "درآمد کل"
-
-#: templates/admin/index.html:14 templates/admin/index.html:18
-#: templates/admin/index.html:106
-msgid "IRR"
-msgstr "ریال"
-
-#: templates/admin/index.html:17
-#, python-format
-msgid "Platform Share (30%%)"
-msgstr "سهم پلتفرم (۳۰٪)"
-
-#: templates/admin/index.html:21
-msgid "Active Players (30d)"
-msgstr "بازیکنان فعال (۳۰ روز)"
-
-#: templates/admin/index.html:25
-msgid "Total Users"
-msgstr "تعداد کل کاربران"
-
-#: templates/admin/index.html:33
-msgid "Daily Revenue (Last 30 Days)"
-msgstr "درآمد روزانه (۳۰ روز گذشته)"
-
-#: templates/admin/index.html:37
-msgid "Player Distribution by Game"
-msgstr "توزیع بازیکنان بر اساس بازی"
-
-#: templates/admin/index.html:44
-msgid "Monthly Cash Flow"
-msgstr "گردش مالی ماهانه"
-
-#: templates/admin/index.html:51
-msgid "Top Referrers"
-msgstr "برترین معرف‌ها"
-
-#: templates/admin/index.html:56
-msgid "Referrer"
-msgstr "معرف"
-
-#: templates/admin/index.html:57
-msgid "New Users"
-msgstr "کاربران جدید"
-
-#: templates/admin/index.html:72
-msgid "Most Popular Tournaments"
-msgstr "محبوب‌ترین تورنمنت‌ها"
-
-#: templates/admin/index.html:77 templates/admin/index.html:98
-msgid "Tournament"
-msgstr "تورنمنت"
-
-#: templates/admin/index.html:78
-msgid "Participants"
-msgstr "شرکت‌کنندگان"
-
-#: templates/admin/index.html:93
-msgid "Most Profitable Tournaments"
-msgstr "سودآورترین تورنمنت‌ها"
-
-#: templates/admin/index.html:99
-msgid "Revenue"
-msgstr "درآمد"
-
-#: templates/admin/index.html:127
-msgid "Daily Revenue"
-msgstr "درآمد روزانه"
-
-#: templates/admin/index.html:153
-msgid "Players"
-msgstr "بازیکنان"
-
-#: templates/admin/index.html:179
-msgid "Income"
-msgstr "درآمد"
-
-#: templates/admin/index.html:184
-msgid "Expenses"
-msgstr "هزینه‌ها"
-
-#: tournament_project/ckeditor_views.py:20
-msgid "Page not found."
-msgstr "صفحه پیدا نشد."
-
-#: tournament_project/ckeditor_views.py:24
-msgid ""
-"اجازه‌ی آپلود ندارید. لطفاً با یک حساب کاربری دارای دسترسی مناسب وارد شوید."
-msgstr "اجازه‌ی آپلود ندارید. لطفاً با یک حساب کاربری دارای دسترسی مناسب وارد شوید."
-
-#: tournament_project/ckeditor_views.py:34
-msgid "هیچ فایلی برای آپلود ارسال نشده است."
-msgstr "هیچ فایلی برای آپلود ارسال نشده است."
-
-#: tournament_project/ckeditor_views.py:42
-msgid ""
-"فایل انتخاب‌شده یک تصویر معتبر نیست. لطفاً یکی از فرمت‌های پشتیبانی‌شده را آپلود "
-"کنید."
-msgstr "فایل انتخاب‌شده یک تصویر معتبر نیست. لطفاً یکی از فرمت‌های پشتیبانی‌شده را آپلود کنید."
-
-#: tournament_project/ckeditor_views.py:52
-msgid "آپلود فایل با خطا مواجه شد. لطفاً دوباره تلاش کنید."
-msgstr "آپلود فایل با خطا مواجه شد. لطفاً دوباره تلاش کنید."
-
-#: tournament_project/ckeditor_views.py:66
-msgid "فایل ارسال‌شده معتبر نیست. لطفاً فرمت و حجم آن را بررسی کنید."
-msgstr "فایل ارسال‌شده معتبر نیست. لطفاً فرمت و حجم آن را بررسی کنید."
 
 #: tournaments/services.py:428
 #, python-format

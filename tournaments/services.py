@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from django.db import transaction
 from django.db.models import Count
+from django.utils import translation
 from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
@@ -404,6 +405,18 @@ def refund_entry_fees(tournament: Tournament, cheater):
                 print(f"ERROR: Failed to refund {participant.user.username} for t: {tournament.id}: {error}")
 
 
+def send_farsi_notification(user, message, notification_type):
+    """
+    Sends a notification to the user in Farsi.
+    """
+    with translation.override("fa"):
+        send_notification(
+            user=user,
+            message=message,
+            notification_type=notification_type,
+        )
+
+
 def create_report_service(
     reporter: User,
     reported_user_id: int,
@@ -423,7 +436,7 @@ def create_report_service(
         description=description,
         evidence=evidence,
     )
-    send_notification(
+    send_farsi_notification(
         user=report.reported_user,
         message=_("You have been reported in tournament %(tournament_name)s.")
         % {"tournament_name": report.tournament},
@@ -442,7 +455,7 @@ def resolve_report_service(report: Report, ban_user: bool):
         reported_user.save()
         report.status = "resolved"
         report.save()
-        send_notification(
+        send_farsi_notification(
             user=report.reporter,
             message=_(
                 "Your report against %(reported_user)s has been resolved and the user has been banned."
@@ -453,7 +466,7 @@ def resolve_report_service(report: Report, ban_user: bool):
     else:
         report.status = "resolved"
         report.save()
-        send_notification(
+        send_farsi_notification(
             user=report.reporter,
             message=_("Your report against %(reported_user)s has been resolved.")
             % {"reported_user": report.reported_user.username},
@@ -468,7 +481,7 @@ def reject_report_service(report: Report):
     """
     report.status = "rejected"
     report.save()
-    send_notification(
+    send_farsi_notification(
         user=report.reporter,
         message=_("Your report against %(reported_user)s has been rejected.")
         % {"reported_user": report.reported_user.username},
@@ -506,7 +519,7 @@ def create_winner_submission_service(user: User, tournament: Tournament, video):
     submission = WinnerSubmission.objects.create(
         winner=user, tournament=tournament, video=video
     )
-    send_notification(
+    send_farsi_notification(
         user=user,
         message=_("Your winner submission has been received."),
         notification_type="winner_submission_status_change",
@@ -570,7 +583,7 @@ def approve_winner_submission_service(submission: WinnerSubmission):
     submission.status = "approved"
     submission.save()
     pay_prize(submission.tournament, submission.winner)
-    send_notification(
+    send_farsi_notification(
         user=submission.winner,
         message=_("Your submission for %(tournament_name)s has been approved.")
         % {"tournament_name": submission.tournament.name},
@@ -586,7 +599,7 @@ def reject_winner_submission_service(submission: WinnerSubmission):
     submission.status = "rejected"
     submission.save()
     refund_entry_fees(submission.tournament, submission.winner)
-    send_notification(
+    send_farsi_notification(
         user=submission.winner,
         message=_("Your submission for %(tournament_name)s has been rejected.")
         % {"tournament_name": submission.tournament.name},
