@@ -17,10 +17,19 @@ class MessageCreateSerializer(serializers.ModelSerializer):
         fields = ("content", "recipient_id")
 
 
+class AttachmentSerializer(serializers.ModelSerializer):
+    """Serializer for the Attachment model."""
+
+    class Meta:
+        model = Attachment
+        fields = ("id", "message", "file", "uploaded_at")
+
+
 class MessageSerializer(serializers.ModelSerializer):
     """Serializer for the Message model."""
 
     sender = UserReadOnlySerializer(read_only=True)
+    attachments = AttachmentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Message
@@ -33,6 +42,7 @@ class MessageSerializer(serializers.ModelSerializer):
             "is_read",
             "is_edited",
             "is_deleted",
+            "attachments",
         )
 
 
@@ -66,11 +76,3 @@ class AttachmentCreateSerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["file"].validators.append(validate_file)
-
-
-class AttachmentSerializer(serializers.ModelSerializer):
-    """Serializer for the Attachment model."""
-
-    class Meta:
-        model = Attachment
-        fields = ("id", "message", "file", "uploaded_at")
