@@ -36,13 +36,14 @@ class BaseBlogAPIView(APIView):
 
 
 class PostViewSet(DynamicSerializerViewMixin, viewsets.ModelViewSet):
-    queryset = Post.objects.all().order_by('-published_at')
+    queryset = Post.objects.all()
     permission_classes = [IsAuthorOrAdminOrReadOnly]
     pagination_class = CustomPageNumberPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = PostFilter
     search_fields = ['title', 'content', 'excerpt']
     ordering_fields = ['published_at', 'views_count']
+    ordering = ['-published_at']
     lookup_field = 'slug'
 
     def get_serializer_class(self):
@@ -54,7 +55,7 @@ class PostViewSet(DynamicSerializerViewMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         if self.action == 'list':
-            queryset = Post.objects.all().order_by('-published_at')
+            queryset = Post.objects.all()
             fields_query = self.request.query_params.get('fields')
             fields = {f.strip() for f in fields_query.split(',')} if fields_query else set()
 
