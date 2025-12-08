@@ -6,9 +6,34 @@
 
 ... (بخش قبلی بدون تغییر باقی می‌ماند) ...
 
+### Attachment Model
+- `id`: شناسه یکتای پیوست.
+- `message`: پیام مرتبط با این پیوست.
+- `file`: فایل آپلود شده.
+- `uploaded_at`: زمان آپلود فایل.
+
+
 ## ۲. Endpoints REST API
 
 ... (بخش قبلی بدون تغییر باقی می‌ماند) ...
+
+### `POST /api/conversations/{conversation_pk}/messages/{message_pk}/attachments/`
+
+برای آپلود یک فایل پیوست برای یک پیام خاص.
+
+- **Permissions**: `IsAuthenticated`
+- **Request Body**: `multipart/form-data`
+  - `file`: The file to upload.
+- **Response**: `201 Created`
+  - Body:
+    ```json
+    {
+      "id": 1,
+      "message": 1,
+      "file": "url/to/file",
+      "uploaded_at": "2023-10-27T14:00:00Z"
+    }
+    ```
 
 ## ۳. ارتباطات WebSocket
 
@@ -115,7 +140,15 @@ wss://yourdomain.com/ws/chat/{conversation_id}/
           "profile_picture": null
       },
       "content": "این یک پیام جدید است.",
-      "timestamp": "2023-10-27T14:00:00Z"
+      "timestamp": "2023-10-27T14:00:00Z",
+      "attachments": [
+        {
+          "id": 1,
+          "message": 124,
+          "file": "url/to/file",
+          "uploaded_at": "2023-10-27T14:00:00Z"
+        }
+      ]
     }
   }
   ```
