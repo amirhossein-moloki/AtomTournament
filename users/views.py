@@ -21,6 +21,7 @@ from rest_framework.permissions import (
 )
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from drf_spectacular.utils import extend_schema
 
 from tournaments.models import Participant, Tournament
 from tournaments.serializers import (TournamentListSerializer,
@@ -38,7 +39,9 @@ from .serializers import CustomTokenObtainPairSerializer
 from .serializers import (RoleSerializer,
                           TopPlayerByRankSerializer, TopPlayerSerializer,
                           UserCreateSerializer,
-                          UserReadOnlySerializer, UserSerializer)
+                          UserReadOnlySerializer, UserSerializer,
+                          GoogleLoginSerializer, DashboardSerializer,
+                          TotalPlayersSerializer)
 from .services import (ApplicationError, send_otp_service,
                        verify_otp_service)
 from common.throttles import (
@@ -185,6 +188,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+@extend_schema(responses=DashboardSerializer)
 class DashboardView(APIView):
     """
     API view for user dashboard.
@@ -248,6 +252,7 @@ class DashboardView(APIView):
         return Response(data)
 
 
+@extend_schema(responses=TopPlayerSerializer(many=True))
 class TopPlayersView(APIView):
     """
     API view for getting top players by prize money.
@@ -266,6 +271,7 @@ class TopPlayersView(APIView):
         return Response(serializer.data)
 
 
+@extend_schema(responses=TopPlayerByRankSerializer(many=True))
 class TopPlayersByRankView(APIView):
     """
     API view for getting top players by rank.
@@ -296,6 +302,7 @@ from tournaments.models import Match
 from tournaments.serializers import MatchReadOnlySerializer
 
 
+@extend_schema(responses=TotalPlayersSerializer)
 class TotalPlayersView(APIView):
     """
     API view for getting the total number of players.
@@ -325,6 +332,7 @@ class UserMatchHistoryView(generics.ListAPIView):
         ).distinct()
 
 
+@extend_schema(request=GoogleLoginSerializer, responses={200: CustomTokenObtainPairSerializer})
 class GoogleLoginView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [VeryStrictThrottle]

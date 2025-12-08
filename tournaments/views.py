@@ -18,6 +18,7 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema, OpenApiResponse
 from rest_framework.filters import OrderingFilter
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
@@ -51,7 +52,9 @@ from .serializers import (GameCreateUpdateSerializer, GameReadOnlySerializer,
                           TournamentCreateUpdateSerializer,
                           TournamentImageSerializer,
                           TournamentListSerializer, TournamentReadOnlySerializer,
-                          WinnerSubmissionSerializer, WinnerSubmissionCreateSerializer)
+                          WinnerSubmissionSerializer, WinnerSubmissionCreateSerializer,
+                          TopTournamentsSerializer, TotalPrizeMoneySerializer,
+                          TotalTournamentsSerializer)
 from .services import (approve_winner_submission_service, confirm_match_result,
                        create_report_service, create_winner_submission_service,
                        dispute_match_result, generate_matches, join_tournament,
@@ -487,6 +490,13 @@ class TournamentColorViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
 
 
+@extend_schema(
+    responses={
+        200: OpenApiResponse(description="File content"),
+        403: OpenApiResponse(description="Permission denied"),
+        404: OpenApiResponse(description="File not found"),
+    }
+)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def private_media_view(request, path):
@@ -666,6 +676,7 @@ class ScoringViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
 
 
+@extend_schema(responses=TopTournamentsSerializer)
 class TopTournamentsView(APIView):
     """
     API view for getting top tournaments by prize pool.
@@ -697,6 +708,7 @@ class TopTournamentsView(APIView):
         )
 
 
+@extend_schema(responses=TotalPrizeMoneySerializer)
 class TotalPrizeMoneyView(APIView):
     """
     API view for getting the total prize money paid out.
@@ -715,6 +727,7 @@ class TotalPrizeMoneyView(APIView):
         return Response({"total_prize_money": total_prize_money})
 
 
+@extend_schema(responses=TotalTournamentsSerializer)
 class TotalTournamentsView(APIView):
     """
     API view for getting the total number of tournaments held.

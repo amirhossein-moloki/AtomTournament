@@ -7,6 +7,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.shortcuts import redirect
 from django.db import transaction
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status, viewsets
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
@@ -26,6 +27,8 @@ from .serializers import (
     TransactionSerializer,
     WalletSerializer,
     WithdrawalRequestSerializer,
+    ZibalWalletSerializer,
+    VerifyDepositSerializer,
 )
 from .services import ZibalService
 from .tasks import verify_deposit_task
@@ -102,6 +105,7 @@ class DepositAPIView(generics.GenericAPIView):
         )
 
 
+@extend_schema(parameters=[VerifyDepositSerializer])
 class VerifyDepositAPIView(APIView):
     def get(self, request, *args, **kwargs):
         track_id = request.query_params.get("trackId")
@@ -351,6 +355,7 @@ class RefundAPIView(generics.GenericAPIView):
             return Response({"error": refund_response.get("message", "خطا در استرداد وجه.")}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@extend_schema(responses=ZibalWalletSerializer(many=True))
 class ZibalWalletListView(APIView):
     """
     Lists all wallets available on Zibal for the merchant.

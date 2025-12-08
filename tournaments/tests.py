@@ -1,5 +1,4 @@
 from datetime import timedelta
-from datetime import timedelta
 from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
@@ -181,7 +180,7 @@ class JoinTournamentInGameIDTests(TestCase):
         self.user = User.objects.create_user(
             username="joiner", password="password", phone_number="+700"
         )
-        Verification.objects.create(user=self.user, level=2)
+        Verification.objects.create(user=self.user, level=2, is_verified=True)
 
         self.tournament = Tournament.objects.create(
             name="Shooter Cup",
@@ -213,8 +212,8 @@ class JoinTournamentInGameIDTests(TestCase):
         member = User.objects.create_user(
             username="member", password="password", phone_number="+702"
         )
-        Verification.objects.create(user=captain, level=2)
-        Verification.objects.create(user=member, level=2)
+        Verification.objects.create(user=captain, level=2, is_verified=True)
+        Verification.objects.create(user=member, level=2, is_verified=True)
 
         tournament = Tournament.objects.create(
             name="Team Cup",
@@ -287,7 +286,7 @@ class TournamentViewSetTests(APITestCase):
         self.admin_user = User.objects.create_superuser(
             username="admin", password="password", phone_number="+2"
         )
-        Verification.objects.create(user=self.user, level=2)
+        Verification.objects.create(user=self.user, level=2, is_verified=True)
         self.game = Game.objects.create(name="Test Game")
         self.tournament = Tournament.objects.create(
             name="Test Tournament",
@@ -295,6 +294,7 @@ class TournamentViewSetTests(APITestCase):
             start_date=timezone.now() + timedelta(days=1),
             end_date=timezone.now() + timedelta(days=2),
         )
+        InGameID.objects.create(user=self.user, game=self.game, player_id="testuser-ingame")
         self.old_eager = celery_app.conf.task_always_eager
         celery_app.conf.task_always_eager = True
 
@@ -510,7 +510,8 @@ class TournamentViewSetTests(APITestCase):
         first_user = User.objects.create_user(
             username="firstuser", password="password", phone_number="+555"
         )
-        Verification.objects.create(user=first_user, level=2)
+        Verification.objects.create(user=first_user, level=2, is_verified=True)
+        InGameID.objects.create(user=first_user, game=self.game, player_id="firstuser-ingame")
         self.client.force_authenticate(user=first_user)
         response = self.client.post(
             f"{self.tournaments_url}tournaments/{full_tournament.id}/join/"

@@ -58,13 +58,17 @@ def send_sms_notification(self, phone_number, context):
     queue='high_priority'
 )
 def send_email_notification(
-    self, subject, message, recipient_list, html_message=None
+    self, subject, message, recipient_list, html_template=None, context=None
 ):
     """
     Sends an email notification. It can be plain text, HTML, or both.
     """
     if not isinstance(recipient_list, list):
         recipient_list = [recipient_list]
+
+    html_message = None
+    if html_template and context:
+        html_message = render_to_string(html_template, context)
 
     logger.info(
         f"Attempting to send email to {recipient_list} with subject '{subject}'"
@@ -116,10 +120,6 @@ def send_tournament_credentials(tournament_id):
                 }
 
                 if p.email:
-                    # The content generation is now handled here, before calling the task.
-                    html_message = render_to_string(
-                        "notifications/email/tournament_joined.html", context
-                    )
                     plain_message = (
                         f"شما به تورنمنت {tournament.name} پیوستید.\n"
                         f"شناسه اتاق: {context.get('room_id', 'نامشخص')}\n"
@@ -129,7 +129,8 @@ def send_tournament_credentials(tournament_id):
                         subject="اطلاعات مسابقه شما",
                         message=plain_message,
                         recipient_list=[p.email],
-                        html_message=html_message,
+                        html_template="notifications/email/tournament_joined.html",
+                        context=context,
                     )
                 if p.phone_number:
                     send_sms_notification.delay(str(p.phone_number), context)

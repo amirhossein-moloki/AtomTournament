@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
@@ -78,6 +79,11 @@ class VerificationViewSet(viewsets.GenericViewSet):
             status=status.HTTP_201_CREATED,
         )
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name='pk', type=int, location=OpenApiParameter.PATH, description='A unique integer value identifying this verification.'),
+        ]
+    )
     @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
     def approve(self, request, pk=None):
         try:

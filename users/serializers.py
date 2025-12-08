@@ -2,6 +2,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
 
 from verification.serializers import VerificationSerializer
+from teams.models import Team
 
 from .models import InGameID, Role, User, Referral
 
@@ -165,3 +166,32 @@ class TopPlayerByRankSerializer(serializers.ModelSerializer):
         )
 
 
+class GoogleLoginSerializer(serializers.Serializer):
+    id_token = serializers.CharField()
+
+
+class DashboardTeamSerializer(serializers.ModelSerializer):
+    members_count = serializers.IntegerField()
+    is_captain = serializers.BooleanField()
+
+    class Meta:
+        model = Team
+        fields = ('id', 'name', 'team_picture', 'members_count', 'is_captain')
+
+
+class DashboardTournamentHistorySerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    rank = serializers.IntegerField()
+    prize = serializers.DecimalField(max_digits=10, decimal_places=2)
+    team = serializers.DictField(child=serializers.CharField())
+    tournament = serializers.DictField(child=serializers.DictField())
+
+
+class DashboardSerializer(serializers.Serializer):
+    user_profile = UserSerializer()
+    teams = DashboardTeamSerializer(many=True)
+    tournament_history = DashboardTournamentHistorySerializer(many=True)
+
+
+class TotalPlayersSerializer(serializers.Serializer):
+    total_players = serializers.IntegerField()

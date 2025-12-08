@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from common.validators import validate_file
@@ -56,6 +57,7 @@ class ConversationSerializer(serializers.ModelSerializer):
         model = Conversation
         fields = ("id", "participants", "created_at", "last_message", "support_ticket")
 
+    @extend_schema_field(MessageSerializer)
     def get_last_message(self, obj):
         """
         Get the last message of a conversation.

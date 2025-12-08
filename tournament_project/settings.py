@@ -385,6 +385,12 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,  # Optional: hides the schema endpoint from the UI
     "SCHEMA_PATH_PREFIX": r"/api",
+    "ENUM_NAME_OVERRIDES": {
+        "StatusD53Enum": "tournaments.models.Game.Status",
+        "StatusE7cEnum": "tournaments.models.Match.Status",
+        "Status224Enum": "tournaments.models.Participant.Status",
+        "TypeEnum": "tournaments.models.Tournament.TournamentType",
+    },
 }
 
 DJOSER = {

@@ -1,6 +1,7 @@
 import logging
 import re
 
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from .models import Refund, Transaction, Wallet, WithdrawalRequest
@@ -41,6 +42,7 @@ class WalletSerializer(serializers.ModelSerializer):
         )
         read_only_fields = fields
 
+    @extend_schema_field(serializers.DictField(child=serializers.CharField()))
     def get_summary(self, obj):
         from django.db.models import Sum, Count
         summary_data = obj.transactions.aggregate(
@@ -137,3 +139,17 @@ class RefundSerializer(serializers.ModelSerializer):
         model = Refund
         fields = ('id', 'transaction', 'amount', 'refund_id', 'status', 'description', 'created_at')
         read_only_fields = fields
+
+
+class ZibalWalletSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    id = serializers.CharField()
+    bankName = serializers.CharField()
+    accountNumber = serializers.CharField()
+    iban = serializers.CharField()
+
+
+class VerifyDepositSerializer(serializers.Serializer):
+    trackId = serializers.CharField()
+    success = serializers.CharField()
+    orderId = serializers.CharField()
