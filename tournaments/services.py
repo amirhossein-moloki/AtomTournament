@@ -8,7 +8,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from notifications.services import send_notification
 from notifications.tasks import send_email_notification, send_sms_notification
 from teams.models import Team
-from users.models import User
+from users.models import InGameID, User
 from verification.models import Verification
 from wallet.services import process_transaction, process_token_transaction
 
@@ -198,6 +198,10 @@ def join_tournament(
 
     # 2. Handle Individual vs. Team Tournament
     if tournament.type == "individual":
+        if not InGameID.objects.filter(user=user, game=tournament.game).exists():
+            raise ApplicationError(
+                "You must set your in-game ID for this game before joining the tournament."
+            )
         if tournament.participants.filter(id=user.id).exists():
             raise ApplicationError("You have already joined this tournament.")
 
@@ -245,6 +249,22 @@ def join_tournament(
 
         # Fetch all members including the captain
         members = list(team.members.all()) + [team.captain]
+
+        existing_in_game_ids = set(
+            InGameID.objects.filter(user__in=members, game=tournament.game)
+            .values_list("user_id", flat=True)
+        )
+        missing_in_game_ids = [
+            member.username
+            for member in members
+            if member.id not in existing_in_game_ids
+        ]
+
+        if missing_in_game_ids:
+            raise ApplicationError(
+                "The following players need to set their in-game IDs for this game before joining the tournament: "
+                + ", ".join(missing_in_game_ids)
+            )
 
         if any(
             tournament.participants.filter(id=member.id).exists() for member in members
