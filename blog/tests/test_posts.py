@@ -94,6 +94,18 @@ class PostAPITest(BaseAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 3)
 
+    def test_default_ordering_is_latest_first(self):
+        older_post = PostFactory(published_at=timezone.now() - timedelta(days=3))
+        newest_post = PostFactory(published_at=timezone.now())
+        middle_post = PostFactory(published_at=timezone.now() - timedelta(days=1))
+
+        url = reverse('blog:post-list')
+        response = self.client.get(url, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        returned_ids = [post['id'] for post in response.data['results']]
+        self.assertEqual(returned_ids[:3], [newest_post.id, middle_post.id, older_post.id])
+
     def test_post_pagination(self):
         PostFactory.create_batch(15)
         url = reverse('blog:post-list')
