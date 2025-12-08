@@ -34,11 +34,14 @@ def send_sms_notification(self, phone_number, context):
 
     # Simple message formatting based on context
     if "code" in context:
-        message = f"Your verification code is: {context['code']}"
+        message = f"کد تأیید شما: {context['code']}"
     elif "tournament_name" in context:
-        message = f"You have joined the tournament: {context['tournament_name']}. Room ID: {context.get('room_id', 'N/A')}"
+        message = (
+            f"شما به تورنمنت {context['tournament_name']} پیوستید. "
+            f"شناسه اتاق: {context.get('room_id', 'نامشخص')}"
+        )
     else:
-        message = f"You have a new notification: {context}"
+        message = f"یک اعلان جدید دارید: {context}"
 
     # The smsir library expects a list of numbers.
     smsir.send_bulk(message, [str(phone_number)])
@@ -118,12 +121,12 @@ def send_tournament_credentials(tournament_id):
                         "notifications/email/tournament_joined.html", context
                     )
                     plain_message = (
-                        f"You have joined the tournament: {tournament.name}.\n"
-                        f"Room ID: {context.get('room_id', 'N/A')}\n"
-                        f"Password: {context.get('password', 'N/A')}"
+                        f"شما به تورنمنت {tournament.name} پیوستید.\n"
+                        f"شناسه اتاق: {context.get('room_id', 'نامشخص')}\n"
+                        f"رمز عبور: {context.get('password', 'نامشخص')}"
                     )
                     send_email_notification.delay(
-                        subject="Your Tournament Match Credentials",
+                        subject="اطلاعات مسابقه شما",
                         message=plain_message,
                         recipient_list=[p.email],
                         html_message=html_message,
