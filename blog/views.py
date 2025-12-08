@@ -54,7 +54,7 @@ class PostViewSet(DynamicSerializerViewMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         if self.action == 'list':
-            queryset = Post.objects.all()
+            queryset = Post.objects.all().order_by('-published_at')
             fields_query = self.request.query_params.get('fields')
             fields = {f.strip() for f in fields_query.split(',')} if fields_query else set()
 
