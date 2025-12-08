@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from django.db import transaction
 from django.db.models import Count
+from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from notifications.services import send_notification
@@ -424,7 +425,8 @@ def create_report_service(
     )
     send_notification(
         user=report.reported_user,
-        message=f"You have been reported in tournament {report.tournament}.",
+        message=_("You have been reported in tournament %(tournament_name)s.")
+        % {"tournament_name": report.tournament},
         notification_type="report_new",
     )
     return report
@@ -442,7 +444,10 @@ def resolve_report_service(report: Report, ban_user: bool):
         report.save()
         send_notification(
             user=report.reporter,
-            message=f"Your report against {reported_user.username} has been resolved and the user has been banned.",
+            message=_(
+                "Your report against %(reported_user)s has been resolved and the user has been banned."
+            )
+            % {"reported_user": reported_user.username},
             notification_type="report_status_change",
         )
     else:
@@ -450,7 +455,8 @@ def resolve_report_service(report: Report, ban_user: bool):
         report.save()
         send_notification(
             user=report.reporter,
-            message=f"Your report against {report.reported_user.username} has been resolved.",
+            message=_("Your report against %(reported_user)s has been resolved.")
+            % {"reported_user": report.reported_user.username},
             notification_type="report_status_change",
         )
     return report
@@ -464,7 +470,8 @@ def reject_report_service(report: Report):
     report.save()
     send_notification(
         user=report.reporter,
-        message=f"Your report against {report.reported_user.username} has been rejected.",
+        message=_("Your report against %(reported_user)s has been rejected.")
+        % {"reported_user": report.reported_user.username},
         notification_type="report_status_change",
     )
     return report
@@ -501,7 +508,7 @@ def create_winner_submission_service(user: User, tournament: Tournament, video):
     )
     send_notification(
         user=user,
-        message="Your winner submission has been received.",
+        message=_("Your winner submission has been received."),
         notification_type="winner_submission_status_change",
     )
     return submission
@@ -565,7 +572,8 @@ def approve_winner_submission_service(submission: WinnerSubmission):
     pay_prize(submission.tournament, submission.winner)
     send_notification(
         user=submission.winner,
-        message=f"Your submission for {submission.tournament.name} has been approved.",
+        message=_("Your submission for %(tournament_name)s has been approved.")
+        % {"tournament_name": submission.tournament.name},
         notification_type="winner_submission_status_change",
     )
     return submission
@@ -580,7 +588,8 @@ def reject_winner_submission_service(submission: WinnerSubmission):
     refund_entry_fees(submission.tournament, submission.winner)
     send_notification(
         user=submission.winner,
-        message=f"Your submission for {submission.tournament.name} has been rejected.",
+        message=_("Your submission for %(tournament_name)s has been rejected.")
+        % {"tournament_name": submission.tournament.name},
         notification_type="winner_submission_status_change",
     )
     return submission

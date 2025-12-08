@@ -1,14 +1,18 @@
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 from users.models import User
 
 
 class Notification(models.Model):
     NOTIFICATION_TYPE_CHOICES = (
-        ("report_new", "New Report"),
-        ("report_status_change", "Report Status Change"),
-        ("winner_submission_required", "Winner Submission Required"),
-        ("winner_submission_status_change", "Winner Submission Status Change"),
+        ("report_new", _("New Report")),
+        ("report_status_change", _("Report Status Change")),
+        ("winner_submission_required", _("Winner Submission Required")),
+        (
+            "winner_submission_status_change",
+            _("Winner Submission Status Change"),
+        ),
     )
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="notifications"

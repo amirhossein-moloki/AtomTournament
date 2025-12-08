@@ -69,9 +69,11 @@ class AuthorProfile(models.Model):
 
 
 class Category(models.Model):
-    slug = models.SlugField(unique=True)
+    slug = models.SlugField(unique=True, allow_unicode=True)
     name = models.CharField(max_length=255)
-    parent = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='children')
+    parent = models.ForeignKey(
+        "self", on_delete=models.SET_NULL, null=True, blank=True, related_name="children"
+    )
     description = models.TextField(blank=True)
     order = models.IntegerField(default=0)
 
@@ -80,6 +82,11 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name, allow_unicode=True)
+        super().save(*args, **kwargs)
 
 
 class Tag(models.Model):
@@ -129,6 +136,7 @@ class Post(models.Model):
     canonical_url = models.URLField(null=True, blank=True)
     title = models.CharField(max_length=255)
     excerpt = models.TextField()
+    is_hot = models.BooleanField(default=False)
     content = CKEditor5Field(config_name="default")
     reading_time_sec = models.PositiveIntegerField(default=0)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='draft')
