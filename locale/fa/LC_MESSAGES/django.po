@@ -1,0 +1,192 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-12-08 18:57+0330\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: fa\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: blog/models.py:332 blog/models.py:333
+msgid "Post Media"
+msgstr "رسانه پست"
+
+#: notifications/models.py:9
+msgid "New Report"
+msgstr "گزارش جدید"
+
+#: notifications/models.py:10
+msgid "Report Status Change"
+msgstr "تغییر وضعیت گزارش"
+
+#: notifications/models.py:11
+msgid "Winner Submission Required"
+msgstr "نیازمند ارسال فرم برنده"
+
+#: notifications/models.py:14
+msgid "Winner Submission Status Change"
+msgstr "تغییر وضعیت فرم برنده"
+
+#: templates/admin/index.html:4
+msgid "Dashboard"
+msgstr "داشبورد"
+
+#: templates/admin/index.html:8
+msgid "Platform Analytics Dashboard"
+msgstr "داشبورد تحلیلی پلتفرم"
+
+#: templates/admin/index.html:13
+msgid "Total Revenue"
+msgstr "درآمد کل"
+
+#: templates/admin/index.html:14 templates/admin/index.html:18
+#: templates/admin/index.html:106
+msgid "IRR"
+msgstr "ریال"
+
+#: templates/admin/index.html:17
+#, python-format
+msgid "Platform Share (30%%)"
+msgstr "سهم پلتفرم (۳۰٪)"
+
+#: templates/admin/index.html:21
+msgid "Active Players (30d)"
+msgstr "بازیکنان فعال (۳۰ روز)"
+
+#: templates/admin/index.html:25
+msgid "Total Users"
+msgstr "تعداد کل کاربران"
+
+#: templates/admin/index.html:33
+msgid "Daily Revenue (Last 30 Days)"
+msgstr "درآمد روزانه (۳۰ روز گذشته)"
+
+#: templates/admin/index.html:37
+msgid "Player Distribution by Game"
+msgstr "توزیع بازیکنان بر اساس بازی"
+
+#: templates/admin/index.html:44
+msgid "Monthly Cash Flow"
+msgstr "گردش مالی ماهانه"
+
+#: templates/admin/index.html:51
+msgid "Top Referrers"
+msgstr "برترین معرف‌ها"
+
+#: templates/admin/index.html:56
+msgid "Referrer"
+msgstr "معرف"
+
+#: templates/admin/index.html:57
+msgid "New Users"
+msgstr "کاربران جدید"
+
+#: templates/admin/index.html:72
+msgid "Most Popular Tournaments"
+msgstr "محبوب‌ترین تورنمنت‌ها"
+
+#: templates/admin/index.html:77 templates/admin/index.html:98
+msgid "Tournament"
+msgstr "تورنمنت"
+
+#: templates/admin/index.html:78
+msgid "Participants"
+msgstr "شرکت‌کنندگان"
+
+#: templates/admin/index.html:93
+msgid "Most Profitable Tournaments"
+msgstr "سودآورترین تورنمنت‌ها"
+
+#: templates/admin/index.html:99
+msgid "Revenue"
+msgstr "درآمد"
+
+#: templates/admin/index.html:127
+msgid "Daily Revenue"
+msgstr "درآمد روزانه"
+
+#: templates/admin/index.html:153
+msgid "Players"
+msgstr "بازیکنان"
+
+#: templates/admin/index.html:179
+msgid "Income"
+msgstr "درآمد"
+
+#: templates/admin/index.html:184
+msgid "Expenses"
+msgstr "هزینه‌ها"
+
+#: tournament_project/ckeditor_views.py:20
+msgid "Page not found."
+msgstr "صفحه پیدا نشد."
+
+#: tournament_project/ckeditor_views.py:24
+msgid ""
+"اجازه‌ی آپلود ندارید. لطفاً با یک حساب کاربری دارای دسترسی مناسب وارد شوید."
+msgstr "اجازه‌ی آپلود ندارید. لطفاً با یک حساب کاربری دارای دسترسی مناسب وارد شوید."
+
+#: tournament_project/ckeditor_views.py:34
+msgid "هیچ فایلی برای آپلود ارسال نشده است."
+msgstr "هیچ فایلی برای آپلود ارسال نشده است."
+
+#: tournament_project/ckeditor_views.py:42
+msgid ""
+"فایل انتخاب‌شده یک تصویر معتبر نیست. لطفاً یکی از فرمت‌های پشتیبانی‌شده را آپلود "
+"کنید."
+msgstr "فایل انتخاب‌شده یک تصویر معتبر نیست. لطفاً یکی از فرمت‌های پشتیبانی‌شده را آپلود کنید."
+
+#: tournament_project/ckeditor_views.py:52
+msgid "آپلود فایل با خطا مواجه شد. لطفاً دوباره تلاش کنید."
+msgstr "آپلود فایل با خطا مواجه شد. لطفاً دوباره تلاش کنید."
+
+#: tournament_project/ckeditor_views.py:66
+msgid "فایل ارسال‌شده معتبر نیست. لطفاً فرمت و حجم آن را بررسی کنید."
+msgstr "فایل ارسال‌شده معتبر نیست. لطفاً فرمت و حجم آن را بررسی کنید."
+
+#: tournaments/services.py:428
+#, python-format
+msgid "You have been reported in tournament %(tournament_name)s."
+msgstr "گزارشی علیه شما در تورنمنت %(tournament_name)s ثبت شده است."
+
+#: tournaments/services.py:448
+#, python-format
+msgid ""
+"Your report against %(reported_user)s has been resolved and the user has "
+"been banned."
+msgstr "گزارش شما علیه %(reported_user)s بررسی و کاربر متخلف مسدود شد."
+
+#: tournaments/services.py:458
+#, python-format
+msgid "Your report against %(reported_user)s has been resolved."
+msgstr "گزارش شما علیه %(reported_user)s بررسی شد."
+
+#: tournaments/services.py:473
+#, python-format
+msgid "Your report against %(reported_user)s has been rejected."
+msgstr "گزارش شما علیه %(reported_user)s رد شد."
+
+#: tournaments/services.py:511
+msgid "Your winner submission has been received."
+msgstr "فرم اعلام برنده شدن شما دریافت شد."
+
+#: tournaments/services.py:575
+#, python-format
+msgid "Your submission for %(tournament_name)s has been approved."
+msgstr "فرم شما برای تورنمنت %(tournament_name)s تأیید شد."
+
+#: tournaments/services.py:591
+#, python-format
+msgid "Your submission for %(tournament_name)s has been rejected."
+msgstr "فرم شما برای تورنمنت %(tournament_name)s رد شد."
