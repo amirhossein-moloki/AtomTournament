@@ -1,4 +1,5 @@
 from datetime import timedelta
+from datetime import timedelta
 from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
@@ -16,9 +17,10 @@ from teams.models import Team, TeamMembership
 from users.models import InGameID, User
 from verification.models import Verification
 
-from .models import (Game, GameManager, Match, Report, Tournament, TournamentColor,
-                     TournamentImage, WinnerSubmission)
-from .services import get_tournament_winners
+from .exceptions import ApplicationError
+from .models import (Game, GameManager, Match, Participant, Report, Tournament,
+                     TournamentColor, TournamentImage, WinnerSubmission)
+from .services import get_tournament_winners, join_tournament
 
 
 class TournamentModelTests(TestCase):
@@ -103,6 +105,7 @@ class TournamentModelTests(TestCase):
         self.assertEqual(p1.score, initial_score_p1 + 5)
         self.assertEqual(p2.score, initial_score_p2 + 4)
 
+
     def test_distribute_scores_team(self):
         """
         Test the score distribution for a team-based tournament.
@@ -165,6 +168,83 @@ class TournamentModelTests(TestCase):
 
         p1.refresh_from_db()
         self.assertEqual(p1.score, 100)
+
+
+class JoinTournamentInGameIDTests(TestCase):
+    def setUp(self):
+        self.email_patch = patch("tournaments.services.send_email_notification")
+        self.sms_patch = patch("tournaments.services.send_sms_notification")
+        self.mock_email = self.email_patch.start()
+        self.mock_sms = self.sms_patch.start()
+
+        self.game = Game.objects.create(name="Shooter")
+        self.user = User.objects.create_user(
+            username="joiner", password="password", phone_number="+700"
+        )
+        Verification.objects.create(user=self.user, level=2)
+
+        self.tournament = Tournament.objects.create(
+            name="Shooter Cup",
+            game=self.game,
+            start_date=timezone.now() + timedelta(days=1),
+            end_date=timezone.now() + timedelta(days=2),
+        )
+
+    def tearDown(self):
+        self.email_patch.stop()
+        self.sms_patch.stop()
+
+    def test_individual_join_requires_in_game_id(self):
+        with self.assertRaises(ApplicationError) as exc:
+            join_tournament(tournament=self.tournament, user=self.user)
+
+        self.assertIn("in-game ID", str(exc.exception))
+
+        InGameID.objects.create(user=self.user, game=self.game, player_id="player-1")
+
+        participant = join_tournament(tournament=self.tournament, user=self.user)
+
+        self.assertEqual(participant.user, self.user)
+
+    def test_team_join_requires_in_game_id_for_everyone(self):
+        captain = User.objects.create_user(
+            username="captain", password="password", phone_number="+701"
+        )
+        member = User.objects.create_user(
+            username="member", password="password", phone_number="+702"
+        )
+        Verification.objects.create(user=captain, level=2)
+        Verification.objects.create(user=member, level=2)
+
+        tournament = Tournament.objects.create(
+            name="Team Cup",
+            game=self.game,
+            start_date=timezone.now() + timedelta(days=1),
+            end_date=timezone.now() + timedelta(days=2),
+            type="team",
+            team_size=2,
+        )
+
+        team = Team.objects.create(name="Winners", captain=captain, max_members=2)
+        TeamMembership.objects.create(user=member, team=team)
+        InGameID.objects.create(user=captain, game=self.game, player_id="captain-1")
+
+        with self.assertRaises(ApplicationError) as exc:
+            join_tournament(tournament=tournament, user=captain, team_id=team.id)
+
+        self.assertIn(member.username, str(exc.exception))
+
+        InGameID.objects.create(user=member, game=self.game, player_id="member-1")
+
+        result = join_tournament(tournament=tournament, user=captain, team_id=team.id)
+
+        self.assertEqual(result, team)
+        self.assertEqual(
+            Participant.objects.filter(
+                tournament=tournament, user__in=[captain, member]
+            ).count(),
+            2,
+        )
 
 
 class MatchModelTests(TestCase):
