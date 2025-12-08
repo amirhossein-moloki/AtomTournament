@@ -57,6 +57,8 @@ cffi==1.17.1
     # via cryptography
 channels==4.3.1
     # via -r requirements.in
+channels-redis==4.2.0
+    # via -r requirements.in
 charset-normalizer==3.3.2
     # via requests
 click==8.2.1
