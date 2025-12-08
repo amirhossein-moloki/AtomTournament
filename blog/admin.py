@@ -1,4 +1,6 @@
 from django.contrib import admin, messages
+from django.urls import reverse
+from django.utils.html import format_html
 from django.db import transaction
 from jalali_date.admin import ModelAdminJalaliMixin
 from .models import (
@@ -14,10 +16,17 @@ from .forms import MediaAdminForm, PageAdminForm, PostAdminForm
 @admin.register(Media)
 class MediaAdmin(ModelAdminJalaliMixin, admin.ModelAdmin):
     form = MediaAdminForm
-    list_display = ('title', 'type', 'mime', 'size_bytes', 'created_at', 'get_download_url')
+    list_display = ('title', 'type', 'mime', 'size_bytes', 'created_at', 'download_link')
     list_filter = ('type', 'mime')
     search_fields = ('title', 'alt_text')
-    readonly_fields = ('storage_key', 'url', 'type', 'mime', 'size_bytes', 'uploaded_by', 'created_at', 'get_download_url')
+    readonly_fields = ('storage_key', 'url', 'type', 'mime', 'size_bytes', 'uploaded_by', 'created_at', 'download_link')
+
+    def download_link(self, obj):
+        if obj.pk:
+            download_url = reverse('blog:download_media', args=[obj.pk])
+            return format_html('<a href="{}">Download</a>', download_url)
+        return "N/A"
+    download_link.short_description = 'Download'
 
     def save_model(self, request, obj, form, change):
         uploaded_file = form.cleaned_data.get('file')
