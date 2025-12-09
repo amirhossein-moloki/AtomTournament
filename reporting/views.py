@@ -1,5 +1,6 @@
 from django.db.models import Sum
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import IsAdminUser, AllowAny
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
@@ -10,7 +11,14 @@ from tournaments.models import Tournament
 from users.models import User
 from wallet.models import Transaction
 from .renderers import CSVRenderer
-from .serializers import StatisticsSerializer
+from .serializers import (
+    StatisticsSerializer,
+    RevenueReportSerializer,
+    PlayersReportSerializer,
+    TournamentReportSerializer,
+    FinancialReportSerializer,
+    MarketingReportSerializer,
+)
 from .services import (
     generate_revenue_report,
     generate_players_report,
@@ -21,10 +29,12 @@ from .services import (
 )
 
 
+@extend_schema(responses=RevenueReportSerializer)
 class RevenueReportViewSet(ViewSet):
     """
     API endpoint for the Revenue Report.
     """
+
     permission_classes = [IsAdminUser]
     renderer_classes = [JSONRenderer, CSVRenderer]
 
@@ -34,10 +44,12 @@ class RevenueReportViewSet(ViewSet):
         return Response(report_data)
 
 
+@extend_schema(responses=PlayersReportSerializer)
 class PlayersReportViewSet(ViewSet):
     """
     API endpoint for the Players Report.
     """
+
     permission_classes = [IsAdminUser]
     renderer_classes = [JSONRenderer, CSVRenderer]
 
@@ -46,10 +58,12 @@ class PlayersReportViewSet(ViewSet):
         return Response(report_data)
 
 
+@extend_schema(responses=TournamentReportSerializer)
 class TournamentReportViewSet(ViewSet):
     """
     API endpoint for the Tournament Report.
     """
+
     permission_classes = [IsAdminUser]
     renderer_classes = [JSONRenderer, CSVRenderer]
 
@@ -58,10 +72,12 @@ class TournamentReportViewSet(ViewSet):
         return Response(report_data)
 
 
+@extend_schema(responses=FinancialReportSerializer)
 class FinancialReportViewSet(ViewSet):
     """
     API endpoint for the Financial Report.
     """
+
     permission_classes = [IsAdminUser]
     renderer_classes = [JSONRenderer, CSVRenderer]
 
@@ -70,10 +86,12 @@ class FinancialReportViewSet(ViewSet):
         return Response(report_data)
 
 
+@extend_schema(responses=MarketingReportSerializer)
 class MarketingReportViewSet(ViewSet):
     """
     API endpoint for the Marketing Report.
     """
+
     permission_classes = [IsAdminUser]
     renderer_classes = [JSONRenderer, CSVRenderer]
 
@@ -87,21 +105,25 @@ def dashboard_callback(request, context):
     This function is called by the Unfold admin theme to populate the
     dashboard with custom data.
     """
-    context.update({
-        "revenue_report": generate_revenue_report(),
-        "players_report": generate_players_report(),
-        "tournament_report": generate_tournament_report(),
-        "financial_report": generate_financial_report(),
-        "marketing_report": generate_marketing_report(),
-    })
+    context.update(
+        {
+            "revenue_report": generate_revenue_report(),
+            "players_report": generate_players_report(),
+            "tournament_report": generate_tournament_report(),
+            "financial_report": generate_financial_report(),
+            "marketing_report": generate_marketing_report(),
+        }
+    )
 
     return context
 
 
+@extend_schema(responses=StatisticsSerializer)
 class StatisticsAPIView(APIView):
     """
     An endpoint to display overall platform statistics.
     """
+
     permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):

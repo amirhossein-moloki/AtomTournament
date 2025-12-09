@@ -1,9 +1,11 @@
 import os
 from io import BytesIO
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
+from django.urls import reverse
 from PIL import Image
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
@@ -23,6 +25,7 @@ class VerificationModelTests(TestCase):
         self.assertEqual(verification.level, 1)
 
 
+@patch("common.fields.optimize_video.delay")
 class VerificationViewTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
@@ -32,9 +35,8 @@ class VerificationViewTests(APITestCase):
         self.admin_user = User.objects.create_superuser(
             username="admin", password="password", phone_number="+54321"
         )
-        self.level2_url = "/api/verification/submit_level2/"
-        self.level3_url = "/api/verification/submit_level3/"
-        self.admin_url_template = "/api/verification/{}/approve/"
+        self.level2_url = reverse("verification-submit-level2")
+        self.level3_url = reverse("verification-submit-level3")
 
     def _generate_dummy_image(self, name="test.png"):
         file = BytesIO()
@@ -44,11 +46,11 @@ class VerificationViewTests(APITestCase):
         file.seek(0)
         return SimpleUploadedFile(name, file.read(), content_type="image/png")
 
-    def test_submit_level2_verification_unauthenticated(self):
+    def test_submit_level2_verification_unauthenticated(self, mock_optimize_video):
         response = self.client.post(self.level2_url, {})
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_submit_level2_verification_success(self):
+    def test_submit_level2_verification_success(self, mock_optimize_video):
         self.client.force_authenticate(user=self.user)
         data = {
             "id_card_image": self._generate_dummy_image("id_card.png"),
@@ -61,12 +63,12 @@ class VerificationViewTests(APITestCase):
         self.assertFalse(verification.is_verified)
         self.assertIsNotNone(verification.id_card_image)
 
-    def test_submit_level2_missing_images_fails(self):
+    def test_submit_level2_missing_images_fails(self, mock_optimize_video):
         self.client.force_authenticate(user=self.user)
         response = self.client.post(self.level2_url, {}, format="multipart")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_resubmit_level2_when_already_verified_fails(self):
+    def test_resubmit_level2_when_already_verified_fails(self, mock_optimize_video):
         Verification.objects.create(user=self.user, level=2, is_verified=True)
         self.client.force_authenticate(user=self.user)
         data = {
@@ -76,43 +78,43 @@ class VerificationViewTests(APITestCase):
         response = self.client.post(self.level2_url, data, format="multipart")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_admin_approve_verification_success(self):
+    def test_admin_approve_verification_success(self, mock_optimize_video):
         verification = Verification.objects.create(user=self.user, level=2)
         self.client.force_authenticate(user=self.admin_user)
-        url = self.admin_url_template.format(verification.pk)
+        url = reverse("verification-approve", kwargs={"pk": verification.pk})
         data = {"is_verified": True}
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         verification.refresh_from_db()
         self.assertTrue(verification.is_verified)
 
-    def test_admin_reject_verification(self):
+    def test_admin_reject_verification(self, mock_optimize_video):
         verification = Verification.objects.create(
             user=self.user, level=2, is_verified=True
         )
         self.client.force_authenticate(user=self.admin_user)
-        url = self.admin_url_template.format(verification.pk)
+        url = reverse("verification-approve", kwargs={"pk": verification.pk})
         data = {"is_verified": False}
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         verification.refresh_from_db()
         self.assertFalse(verification.is_verified)
 
-    def test_non_admin_cannot_update_verification(self):
+    def test_non_admin_cannot_update_verification(self, mock_optimize_video):
         verification = Verification.objects.create(user=self.user, level=2)
         self.client.force_authenticate(user=self.user)
-        url = self.admin_url_template.format(verification.pk)
+        url = reverse("verification-approve", kwargs={"pk": verification.pk})
         data = {"is_verified": True}
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_submit_level3_not_level2_verified_fails(self):
+    def test_submit_level3_not_level2_verified_fails(self, mock_optimize_video):
         self.client.force_authenticate(user=self.user)
         data = {"video": self._generate_dummy_image("video.mp4")}
         response = self.client.post(self.level3_url, data, format="multipart")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_submit_level3_success(self):
+    def test_submit_level3_success(self, mock_optimize_video):
         Verification.objects.create(user=self.user, level=2, is_verified=True)
         self.client.force_authenticate(user=self.user)
         data = {"video": self._generate_dummy_image("video.mp4")}
@@ -123,7 +125,7 @@ class VerificationViewTests(APITestCase):
         self.assertFalse(verification.is_verified)
         self.assertIsNotNone(verification.video)
 
-    def test_submit_level3_missing_video_fails(self):
+    def test_submit_level3_missing_video_fails(self, mock_optimize_video):
         Verification.objects.create(user=self.user, level=2, is_verified=True)
         self.client.force_authenticate(user=self.user)
         response = self.client.post(self.level3_url, {}, format="multipart")

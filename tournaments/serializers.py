@@ -1,4 +1,5 @@
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from teams.serializers import TeamSerializer
@@ -66,6 +67,7 @@ class GameReadOnlySerializer(serializers.ModelSerializer):
         )
         read_only_fields = fields
 
+    @extend_schema_field(serializers.DictField(child=serializers.IntegerField()))
     def get_tournaments_count(self, obj):
         return {
             "held": obj.held_tournaments_count,
@@ -455,3 +457,16 @@ class GameManagerSerializer(serializers.ModelSerializer):
     class Meta:
         model = GameManager
         fields = ("id", "user", "game")
+
+
+class TopTournamentsSerializer(serializers.Serializer):
+    past_tournaments = TournamentListSerializer(many=True)
+    future_tournaments = TournamentListSerializer(many=True)
+
+
+class TotalPrizeMoneySerializer(serializers.Serializer):
+    total_prize_money = serializers.DecimalField(max_digits=15, decimal_places=2)
+
+
+class TotalTournamentsSerializer(serializers.Serializer):
+    total_tournaments = serializers.IntegerField()

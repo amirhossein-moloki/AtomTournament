@@ -1,5 +1,6 @@
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import mixins, viewsets
 from rest_framework.permissions import IsAuthenticated
 
@@ -85,6 +86,11 @@ class MessageViewSet(viewsets.ModelViewSet):
         serializer.save(sender=self.request.user, conversation=conversation)
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter(name='conversation_pk', type=int, location=OpenApiParameter.PATH, description='A unique integer value identifying this conversation.'),
+    ]
+)
 class AttachmentViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing attachments.
