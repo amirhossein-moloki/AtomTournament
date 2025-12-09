@@ -294,7 +294,6 @@ class TournamentViewSetTests(APITestCase):
             start_date=timezone.now() + timedelta(days=1),
             end_date=timezone.now() + timedelta(days=2),
         )
-        InGameID.objects.create(user=self.user, game=self.game, player_id="testuser-ingame")
         self.old_eager = celery_app.conf.task_always_eager
         celery_app.conf.task_always_eager = True
 
@@ -340,6 +339,7 @@ class TournamentViewSetTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_join_individual_tournament(self):
+        InGameID.objects.create(user=self.user, game=self.game, player_id="testuser-ingame")
         self.client.force_authenticate(user=self.user)
         response = self.client.post(
             f"{self.tournaments_url}tournaments/{self.tournament.id}/join/"
@@ -349,16 +349,22 @@ class TournamentViewSetTests(APITestCase):
 
     def test_join_team_tournament(self):
         team = Team.objects.create(name="Team For Tourney", captain=self.user)
+        member = User.objects.create_user(
+            username="member", password="password", phone_number="+3"
+        )
+        team.members.add(member)
         team_tournament = Tournament.objects.create(
             name="Team Tournament",
             game=self.game,
             start_date=timezone.now() + timedelta(days=1),
             end_date=timezone.now() + timedelta(days=2),
             type="team",
-            team_size=1,
+            team_size=2,
         )
         self.client.force_authenticate(user=self.user)
-        data = {"team_id": team.id, "member_ids": [self.user.id]}
+        InGameID.objects.create(user=self.user, game=self.game, player_id="captain-ingame-id-2")
+        InGameID.objects.create(user=member, game=self.game, player_id="member-ingame-id-2")
+        data = {"team_id": team.id, "member_ids": [self.user.id, member.id]}
         response = self.client.post(
             f"{self.tournaments_url}tournaments/{team_tournament.id}/join/", data
         )
@@ -382,6 +388,7 @@ class TournamentViewSetTests(APITestCase):
             type="individual",
         )
         self.client.force_authenticate(user=self.user)
+        InGameID.objects.create(user=self.user, game=self.game, player_id="testuser-ingame")
         response = self.client.post(
             f"{self.tournaments_url}tournaments/{paid_tournament.id}/join/"
         )
@@ -400,6 +407,13 @@ class TournamentViewSetTests(APITestCase):
         self.user.wallet.withdrawable_balance = 200
         self.user.wallet.save()
         team = Team.objects.create(name="Paid Team", captain=self.user)
+        member = User.objects.create_user(
+            username="paid_member", password="password", phone_number="+4"
+        )
+        member.wallet.total_balance = 100
+        member.wallet.withdrawable_balance = 100
+        member.wallet.save()
+        team.members.add(member)
         paid_tournament = Tournament.objects.create(
             name="Paid Team Tournament",
             game=self.game,
@@ -408,16 +422,20 @@ class TournamentViewSetTests(APITestCase):
             is_free=False,
             entry_fee=50,
             type="team",
-            team_size=1,
+            team_size=2,
         )
         self.client.force_authenticate(user=self.user)
-        data = {"team_id": team.id, "member_ids": [self.user.id]}
+        InGameID.objects.create(user=self.user, game=self.game, player_id="captain-ingame-id")
+        InGameID.objects.create(user=member, game=self.game, player_id="member-ingame-id")
+        data = {"team_id": team.id, "member_ids": [self.user.id, member.id]}
         response = self.client.post(
             f"{self.tournaments_url}tournaments/{paid_tournament.id}/join/", data
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.user.refresh_from_db()
         self.assertEqual(self.user.wallet.withdrawable_balance, 150)
+        member.refresh_from_db()
+        self.assertEqual(member.wallet.withdrawable_balance, 50)
         self.assertTrue(paid_tournament.teams.filter(id=team.id).exists())
 
     def test_join_paid_tournament_insufficient_balance(self):

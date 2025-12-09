@@ -240,16 +240,17 @@ def join_tournament(
         if user != team.captain:
             raise ApplicationError("Only the team captain can join a tournament.")
 
-        if team.members.count() + 1 != tournament.team_size:
-            raise ApplicationError(
-                f"This tournament requires teams of size {tournament.team_size}."
-            )
-
         if tournament.teams.filter(id=team.id).exists():
             raise ApplicationError("Your team has already joined this tournament.")
 
         # Fetch all members including the captain
         members = list(team.members.all()) + [team.captain]
+
+        if len(members) < tournament.team_size:
+            raise ApplicationError(
+                f"Your team does not have enough members to join this tournament. "
+                f"Required size: {tournament.team_size}, your team size: {len(members)}."
+            )
 
         existing_in_game_ids = set(
             InGameID.objects.filter(user__in=members, game=tournament.game)
