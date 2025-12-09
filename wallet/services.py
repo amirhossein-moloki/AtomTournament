@@ -1,13 +1,15 @@
-import requests
-from decimal import Decimal
-from datetime import timedelta
 import logging
+import uuid
+from datetime import timedelta
+from decimal import Decimal
 
+import requests
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
+from rest_framework.exceptions import ValidationError, NotFound
 
-from .models import Transaction, Wallet
+from .models import Transaction, Wallet, WithdrawalRequest
 
 logger = logging.getLogger(__name__)
 
@@ -19,54 +21,39 @@ class ZibalService:
     """
 
     def __init__(self):
-        # توکن دسترسی برای APIهای جدید (کیف پول، استرداد و...)
         self.access_token = getattr(settings, "ZIBAL_ACCESS_TOKEN", None)
-        # شناسه مرچنت برای APIهای قدیمی درگاه پرداخت
         self.merchant_id = getattr(settings, "ZIBAL_MERCHANT_ID", "zibal")
-
         self.api_base_url = "https://api.zibal.ir/v1"
         self.gateway_base_url = "https://gateway.zibal.ir/v1"
 
     def _get_auth_headers(self):
-        """هدر احراز هویت را برمی‌گرداند."""
         if not self.access_token:
             raise ValueError("ZIBAL_ACCESS_TOKEN is not configured in settings.")
         return {"Authorization": f"Bearer {self.access_token}"}
 
     def _post_request(self, url, payload=None, is_gateway=False):
-        """یک درخواست POST به سرور زیبال ارسال می‌کند."""
         base_url = self.gateway_base_url if is_gateway else self.api_base_url
         full_url = f"{base_url}{url}"
         headers = {} if is_gateway else self._get_auth_headers()
-
         try:
             response = requests.post(full_url, json=payload, headers=headers)
             response.raise_for_status()
             return response.json()
-        except requests.exceptions.HTTPError as e:
-            logger.error(f"HTTP Error for {full_url}: {e.response.text}")
-            return {"error": "HTTP Error", "details": e.response.text}
         except requests.exceptions.RequestException as e:
             logger.error(f"Request Exception for {full_url}: {e}")
-            return {"error": str(e)}
+            raise ValidationError("خطا در ارتباط با درگاه پرداخت.") from e
 
     def _get_request(self, url):
-        """یک درخواست GET به سرور زیبال ارسال می‌کند."""
         full_url = f"{self.api_base_url}{url}"
         try:
             response = requests.get(full_url, headers=self._get_auth_headers())
             response.raise_for_status()
             return response.json()
-        except requests.exceptions.HTTPError as e:
-            logger.error(f"HTTP Error for {full_url}: {e.response.text}")
-            return {"error": "HTTP Error", "details": e.response.text}
         except requests.exceptions.RequestException as e:
             logger.error(f"Request Exception for {full_url}: {e}")
-            return {"error": str(e)}
+            raise ValidationError("خطا در ارتباط با سرور.") from e
 
-    # --- متدهای درگاه پرداخت ---
     def create_payment(self, amount, description, callback_url, order_id, mobile=None):
-        """ایجاد یک تراکنش جدید در درگاه پرداخت."""
         payload = {
             "merchant": self.merchant_id,
             "amount": amount,
@@ -78,240 +65,250 @@ class ZibalService:
         return self._post_request("/request", payload, is_gateway=True)
 
     def verify_payment(self, track_id, amount):
-        """تایید یک تراکنش پرداخت."""
-        payload = {
-            "merchant": self.merchant_id,
-            "trackId": track_id,
-            "amount": amount,
-        }
+        payload = {"merchant": self.merchant_id, "trackId": track_id, "amount": amount}
         return self._post_request("/verify", payload, is_gateway=True)
 
     def generate_payment_url(self, track_id):
-        """URL صفحه پرداخت را تولید می‌کند."""
         return f"https://gateway.zibal.ir/start/{track_id}"
 
-    # --- متدهای کیف پول ---
-    def list_wallets(self):
-        """لیست کیف پول‌های موجود را برمی‌گرداند."""
-        return self._get_request("/wallet/list")
-
-    def get_wallet_balance(self, wallet_id):
-        """موجودی یک کیف پول مشخص را برمی‌گرداند."""
-        return self._post_request("/wallet/balance", {"id": wallet_id})
-
-    # --- متدهای استرداد وجه ---
-    def request_refund(self, track_id, amount=None, card_number=None, description=None):
-        """درخواست استرداد وجه برای یک تراکنش موفق."""
-        payload = {
-            "trackId": track_id,
-            "amount": amount,
-            "cardNumber": card_number,
-            "description": description,
-        }
-        # حذف کلیدهایی که مقدار ندارند
-        payload = {k: v for k, v in payload.items() if v is not None}
-        return self._post_request("/account/refund", payload)
-
-    # --- متدهای گزارش‌گیری ---
-    def get_checkout_report(self, from_date=None, to_date=None, page=1, size=100):
-        """گزارش تسویه‌ها را دریافت می‌کند."""
-        payload = {
-            "fromDate": from_date,
-            "toDate": to_date,
-            "page": page,
-            "size": size,
-        }
-        payload = {k: v for k, v in payload.items() if v is not None}
-        return self._post_request("/report/checkout", payload)
-
-    def get_gateway_transactions_report(self, from_date=None, to_date=None, page=1, size=100):
-        """گزارش تراکنش‌های درگاه پرداخت را دریافت می‌کند."""
-        payload = {
-            "fromDate": from_date,
-            "toDate": to_date,
-            "page": page,
-            "size": size,
-        }
-        payload = {k: v for k, v in payload.items() if v is not None}
-        return self._post_request("/gateway/report/transaction", payload)
+    def request_refund(self, track_id, amount):
+        payload = {"trackId": track_id, "amount": amount}
+        return self._post_request("/refund", payload)
 
 
-# سایر توابع سرویس لایه که منطق بیزینس را مدیریت می‌کنند
-def process_transaction(
-    user, amount: Decimal, transaction_type: str, description: str = ""
-) -> (Transaction, str):
-    """
-    Safely processes a transaction by creating a Transaction object and updating
-    the user's wallet balance within a single atomic database transaction.
-    """
-    if amount <= 0:
-        return None, "Transaction amount must be positive."
+class WalletService:
+    def __init__(self, user):
+        self.user = user
+        self.zibal_service = ZibalService()
 
-    if transaction_type not in [t[0] for t in Transaction.TRANSACTION_TYPE_CHOICES]:
-        return None, f"Invalid transaction type: {transaction_type}"
+    def get_wallet(self):
+        try:
+            return Wallet.objects.get(user=self.user)
+        except Wallet.DoesNotExist:
+            raise NotFound("کیف پول برای این کاربر یافت نشد.")
 
-    try:
-        with transaction.atomic():
-            wallet = Wallet.objects.select_for_update().get(user=user)
+    def create_deposit(self, amount: Decimal, callback_url_builder):
+        wallet = self.get_wallet()
+        order_id = str(uuid.uuid4())
 
-            is_debit = transaction_type in ["withdrawal", "entry_fee"]
+        transaction = Transaction.objects.create(
+            wallet=wallet,
+            amount=amount,
+            transaction_type=Transaction.TransactionType.DEPOSIT,
+            order_id=order_id,
+            status=Transaction.Status.PENDING,
+            description="شارژ کیف پول",
+        )
 
-            if is_debit:
-                if transaction_type == "withdrawal":
-                    # Check for minimum withdrawal amount
-                    if amount < settings.MINIMUM_WITHDRAWAL_AMOUNT:
-                        return (
-                            None,
-                            f"Minimum withdrawal amount is {settings.MINIMUM_WITHDRAWAL_AMOUNT} IRR.",
-                        )
+        callback_url = callback_url_builder("/api/wallet/verify-deposit/")
+        mobile_number = (
+            f"0{self.user.phone_number.national_number}"
+            if self.user.phone_number
+            else None
+        )
 
-                    # Check for withdrawal frequency
-                    last_withdrawal = (
-                        Transaction.objects.filter(
-                            wallet=wallet,
-                            transaction_type="withdrawal",
-                            status="success",
-                            timestamp__gte=timezone.now() - timedelta(hours=24),
-                        )
-                        .order_by("-timestamp")
-                        .first()
-                    )
-                    if last_withdrawal:
-                        return (
-                            None,
-                            "You can only make one withdrawal every 24 hours.",
-                        )
+        zibal_response = self.zibal_service.create_payment(
+            amount=int(amount),
+            description=f"شارژ کیف پول برای سفارش {order_id}",
+            callback_url=callback_url,
+            order_id=order_id,
+            mobile=mobile_number,
+        )
 
-                if wallet.withdrawable_balance < amount:
-                    return None, "Insufficient withdrawable balance."
-                if wallet.total_balance < amount:
-                    return None, "Insufficient total balance."
+        track_id = zibal_response.get("trackId")
+        if track_id:
+            transaction.authority = str(track_id)
+            transaction.save()
+            return self.zibal_service.generate_payment_url(track_id)
 
-                wallet.total_balance -= amount
-                wallet.withdrawable_balance -= amount
-            else:  # Credit
-                wallet.total_balance += amount
-                if transaction_type in ["deposit", "prize"]:
-                    wallet.withdrawable_balance += amount
+        transaction.status = Transaction.Status.FAILED
+        transaction.description = zibal_response.get(
+            "message", "ایجاد پرداخت با شکست مواجه شد."
+        )
+        transaction.save()
+        raise ValidationError(transaction.description)
 
-            new_transaction = Transaction.objects.create(
-                wallet=wallet,
-                amount=amount,
-                transaction_type=transaction_type,
-                description=description,
-                status="success",
-            )
-            wallet.save()
-            return new_transaction, None
-
-    except Wallet.DoesNotExist:
-        return None, "User wallet not found."
-    except Exception as e:
-        return None, str(e)
-
-
-def verify_and_process_deposit(track_id, order_id):
-    """
-    Verifies a deposit with Zibal and updates the wallet synchronously.
-    This function is designed to be idempotent.
-    """
-    try:
-        tx = Transaction.objects.get(order_id=order_id, authority=track_id)
-        if tx.status != "pending":
-            logger.warning(
-                f"Verification skipped for already processed transaction {tx.id} with status {tx.status}"
+    @staticmethod
+    def verify_and_process_deposit(track_id: str, order_id: str):
+        try:
+            tx = Transaction.objects.get(order_id=order_id, authority=track_id)
+            if tx.status != Transaction.Status.PENDING:
+                logger.warning(
+                    f"تایید پرداخت برای تراکنش {tx.id} که قبلا پردازش شده، نادیده گرفته شد."
+                )
+                return
+        except Transaction.DoesNotExist:
+            logger.error(
+                f"تراکنشی برای order_id={order_id} و track_id={track_id} یافت نشد."
             )
             return
-    except Transaction.DoesNotExist:
-        logger.error(
-            f"Transaction not found for order_id={order_id} and track_id={track_id}."
+
+        zibal_service = ZibalService()
+        verification_response = zibal_service.verify_payment(
+            track_id=track_id, amount=int(tx.amount)
         )
-        return
+        result = verification_response.get("result")
 
-    zibal = ZibalService()
-    verification_response = zibal.verify_payment(
-        track_id=track_id, amount=int(tx.amount)
-    )
-    result = verification_response.get("result")
+        if result in [100, 201]:  # Success or Already Verified
+            try:
+                with transaction.atomic():
+                    tx_atomic = Transaction.objects.select_for_update().get(id=tx.id)
+                    if tx_atomic.status != Transaction.Status.PENDING:
+                        return
 
-    if result in [100, 201]:
-        try:
-            with transaction.atomic():
-                tx_inside_atomic = Transaction.objects.select_for_update().get(id=tx.id)
-                if tx_inside_atomic.status != "pending":
-                    logger.warning(
-                        f"Transaction {tx.id} was already processed. Skipping update."
-                    )
-                    return
+                    wallet = Wallet.objects.select_for_update().get(id=tx_atomic.wallet.id)
+                    wallet.total_balance += tx_atomic.amount
+                    wallet.withdrawable_balance += tx_atomic.amount
+                    wallet.save()
 
-                wallet = Wallet.objects.select_for_update().get(
-                    id=tx_inside_atomic.wallet.id
-                )
+                    tx_atomic.status = Transaction.Status.SUCCESS
+                    tx_atomic.ref_number = verification_response.get("refNumber")
+                    tx_atomic.description = verification_response.get("description", "پرداخت موفق")
+                    tx_atomic.save()
+                logger.info(f"واریز برای تراکنش {tx.id} با موفقیت تایید و پردازش شد.")
+            except Exception as e:
+                logger.error(f"خطا در پردازش واریز موفق برای تراکنش {tx.id}: {e}")
+        else:
+            tx.status = Transaction.Status.FAILED
+            tx.description = verification_response.get("message", "تایید پرداخت ناموفق بود.")
+            tx.save()
+            logger.error(f"تایید زیبال برای تراکنش {tx.id} ناموفق بود: {tx.description}")
 
-                wallet.total_balance += tx_inside_atomic.amount
-                wallet.withdrawable_balance += tx_inside_atomic.amount
-                wallet.save()
-
-                tx_inside_atomic.status = "success"
-                tx_inside_atomic.ref_number = verification_response.get("refNumber")
-                tx_inside_atomic.description = verification_response.get(
-                    "description", "Payment successful"
-                )
-                tx_inside_atomic.save()
-            logger.info(
-                f"Successfully verified and processed deposit for transaction {tx.id}"
+    def create_withdrawal_request(self, amount: Decimal, card_number: str, sheba_number: str) -> WithdrawalRequest:
+        if amount < settings.MINIMUM_WITHDRAWAL_AMOUNT:
+            raise ValidationError(
+                f"حداقل مقدار برداشت {settings.MINIMUM_WITHDRAWAL_AMOUNT:,.0f} ریال است."
             )
-        except Exception as e:
-            logger.error(
-                f"Error processing successful deposit for transaction {tx.id}: {e}"
-            )
-    else:
-        tx.status = "failed"
-        tx.description = verification_response.get(
-            "message", "Payment verification failed."
-        )
-        tx.save()
-        logger.error(
-            f"Zibal verification failed for tx {tx.id} (trackId: {track_id}): {tx.description}"
-        )
 
+        if WithdrawalRequest.objects.filter(
+            user=self.user, created_at__gte=timezone.now() - timedelta(hours=24)
+        ).exists():
+            raise ValidationError("شما در ۲۴ ساعت گذشته یک درخواست برداشت ثبت کرده‌اید.")
 
-def process_token_transaction(
-    user, amount: Decimal, transaction_type: str, description: str = ""
-) -> (Transaction, str):
-    """
-    Safely processes a token-based transaction by creating a Transaction object
-    and updating the user's wallet's token balance within a single atomic
-    database transaction.
-    """
-    if amount <= 0:
-        return None, "Transaction amount must be positive."
-
-    if transaction_type not in ["token_spent", "token_earned"]:
-        return None, f"Invalid transaction type for tokens: {transaction_type}"
-
-    try:
         with transaction.atomic():
-            wallet = Wallet.objects.select_for_update().get(user=user)
+            wallet = self.get_wallet()
+            wallet_for_update = Wallet.objects.select_for_update().get(user=self.user)
 
-            if transaction_type == "token_spent":
-                if wallet.token_balance < amount:
-                    return None, "Insufficient token balance."
-                wallet.token_balance -= amount
-            else:  # token_earned
-                wallet.token_balance += amount
+            if wallet_for_update.withdrawable_balance < amount:
+                raise ValidationError("موجودی قابل برداشت کافی نیست.")
 
-            new_transaction = Transaction.objects.create(
+            if not wallet_for_update.card_number:
+                wallet_for_update.card_number = card_number
+            if not wallet_for_update.sheba_number:
+                wallet_for_update.sheba_number = sheba_number
+
+            wallet_for_update.total_balance -= amount
+            wallet_for_update.withdrawable_balance -= amount
+            wallet_for_update.save()
+
+            withdrawal_request = WithdrawalRequest.objects.create(user=self.user, amount=amount)
+            return withdrawal_request
+
+    @staticmethod
+    def approve_withdrawal_request(withdrawal_request: WithdrawalRequest) -> WithdrawalRequest:
+        if withdrawal_request.status != WithdrawalRequest.Status.PENDING:
+            raise ValidationError(f"درخواست قبلا در وضعیت {withdrawal_request.get_status_display()} بوده است.")
+
+        with transaction.atomic():
+            withdrawal_request.status = WithdrawalRequest.Status.APPROVED
+            withdrawal_request.save()
+
+            Transaction.objects.create(
+                wallet=withdrawal_request.user.wallet,
+                amount=withdrawal_request.amount,
+                transaction_type=Transaction.TransactionType.WITHDRAWAL,
+                status=Transaction.Status.SUCCESS,
+                description=f"درخواست برداشت {withdrawal_request.id} توسط ادمین تایید شد.",
+            )
+        return withdrawal_request
+
+    @staticmethod
+    def reject_withdrawal_request(withdrawal_request: WithdrawalRequest) -> WithdrawalRequest:
+        if withdrawal_request.status != WithdrawalRequest.Status.PENDING:
+            raise ValidationError(f"درخواست قبلا در وضعیت {withdrawal_request.get_status_display()} بوده است.")
+
+        with transaction.atomic():
+            wallet = Wallet.objects.select_for_update().get(user=withdrawal_request.user)
+            wallet.total_balance += withdrawal_request.amount
+            wallet.withdrawable_balance += withdrawal_request.amount
+            wallet.save()
+
+            withdrawal_request.status = WithdrawalRequest.Status.REJECTED
+            withdrawal_request.save()
+        return withdrawal_request
+
+    @staticmethod
+    def process_transaction(user, amount: Decimal, transaction_type: str, description: str = ""):
+        wallet = Wallet.objects.get(user=user)
+        is_debit = transaction_type in [
+            Transaction.TransactionType.WITHDRAWAL,
+            Transaction.TransactionType.ENTRY_FEE,
+            Transaction.TransactionType.TOKEN_SPENT,
+        ]
+
+        with transaction.atomic():
+            wallet_for_update = Wallet.objects.select_for_update().get(user=user)
+
+            if is_debit:
+                if "token" in transaction_type:
+                    if wallet_for_update.token_balance < amount:
+                        raise ValidationError("موجودی توکن کافی نیست.")
+                    wallet_for_update.token_balance -= amount
+                else:
+                    if wallet_for_update.withdrawable_balance < amount:
+                        raise ValidationError("موجودی قابل برداشت کافی نیست.")
+                    wallet_for_update.total_balance -= amount
+                    wallet_for_update.withdrawable_balance -= amount
+            else: # Credit
+                if "token" in transaction_type:
+                    wallet_for_update.token_balance += amount
+                else:
+                    wallet_for_update.total_balance += amount
+                    if transaction_type in [Transaction.TransactionType.DEPOSIT, Transaction.TransactionType.PRIZE]:
+                        wallet_for_update.withdrawable_balance += amount
+
+            wallet_for_update.save()
+
+            return Transaction.objects.create(
                 wallet=wallet,
                 amount=amount,
                 transaction_type=transaction_type,
                 description=description,
-                status="success",
+                status=Transaction.Status.SUCCESS,
             )
-            wallet.save()
-            return new_transaction, None
 
-    except Wallet.DoesNotExist:
-        return None, "User wallet not found."
-    except Exception as e:
-        return None, str(e)
+    def create_refund_request(self, track_id: str, amount: Decimal):
+        try:
+            transaction_to_refund = Transaction.objects.get(
+                authority=track_id,
+                status=Transaction.Status.SUCCESS,
+                wallet__user=self.user
+            )
+        except Transaction.DoesNotExist:
+            raise NotFound("تراکنش موفق با این شناسه یافت نشد.")
+
+        if transaction_to_refund.is_refunded:
+            raise ValidationError("این تراکنش قبلا استرداد شده است.")
+
+        refund_amount = amount or transaction_to_refund.amount
+
+        zibal_response = self.zibal_service.request_refund(
+            track_id=track_id,
+            amount=int(refund_amount)
+        )
+
+        if zibal_response.get("result") == 1:
+            with transaction.atomic():
+                refund_data = zibal_response.get("data", {})
+                new_refund = Refund.objects.create(
+                    transaction=transaction_to_refund,
+                    amount=refund_amount,
+                    refund_id=refund_data.get("refundId"),
+                    status=Refund.Status.PENDING,
+                    description=zibal_response.get("message")
+                )
+                transaction_to_refund.is_refunded = True
+                transaction_to_refund.save()
+            return new_refund
+        else:
+            raise ValidationError(zibal_response.get("message", "خطا در استرداد وجه."))
