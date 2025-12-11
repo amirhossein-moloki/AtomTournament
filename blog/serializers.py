@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.core.files.storage import default_storage
-from jalali_date import date2jalali
+from jalali_date import datetime2jalali
 from markdownify import markdownify as html_to_markdown
 
 from PIL import Image
@@ -22,7 +22,7 @@ User = get_user_model()
 class JalaliDateTimeField(serializers.ReadOnlyField):
     def to_representation(self, value):
         if value:
-            return date2jalali(value).strftime('%Y/%m/%d %H:%M:%S')
+            return datetime2jalali(value).strftime('%Y/%m/%d %H:%M:%S')
         return None
 
 
