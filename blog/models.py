@@ -158,7 +158,7 @@ class Post(models.Model):
     objects = PostManager()
 
     class Meta:
-        ordering = ['-published_at']
+        ordering = ['-published_at', '-id']
 
     def __str__(self):
         return self.title

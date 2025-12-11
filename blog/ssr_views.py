@@ -12,7 +12,7 @@ class PostListView(ListView):
 
     def get_queryset(self):
         try:
-            return Post.objects.published().order_by('-published_at')
+            return Post.objects.published().order_by('-published_at', '-id')
         except Exception as e:
             messages.error(self.request, "خطایی در هنگام بارگذاری لیست پست‌ها رخ داد.")
             return Post.objects.none()

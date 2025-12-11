@@ -42,8 +42,8 @@ class PostViewSet(DynamicSerializerViewMixin, viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = PostFilter
     search_fields = ['title', 'content', 'excerpt']
-    ordering_fields = ['published_at', 'views_count']
-    ordering = ['-published_at']
+    ordering_fields = ['published_at', 'views_count', 'id']
+    ordering = ['-published_at', '-id']
     lookup_field = 'slug'
 
     def get_serializer_class(self):
@@ -154,7 +154,7 @@ class PostViewSet(DynamicSerializerViewMixin, viewsets.ModelViewSet):
         similar_posts = Post.objects.filter(
             status='published',
             category=current_post.category
-        ).exclude(pk=current_post.pk).order_by('-published_at')[:5]
+        ).exclude(pk=current_post.pk).order_by('-published_at', '-id')[:5]
 
         serializer = PostListSerializer(similar_posts, many=True)
         return Response(serializer.data)
@@ -170,7 +170,7 @@ class PostViewSet(DynamicSerializerViewMixin, viewsets.ModelViewSet):
             status='published',
             category=current_post.category,
             published_at__lte=timezone.now()
-        ).exclude(pk=current_post.pk).order_by('-published_at')[:5]
+        ).exclude(pk=current_post.pk).order_by('-published_at', '-id')[:5]
 
         serializer = PostListSerializer(category_posts, many=True, context=self.get_serializer_context())
         return Response(serializer.data)
@@ -228,7 +228,7 @@ def related_posts(request, slug):
     ).exclude(pk=current_post.pk).distinct()
     related = related.annotate(
         common_tags=Count('tags', filter=Q(tags__in=tag_ids))
-    ).order_by('-common_tags', '-published_at')[:5]
+    ).order_by('-common_tags', '-published_at', '-id')[:5]
 
     serializer = PostListSerializer(related, many=True)
     return Response(serializer.data)
