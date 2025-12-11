@@ -3,6 +3,8 @@ from rest_framework import status
 from django.utils import timezone
 from datetime import timedelta
 
+from jalali_date import datetime2jalali
+
 from django.db.models.signals import post_save
 from blog.factories import (
     PostFactory, CategoryFactory, TagFactory, SeriesFactory, MediaFactory, UserFactory
@@ -106,6 +108,20 @@ class PostAPITest(BaseAPITestCase):
         returned_ids = [post['id'] for post in response.data['results']]
         self.assertEqual(returned_ids[:3], [newest_post.id, middle_post.id, older_post.id])
 
+    def test_default_ordering_uses_time_within_same_day(self):
+        base_datetime = timezone.now().replace(hour=12, minute=0, second=0, microsecond=0)
+
+        earliest = PostFactory(published_at=base_datetime.replace(hour=8))
+        middle = PostFactory(published_at=base_datetime.replace(hour=12))
+        latest = PostFactory(published_at=base_datetime.replace(hour=18))
+
+        url = reverse('blog:post-list')
+        response = self.client.get(url, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        returned_ids = [post['id'] for post in response.data['results']]
+        self.assertEqual(returned_ids[:3], [latest.id, middle.id, earliest.id])
+
     def test_post_pagination(self):
         PostFactory.create_batch(15)
         url = reverse('blog:post-list')
@@ -159,6 +175,20 @@ class PostAPITest(BaseAPITestCase):
         response = self.client.get(url, {'published_after': after_date}, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
+
+    def test_published_at_serialization_preserves_time(self):
+        published_at = timezone.now().replace(hour=14, minute=30, second=15, microsecond=0)
+        post = PostFactory(published_at=published_at)
+
+        url = reverse('blog:post-list')
+        response = self.client.get(url, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        returned_post = response.data['results'][0]
+        expected_timestamp = datetime2jalali(published_at).strftime('%Y/%m/%d %H:%M:%S')
+
+        self.assertEqual(returned_post['id'], post.id)
+        self.assertEqual(returned_post['published_at'], expected_timestamp)
 
     def test_same_category_endpoint_returns_latest_published_posts(self):
         category = CategoryFactory()
