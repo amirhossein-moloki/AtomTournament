@@ -44,7 +44,8 @@ class WalletServiceTests(TestCase):
             return f"http://testserver{path}"
 
         amount = Decimal("50000")
-        payment_url = self.service.create_deposit(amount, mock_callback_builder)
+        service = WalletService(user=self.user)
+        payment_url = service.create_deposit(amount, mock_callback_builder)
 
         self.assertEqual(payment_url, "http://payment-url.com")
         self.assertTrue(
@@ -65,7 +66,7 @@ class WalletServiceTests(TestCase):
         }
 
         with self.assertRaises(ValidationError) as cm:
-            self.service.create_deposit(
+            WalletService(user=self.user).create_deposit(
                 Decimal("50000"), lambda p: f"http://testserver{p}"
             )
 
@@ -77,10 +78,16 @@ class WalletServiceTests(TestCase):
         )
 
     def test_create_withdrawal_request_success(self):
-        self.wallet.withdrawable_balance = Decimal("100000")
-        self.wallet.save()
+        Wallet.objects.filter(id=self.wallet.id).update(
+            withdrawable_balance=Decimal("2000000.00"),
+            total_balance=Decimal("2000000.00"),
+        )
+        self.wallet.refresh_from_db()
+        self.assertEqual(self.wallet.withdrawable_balance, Decimal("2000000.00"))
 
         amount = settings.MINIMUM_WITHDRAWAL_AMOUNT
+        starting_balance = self.wallet.withdrawable_balance
+        starting_total = self.wallet.total_balance
         request = self.service.create_withdrawal_request(
             amount, "1234567812345678", "IR123456789012345678901234"
         )
@@ -88,17 +95,17 @@ class WalletServiceTests(TestCase):
         self.assertEqual(request.amount, amount)
         self.assertEqual(request.user, self.user)
         self.wallet.refresh_from_db()
-        self.assertEqual(
-            self.wallet.withdrawable_balance, Decimal("100000") - amount
-        )
+        expected_balance = starting_balance - Decimal(amount)
+        self.assertEqual(self.wallet.withdrawable_balance, expected_balance)
+        self.assertEqual(self.wallet.total_balance, starting_total - Decimal(amount))
 
     def test_create_withdrawal_insufficient_balance(self):
-        self.wallet.withdrawable_balance = Decimal("10000")
+        self.wallet.withdrawable_balance = settings.MINIMUM_WITHDRAWAL_AMOUNT
         self.wallet.save()
 
         with self.assertRaisesMessage(ValidationError, "موجودی قابل برداشت کافی نیست."):
             self.service.create_withdrawal_request(
-                Decimal("20000"), "1234", "IR1234"
+                settings.MINIMUM_WITHDRAWAL_AMOUNT * 2, "1234", "IR1234"
             )
 
     def test_create_withdrawal_below_minimum(self):
@@ -106,6 +113,29 @@ class WalletServiceTests(TestCase):
             self.service.create_withdrawal_request(
                 settings.MINIMUM_WITHDRAWAL_AMOUNT - 1, "1234", "IR1234"
             )
+
+    def test_create_withdrawal_within_24_hours_blocked(self):
+        self.wallet.withdrawable_balance = settings.MINIMUM_WITHDRAWAL_AMOUNT * 2
+        self.wallet.total_balance = settings.MINIMUM_WITHDRAWAL_AMOUNT * 2
+        self.wallet.save()
+
+        WalletService(user=self.user).create_withdrawal_request(
+            settings.MINIMUM_WITHDRAWAL_AMOUNT,
+            "1234567812345678",
+            "IR123456789012345678901234",
+        )
+
+        with self.assertRaises(ValidationError) as cm:
+            self.service.create_withdrawal_request(
+                settings.MINIMUM_WITHDRAWAL_AMOUNT,
+                "8765432187654321",
+                "IR432109876543210987654321",
+            )
+
+        self.assertIn(
+            "شما در ۲۴ ساعت گذشته یک درخواست برداشت ثبت کرده",
+            str(cm.exception.detail[0]),
+        )
 
     def test_approve_withdrawal_request(self):
         request = WithdrawalRequest.objects.create(
@@ -160,6 +190,61 @@ class WalletServiceTests(TestCase):
         self.wallet.refresh_from_db()
         self.assertEqual(tx.status, Transaction.Status.SUCCESS)
         self.assertEqual(self.wallet.total_balance, initial_balance + tx.amount)
+
+    @patch("wallet.services.ZibalService")
+    def test_verify_and_process_deposit_already_verified(self, MockZibalService):
+        mock_zibal = MockZibalService.return_value
+        mock_zibal.verify_payment.return_value = {
+            "result": 201,
+            "refNumber": "ref201",
+            "description": "already verified",
+        }
+
+        tx = Transaction.objects.create(
+            wallet=self.wallet,
+            amount=Decimal("75000"),
+            order_id="order201",
+            authority="track201",
+            status=Transaction.Status.PENDING,
+        )
+
+        WalletService.verify_and_process_deposit(
+            track_id="track201", order_id="order201"
+        )
+
+        tx.refresh_from_db()
+        self.wallet.refresh_from_db()
+
+        self.assertEqual(tx.status, Transaction.Status.SUCCESS)
+        self.assertEqual(tx.ref_number, "ref201")
+        self.assertEqual(
+            self.wallet.total_balance, Decimal("75000")
+        )
+
+    @patch("wallet.services.ZibalService")
+    def test_verify_and_process_deposit_non_pending_ignored(self, MockZibalService):
+        mock_zibal = MockZibalService.return_value
+        mock_zibal.verify_payment.return_value = {"result": 100}
+
+        tx = Transaction.objects.create(
+            wallet=self.wallet,
+            amount=Decimal("120000"),
+            order_id="order-done",
+            authority="track-done",
+            status=Transaction.Status.SUCCESS,
+        )
+
+        initial_total = self.wallet.total_balance
+
+        WalletService.verify_and_process_deposit(
+            track_id="track-done", order_id="order-done"
+        )
+
+        tx.refresh_from_db()
+        self.wallet.refresh_from_db()
+
+        self.assertEqual(tx.status, Transaction.Status.SUCCESS)
+        self.assertEqual(self.wallet.total_balance, initial_total)
 
     def test_process_transaction_debit_success(self):
         self.wallet.withdrawable_balance = Decimal("1000")
