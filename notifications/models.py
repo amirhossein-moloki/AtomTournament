@@ -5,10 +5,10 @@ from users.models import User
 
 class Notification(models.Model):
     NOTIFICATION_TYPE_CHOICES = (
-        ("report_new", "New Report"),
-        ("report_status_change", "Report Status Change"),
-        ("winner_submission_required", "Winner Submission Required"),
-        ("winner_submission_status_change", "Winner Submission Status Change"),
+        ("report_new", "گزارش جدید"),
+        ("report_status_change", "تغییر وضعیت گزارش"),
+        ("winner_submission_required", "نیاز به ارسال نتیجه"),
+        ("winner_submission_status_change", "تغییر وضعیت ارسال نتیجه"),
     )
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="notifications"
