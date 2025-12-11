@@ -30,8 +30,6 @@ class ConversationViewSet(
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        if self.request.user.is_staff:
-            return Conversation.objects.all().prefetch_related("participants", "messages")
         return self.request.user.conversations.prefetch_related(
             "participants", "messages"
         )
@@ -57,14 +55,10 @@ class MessageViewSet(viewsets.ModelViewSet):
             conversation_pk = self.kwargs["conversation_pk"]
             queryset = Message.objects.filter(conversation__pk=conversation_pk)
 
-            if not self.request.user.is_staff:
-                # Ensure user is a participant of the conversation
-                queryset = queryset.filter(conversation__participants=self.request.user)
+            # Ensure user is a participant of the conversation
+            queryset = queryset.filter(conversation__participants=self.request.user)
 
             return queryset.select_related("sender").prefetch_related("attachments").order_by("timestamp")
-
-        if self.request.user.is_staff:
-            return Message.objects.all().select_related("sender").prefetch_related("attachments").order_by("timestamp")
 
         return Message.objects.none()
 
@@ -115,9 +109,6 @@ class AttachmentViewSet(viewsets.ModelViewSet):
             message__conversation__pk=conversation_pk,
         )
 
-        if self.request.user.is_staff:
-            return queryset
-
         return queryset.filter(message__conversation__participants=self.request.user)
 
     def perform_create(self, serializer):
@@ -129,10 +120,9 @@ class AttachmentViewSet(viewsets.ModelViewSet):
             pk=self.kwargs["message_pk"], conversation__pk=conversation_pk
         )
 
-        if not self.request.user.is_staff:
-            message_queryset = message_queryset.filter(
-                conversation__participants=self.request.user
-            )
+        message_queryset = message_queryset.filter(
+            conversation__participants=self.request.user
+        )
 
         message = get_object_or_404(message_queryset)
         serializer.save(message=message)

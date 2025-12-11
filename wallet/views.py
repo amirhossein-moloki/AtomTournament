@@ -146,13 +146,11 @@ class WalletViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if self.request.user.is_staff:
-            return qs.prefetch_related("transactions")
         return qs.filter(user=self.request.user).prefetch_related("transactions")
 
     def get_object(self):
         wallet = super().get_object()
-        if not self.request.user.is_staff and wallet.user != self.request.user:
+        if wallet.user != self.request.user:
             raise NotFound()
         return wallet
 
@@ -165,13 +163,11 @@ class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset().select_related("wallet__user")
-        if self.request.user.is_staff:
-            return qs.order_by("-timestamp")
         return qs.filter(wallet__user=self.request.user).order_by("-timestamp")
 
     def get_object(self):
         transaction = super().get_object()
-        if not self.request.user.is_staff and transaction.wallet.user != self.request.user:
+        if transaction.wallet.user != self.request.user:
             raise NotFound()
         return transaction
 
