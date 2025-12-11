@@ -3,8 +3,9 @@ from decimal import Decimal
 from unittest.mock import Mock, patch
 
 from django.contrib.auth import get_user_model
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
 from rest_framework import status
+from rest_framework.settings import reload_api_settings
 from rest_framework.test import APIClient, APITestCase
 
 from .models import Transaction, Wallet, WithdrawalRequest
@@ -50,11 +51,25 @@ class WalletSignalTests(TestCase):
         self.assertEqual(Wallet.objects.count(), initial_wallet_count + 1)
 
 
+@override_settings(
+    REST_FRAMEWORK={
+        "DEFAULT_THROTTLE_RATES": {
+            "very_strict": "1000/min",
+            "strict": "1000/min",
+            "medium": "1000/min",
+        }
+    }
+)
 class WalletAPITests(APITestCase):
     def setUp(self):
+        reload_api_settings(setting="REST_FRAMEWORK")
         self.user = User.objects.create_user(username="testuser", password="password", phone_number="+989121112233")
         self.admin = User.objects.create_superuser(username="admin", password="password", phone_number="+989120000000")
         self.wallet = self.user.wallet
+        self.other_user = User.objects.create_user(
+            username="otheruser", password="password", phone_number="+989121112234"
+        )
+        self.other_wallet = self.other_user.wallet
 
     @patch("wallet.views.WalletService.create_deposit")
     def test_deposit_api_success(self, mock_create_deposit):
@@ -128,3 +143,36 @@ class WalletAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_302_FOUND)
         mock_delay.assert_called_once_with(track_id='track1', order_id='order1')
+
+    def test_wallet_list_scoped_to_request_user(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get("/api/wallet/wallets/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], self.wallet.id)
+
+    def test_wallet_retrieve_other_user_not_found(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(f"/api/wallet/wallets/{self.other_wallet.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_transaction_list_scoped_to_request_user(self):
+        Transaction.objects.create(wallet=self.wallet, amount=Decimal("100"), transaction_type=Transaction.TransactionType.DEPOSIT)
+        Transaction.objects.create(wallet=self.other_wallet, amount=Decimal("200"), transaction_type=Transaction.TransactionType.DEPOSIT)
+
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get("/api/wallet/transactions/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["wallet"], self.wallet.id)
+
+    def test_transaction_retrieve_other_user_not_found(self):
+        transaction = Transaction.objects.create(wallet=self.other_wallet, amount=Decimal("300"), transaction_type=Transaction.TransactionType.DEPOSIT)
+
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(f"/api/wallet/transactions/{transaction.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

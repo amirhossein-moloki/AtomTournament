@@ -4,9 +4,11 @@ from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
 
 from tournaments.models import Match
 from tournaments.serializers import MatchReadOnlySerializer
@@ -179,6 +181,12 @@ class TeamMatchHistoryView(generics.ListAPIView):
 
     def get_queryset(self):
         team_id = self.kwargs["pk"]
+        team = get_object_or_404(Team, pk=team_id)
+
+        user = self.request.user
+        if not user.is_staff and user not in team.members.all():
+            raise PermissionDenied("You do not have permission to view this team's matches.")
+
         return Match.objects.filter(
-            models.Q(participant1_team__id=team_id) | models.Q(participant2_team__id=team_id)
+            models.Q(participant1_team=team) | models.Q(participant2_team=team)
         ).distinct()

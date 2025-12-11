@@ -322,7 +322,16 @@ class CommentViewSet(viewsets.ModelViewSet):
 class ReactionViewSet(viewsets.ModelViewSet):
     queryset = Reaction.objects.all()
     serializer_class = ReactionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        user = self.request.user
+        if user.is_authenticated and user.is_staff:
+            return queryset
+
+        return queryset.filter(user=user)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

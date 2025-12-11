@@ -2,12 +2,13 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import mixins, viewsets
+from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticated
 
 from users.models import User
 
 from .models import Attachment, Conversation, Message
-from .permissions import IsParticipantInConversation
+from .permissions import IsParticipantInConversation, IsSenderOrReadOnly
 from .serializers import (AttachmentCreateSerializer, AttachmentSerializer,
                           ConversationSerializer, MessageCreateSerializer,
                           MessageSerializer)
@@ -44,7 +45,7 @@ class MessageViewSet(viewsets.ModelViewSet):
     """
 
     queryset = Message.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsSenderOrReadOnly]
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -105,11 +106,33 @@ class AttachmentViewSet(viewsets.ModelViewSet):
         return AttachmentSerializer
 
     def get_queryset(self):
-        queryset = Attachment.objects.filter(message__pk=self.kwargs["message_pk"])
+        conversation_pk = self.kwargs.get("conversation_pk")
+        if not conversation_pk:
+            raise NotFound("Conversation not specified.")
+
+        queryset = Attachment.objects.filter(
+            message__pk=self.kwargs.get("message_pk"),
+            message__conversation__pk=conversation_pk,
+        )
+
         if self.request.user.is_staff:
             return queryset
+
         return queryset.filter(message__conversation__participants=self.request.user)
 
     def perform_create(self, serializer):
-        message = get_object_or_404(Message, pk=self.kwargs["message_pk"])
+        conversation_pk = self.kwargs.get("conversation_pk")
+        if not conversation_pk:
+            raise NotFound("Conversation not specified.")
+
+        message_queryset = Message.objects.filter(
+            pk=self.kwargs["message_pk"], conversation__pk=conversation_pk
+        )
+
+        if not self.request.user.is_staff:
+            message_queryset = message_queryset.filter(
+                conversation__participants=self.request.user
+            )
+
+        message = get_object_or_404(message_queryset)
         serializer.save(message=message)
