@@ -14,7 +14,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
     http_method_names = ["get", "patch", "head", "options", "post"]
 
     def get_queryset(self):
-        return self.request.user.notifications.all()
+        return self.request.user.notifications.order_by("-timestamp")
 
     @action(detail=False, methods=["post"])
     def read_all(self, request):
