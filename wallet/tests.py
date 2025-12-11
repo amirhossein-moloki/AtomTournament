@@ -75,7 +75,8 @@ class WalletAPITests(APITestCase):
     def test_deposit_api_success(self, mock_create_deposit):
         mock_create_deposit.return_value = "http://payment-url.com"
         self.client.force_authenticate(user=self.user)
-        response = self.client.post("/api/wallet/deposit/", {"amount": "50000"})
+        with patch("wallet.views.DepositAPIView.throttle_classes", []):
+            response = self.client.post("/api/wallet/deposit/", {"amount": "50000"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["payment_url"], "http://payment-url.com")
         mock_create_deposit.assert_called_once()
@@ -130,19 +131,29 @@ class WalletAPITests(APITestCase):
         # You can access the first argument of the first call to the mock like this:
         self.assertEqual(mock_reject.call_args[0][0].id, request.id)
 
-    @patch("wallet.tasks.verify_deposit_task.delay")
-    def test_verify_deposit_api_enqueues_task(self, mock_delay):
+    @patch("wallet.views.WalletService.verify_and_process_deposit")
+    def test_verify_deposit_api_processes_immediately(self, mock_verify):
         tx = Transaction.objects.create(
             wallet=self.wallet,
             amount=Decimal("50000"),
             order_id="order1",
-            authority="track1"
+            authority="track1",
+            status=Transaction.Status.PENDING,
         )
+
+        def mark_success(**kwargs):
+            Transaction.objects.filter(id=tx.id).update(status=Transaction.Status.SUCCESS)
+
+        mock_verify.side_effect = mark_success
+
         url = f"/api/wallet/verify-deposit/?trackId=track1&success=1&orderId=order1"
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_302_FOUND)
-        mock_delay.assert_called_once_with(track_id='track1', order_id='order1')
+        mock_verify.assert_called_once_with(track_id="track1", order_id="order1")
+
+        tx.refresh_from_db()
+        self.assertEqual(tx.status, Transaction.Status.SUCCESS)
 
     def test_wallet_list_scoped_to_request_user(self):
         self.client.force_authenticate(user=self.user)

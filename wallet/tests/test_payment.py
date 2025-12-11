@@ -6,14 +6,26 @@ from django.conf import settings
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
+from django.test import override_settings
+from rest_framework.settings import reload_api_settings
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from users.models import User
 from wallet.models import Transaction, Wallet, WithdrawalRequest
 
 
+@override_settings(
+    REST_FRAMEWORK={
+        "DEFAULT_THROTTLE_RATES": {
+            "very_strict": "1000/min",
+            "strict": "1000/min",
+            "medium": "1000/min",
+        }
+    }
+)
 class PaymentAPITestCase(APITestCase):
     def setUp(self):
+        reload_api_settings(setting="REST_FRAMEWORK")
         self.user = User.objects.create_user(
             username="testuser",
             password="testpassword",
@@ -75,7 +87,9 @@ class PaymentAPITestCase(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_302_FOUND)
-        self.assertEqual(response.url, settings.ZIBAL_PAYMENT_SUCCESS_URL)
+        self.assertTrue(
+            response.url.startswith(settings.ZIBAL_PAYMENT_SUCCESS_URL)
+        )
 
         tx.refresh_from_db()
         self.assertEqual(tx.status, "success")

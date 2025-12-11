@@ -28,7 +28,6 @@ from .serializers import (
     VerifyDepositSerializer,
 )
 from .services import WalletService, ZibalService
-from .tasks import verify_deposit_task
 
 logger = logging.getLogger(__name__)
 
@@ -64,8 +63,24 @@ class VerifyDepositAPIView(APIView):
 
         redirect_url = settings.ZIBAL_PAYMENT_FAILED_URL
         if success == "1":
-            verify_deposit_task.delay(track_id=track_id, order_id=order_id)
-            redirect_url = f"{settings.ZIBAL_PAYMENT_SUCCESS_URL}?orderId={order_id}&trackId={track_id}"
+            WalletService.verify_and_process_deposit(track_id=track_id, order_id=order_id)
+            try:
+                tx = Transaction.objects.get(
+                    order_id=order_id,
+                    authority=track_id,
+                )
+                if tx.status == Transaction.Status.SUCCESS:
+                    redirect_url = f"{settings.ZIBAL_PAYMENT_SUCCESS_URL}?orderId={order_id}&trackId={track_id}"
+                else:
+                    logger.error(
+                        "Payment verification failed after callback.",
+                        extra={"order_id": order_id, "track_id": track_id, "status": tx.status},
+                    )
+            except Transaction.DoesNotExist:
+                logger.error(
+                    "Transaction not found during payment verification callback.",
+                    extra={"order_id": order_id, "track_id": track_id},
+                )
         else:
             try:
                 tx = Transaction.objects.get(order_id=order_id, authority=track_id, status=Transaction.Status.PENDING)
