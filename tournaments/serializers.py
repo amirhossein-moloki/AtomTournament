@@ -15,9 +15,12 @@ from .models import (Game, GameImage, GameManager, Match, Participant, Rank,
 class GameImageSerializer(serializers.ModelSerializer):
     """Serializer for the GameImage model."""
 
+    url = serializers.ImageField(source="image", read_only=True)
+
     class Meta:
         model = GameImage
-        fields = ("game", "image_type", "image")
+        fields = ("id", "game", "image_type", "image", "url")
+        read_only_fields = ("id", "url")
 
 
 class TournamentImageSerializer(serializers.ModelSerializer):
