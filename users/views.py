@@ -30,7 +30,7 @@ from wallet.models import Transaction
 from wallet.serializers import TransactionSerializer
 from teams.models import Team
 from .models import Role, User
-from .permissions import (IsAdminUser, IsOwnerOrAdmin, IsOwnerOrReadOnly)
+from .permissions import (IsAdminUser, IsOwnerOrAdmin, IsOwnerOrReadOnly, IsSelfOrAdmin)
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
@@ -111,8 +111,10 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ["send_otp", "verify_otp", "create"]:
             return [AllowAny()]
-        if self.action in ["list", "retrieve"]:
-            return [IsAuthenticatedOrReadOnly()]
+        if self.action == "list":
+            return [IsAdminUser()]
+        if self.action == "retrieve":
+            return [IsAuthenticated()]
         if self.action in ["update", "partial_update", "destroy", "tournaments"]:
             return [IsOwnerOrAdmin()]
         return super().get_permissions()
@@ -127,6 +129,23 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = TournamentListSerializer(
             tournaments, many=True, context={"request": request}
         )
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["get"], permission_classes=[IsSelfOrAdmin], url_path="match-history")
+    def match_history(self, request, pk=None):
+        """
+        Return the match history for the user.
+        """
+        user = self.get_object()
+
+        queryset = Match.objects.filter(
+            Q(participant1_user=user)
+            | Q(participant2_user=user)
+            | Q(participant1_team__members=user)
+            | Q(participant2_team__members=user)
+        ).distinct()
+
+        serializer = MatchReadOnlySerializer(queryset, many=True, context={"request": request})
         return Response(serializer.data)
 
     def get_throttles(self):
@@ -314,22 +333,6 @@ class TotalPlayersView(APIView):
         return Response({"total_players": total_players})
 
 
-class UserMatchHistoryView(generics.ListAPIView):
-    """
-    API view to list match history for a specific user.
-    """
-
-    serializer_class = MatchReadOnlySerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        user_id = self.kwargs["pk"]
-        return Match.objects.filter(
-            Q(participant1_user__id=user_id)
-            | Q(participant2_user__id=user_id)
-            | Q(participant1_team__members__id=user_id)
-            | Q(participant2_team__members__id=user_id)
-        ).distinct()
 
 
 @extend_schema(request=GoogleLoginSerializer, responses={200: CustomTokenObtainPairSerializer})

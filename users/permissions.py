@@ -66,3 +66,11 @@ class IsOwnerOrAdmin(permissions.BasePermission):
             return True
 
         return False
+
+class IsSelfOrAdmin(permissions.BasePermission):
+    """
+    Custom permission to only allow a user to access their own resource, or for an admin to access any.
+    Assumes the object being checked is the user object itself.
+    """
+    def has_object_permission(self, request, view, obj):
+        return bool(request.user and (request.user.is_staff or obj == request.user))

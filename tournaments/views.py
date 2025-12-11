@@ -328,7 +328,7 @@ class MatchViewSet(viewsets.ModelViewSet):
         if self.request.user and self.request.user.is_staff:
             return [IsAdminUser()]
         if self.action in ["list", "retrieve"]:
-            return [AllowAny()]
+            return [IsAuthenticated()]
         if self.action in ["create", "destroy"]:
             return [IsAdminUser()]
         if self.action in ["update", "partial_update"]:

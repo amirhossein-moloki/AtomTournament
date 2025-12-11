@@ -34,3 +34,13 @@ class IsCaptainOrReadOnly(BasePermission):
         if request.user and request.user.is_staff:
             return True
         return obj.captain == request.user
+
+class IsTeamMemberOrAdmin(BasePermission):
+    """
+    Allows access only to team members or admin users.
+    """
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_staff:
+            return True
+        # obj is a Team instance
+        return obj.members.filter(id=request.user.id).exists()

@@ -51,3 +51,32 @@ class UserViewSetAPITest(BaseAPITestCase):
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(User.objects.filter(pk=user_to_delete.pk).exists())
+
+    def test_user_can_view_own_match_history(self):
+        """
+        Ensures a user can view their own match history.
+        """
+        self._authenticate()
+        url = reverse('user-match-history', kwargs={'pk': self.user.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_user_cannot_view_other_match_history(self):
+        """
+        Ensures a user cannot view another user's match history.
+        """
+        self._authenticate()
+        other_user = self.staff_user
+        url = reverse('user-match-history', kwargs={'pk': other_user.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_can_view_other_match_history(self):
+        """
+        Ensures an admin can view another user's match history.
+        """
+        self._authenticate_as_staff()
+        other_user = self.user
+        url = reverse('user-match-history', kwargs={'pk': other_user.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)

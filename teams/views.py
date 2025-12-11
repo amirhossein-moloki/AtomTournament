@@ -12,7 +12,7 @@ from tournaments.models import Match
 from tournaments.serializers import MatchReadOnlySerializer
 
 from .models import Team, TeamInvitation, TeamMembership
-from .permissions import IsCaptain, IsCaptainOrReadOnly
+from .permissions import IsCaptain, IsCaptainOrReadOnly, IsTeamMemberOrAdmin
 from .serializers import (
     TeamInvitationSerializer,
     TeamSerializer,
@@ -40,7 +40,7 @@ class TeamViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ["list", "retrieve"]:
-            return [AllowAny()]
+            return [IsAuthenticated()]
         return super().get_permissions()
 
     def perform_create(self, serializer):
@@ -71,6 +71,20 @@ class TeamViewSet(viewsets.ModelViewSet):
             )
         except ApplicationError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=["get"], permission_classes=[IsTeamMemberOrAdmin], url_path="match-history")
+    def match_history(self, request, pk=None):
+        """
+        Return the match history for the team.
+        """
+        team = self.get_object()
+
+        queryset = Match.objects.filter(
+            models.Q(participant1_team=team) | models.Q(participant2_team=team)
+        ).distinct()
+
+        serializer = MatchReadOnlySerializer(queryset, many=True, context={"request": request})
+        return Response(serializer.data)
 
     @action(
         detail=False,
@@ -169,16 +183,3 @@ class TopTeamsView(APIView):
         return Response(serializer.data)
 
 
-class TeamMatchHistoryView(generics.ListAPIView):
-    """
-    API view to list match history for a specific team.
-    """
-
-    serializer_class = MatchReadOnlySerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        team_id = self.kwargs["pk"]
-        return Match.objects.filter(
-            models.Q(participant1_team__id=team_id) | models.Q(participant2_team__id=team_id)
-        ).distinct()
