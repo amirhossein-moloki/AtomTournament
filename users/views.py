@@ -7,6 +7,7 @@ from django.db.models import Count, F, Prefetch, Q, Sum
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
+from django.shortcuts import get_object_or_404
 from django.views.decorators.vary import vary_on_headers
 from django_filters.rest_framework import DjangoFilterBackend
 from google.auth.transport import requests as google_requests
@@ -14,13 +15,10 @@ from google.oauth2 import id_token
 from google.auth import exceptions as google_exceptions
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import (
-    AllowAny,
-    IsAuthenticated,
-    IsAuthenticatedOrReadOnly,
-)
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.exceptions import PermissionDenied
 from drf_spectacular.utils import extend_schema
 
 from tournaments.models import Participant, Tournament
@@ -112,10 +110,22 @@ class UserViewSet(viewsets.ModelViewSet):
         if self.action in ["send_otp", "verify_otp", "create"]:
             return [AllowAny()]
         if self.action in ["list", "retrieve"]:
-            return [IsAuthenticatedOrReadOnly()]
+            return [IsOwnerOrAdmin()]
         if self.action in ["update", "partial_update", "destroy", "tournaments"]:
             return [IsOwnerOrAdmin()]
         return super().get_permissions()
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        user = self.request.user
+        if user.is_authenticated and user.is_staff:
+            return queryset
+
+        if user.is_authenticated:
+            return queryset.filter(pk=user.pk)
+
+        return queryset.none()
 
     @action(detail=True, methods=["get"])
     def tournaments(self, request, pk=None):
@@ -324,11 +334,21 @@ class UserMatchHistoryView(generics.ListAPIView):
 
     def get_queryset(self):
         user_id = self.kwargs["pk"]
+        target_user = get_object_or_404(User, pk=user_id)
+
+        user = self.request.user
+        shares_team = target_user.teams.filter(
+            id__in=user.teams.values_list("id", flat=True)
+        ).exists()
+
+        if not (user.is_staff or user == target_user or shares_team):
+            raise PermissionDenied("You do not have permission to view this user's matches.")
+
         return Match.objects.filter(
-            Q(participant1_user__id=user_id)
-            | Q(participant2_user__id=user_id)
-            | Q(participant1_team__members__id=user_id)
-            | Q(participant2_team__members__id=user_id)
+            Q(participant1_user=target_user)
+            | Q(participant2_user=target_user)
+            | Q(participant1_team__members=target_user)
+            | Q(participant2_team__members=target_user)
         ).distinct()
 
 

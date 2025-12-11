@@ -4,6 +4,7 @@ from django.conf import settings
 from django.shortcuts import redirect
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status, viewsets
+from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -134,6 +135,12 @@ class WalletViewSet(viewsets.ReadOnlyModelViewSet):
             return qs.prefetch_related("transactions")
         return qs.filter(user=self.request.user).prefetch_related("transactions")
 
+    def get_object(self):
+        wallet = super().get_object()
+        if not self.request.user.is_staff and wallet.user != self.request.user:
+            raise NotFound()
+        return wallet
+
 
 class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Transaction.objects.all()
@@ -146,6 +153,12 @@ class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
         if self.request.user.is_staff:
             return qs.order_by("-timestamp")
         return qs.filter(wallet__user=self.request.user).order_by("-timestamp")
+
+    def get_object(self):
+        transaction = super().get_object()
+        if not self.request.user.is_staff and transaction.wallet.user != self.request.user:
+            raise NotFound()
+        return transaction
 
 
 from .serializers import RefundSerializer
