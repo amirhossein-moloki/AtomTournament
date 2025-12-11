@@ -39,22 +39,33 @@ from wallet.models import Transaction
 from .exceptions import ApplicationError
 from .api_mixins import DynamicFieldsMixin
 from .filters import TournamentFilter
-from .models import (Game, Match, Participant, Report, Scoring, Tournament,
-                     TournamentColor, TournamentImage, WinnerSubmission)
+from .models import (Game, GameImage, Match, Participant, Report, Scoring,
+                     Tournament, TournamentColor, TournamentImage,
+                     WinnerSubmission)
 from .permissions import (IsGameManagerOrAdmin, IsTournamentCreatorOrAdmin,
                           IsMatchParticipant)
-from .serializers import (GameCreateUpdateSerializer, GameReadOnlySerializer,
-                          MatchCreateSerializer, MatchReadOnlySerializer,
-                          MatchUpdateSerializer, ParticipantSerializer,
-                          ReportSerializer, ScoringSerializer,
-                          MatchSubmitResultSerializer,
-                          TournamentColorSerializer,
-                          TournamentCreateUpdateSerializer,
-                          TournamentImageSerializer,
-                          TournamentListSerializer, TournamentReadOnlySerializer,
-                          WinnerSubmissionSerializer, WinnerSubmissionCreateSerializer,
-                          TopTournamentsSerializer, TotalPrizeMoneySerializer,
-                          TotalTournamentsSerializer)
+from .serializers import (
+    GameCreateUpdateSerializer,
+    GameImageSerializer,
+    GameReadOnlySerializer,
+    MatchCreateSerializer,
+    MatchReadOnlySerializer,
+    MatchUpdateSerializer,
+    ParticipantSerializer,
+    ReportSerializer,
+    ScoringSerializer,
+    MatchSubmitResultSerializer,
+    TournamentColorSerializer,
+    TournamentCreateUpdateSerializer,
+    TournamentImageSerializer,
+    TournamentListSerializer,
+    TournamentReadOnlySerializer,
+    WinnerSubmissionSerializer,
+    WinnerSubmissionCreateSerializer,
+    TopTournamentsSerializer,
+    TotalPrizeMoneySerializer,
+    TotalTournamentsSerializer,
+)
 from .services import (approve_winner_submission_service, confirm_match_result,
                        create_report_service, create_winner_submission_service,
                        dispute_match_result, generate_matches, join_tournament,
@@ -468,6 +479,21 @@ class GameViewSet(viewsets.ModelViewSet):
         if self.action in ["create", "update", "partial_update", "destroy"]:
             return [IsAdminUser()]
         return [IsAuthenticated()]
+
+
+class GameImageViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing game images.
+    """
+
+    queryset = GameImage.objects.select_related("game")
+    serializer_class = GameImageSerializer
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get_permissions(self):
+        if self.action in ["list", "retrieve"]:
+            return [AllowAny()]
+        return [IsAdminUser()]
 
 
 class TournamentImageViewSet(viewsets.ModelViewSet):
