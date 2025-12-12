@@ -383,7 +383,7 @@ class WinnerSubmission(models.Model):
     )
     winner = models.ForeignKey("users.User", on_delete=models.CASCADE)
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
-    video = OptimizedVideoField(upload_to="winner_submissions/")
+    image = OptimizedImageField(upload_to="winner_submissions/", null=True, blank=True)
     status = models.CharField(
         max_length=20, choices=SUBMISSION_STATUS_CHOICES, default="pending"
     )

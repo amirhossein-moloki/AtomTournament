@@ -648,7 +648,7 @@ class WinnerSubmissionViewSet(viewsets.ModelViewSet):
         create_winner_submission_service(
             user=self.request.user,
             tournament=serializer.validated_data["tournament"],
-            video=serializer.validated_data["video"],
+            image=serializer.validated_data["image"],
         )
 
     @action(detail=True, methods=["post"], permission_classes=[IsTournamentCreatorOrAdmin])

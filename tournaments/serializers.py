@@ -420,7 +420,7 @@ class WinnerSubmissionSerializer(serializers.ModelSerializer):
             "id",
             "winner",
             "tournament",
-            "video",
+            "image",
             "status",
             "created_at",
         )
@@ -430,12 +430,12 @@ class WinnerSubmissionSerializer(serializers.ModelSerializer):
 class WinnerSubmissionCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating a WinnerSubmission."""
 
-    video = serializers.FileField(validators=[validate_file])
+    image = serializers.FileField(validators=[validate_file])
     tournament = serializers.PrimaryKeyRelatedField(queryset=Tournament.objects.all())
 
     class Meta:
         model = WinnerSubmission
-        fields = ("video", "tournament")
+        fields = ("image", "tournament")
 
 
 class ScoringSerializer(serializers.ModelSerializer):
