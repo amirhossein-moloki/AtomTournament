@@ -259,7 +259,7 @@ else:
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
             "CONFIG": {
-                "hosts": [REDIS_URL],
+                "hosts": [f"{REDIS_URL}/2"],  # DB 2 for Channels
             },
         },
     }
@@ -376,16 +376,21 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 50,
     # Default throttle classes are removed to enforce endpoint-specific throttling.
-    "DEFAULT_THROTTLE_CLASSES": [],
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
     "DEFAULT_THROTTLE_RATES": {
         'very_strict': '1/minute',
         'strict': '10/minute',
         'medium': '100/minute',
         'relaxed': '500/hour',
-        # Legacy throttles are kept for reference but should not be used directly.
-        "anon": os.environ.get("API_THROTTLE_RATE_ANON", "1000/day"),
-        "user": os.environ.get("API_THROTTLE_RATE_USER", "10000/day"),
+        # Set safe, per-minute defaults for global throttling.
+        "anon": os.environ.get("API_THROTTLE_RATE_ANON", "10/minute"),
+        "user": os.environ.get("API_THROTTLE_RATE_USER", "100/minute"),
     },
     'EXCEPTION_HANDLER': 'blog.exceptions.custom_exception_handler',
 }
@@ -477,8 +482,8 @@ AXES_NEVER_LOCKOUT_CALLABLE = "users.auth_utils.should_never_lockout_staff"
 ZIBAL_MERCHANT_ID = os.environ.get("ZIBAL_MERCHANT_ID", "zibal")
 
 # Celery Configuration
-CELERY_BROKER_URL = REDIS_URL
-CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_BROKER_URL = f"{REDIS_URL}/0"  # DB 0 for Celery
+CELERY_RESULT_BACKEND = f"{REDIS_URL}/0"  # DB 0 for Celery
 
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
@@ -541,10 +546,11 @@ CSRF_TRUSTED_ORIGINS = [
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": f"{REDIS_URL}/1",  # DB 1 for cache, 0 for channels/celery
+        "LOCATION": f"{REDIS_URL}/1",  # DB 1 for cache
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
+        "TIMEOUT": int(os.environ.get("CACHE_TTL_SECONDS", 60 * 15)),  # 15 minutes default
     },
 }
 
