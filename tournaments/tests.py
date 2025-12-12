@@ -1060,7 +1060,7 @@ class WinnerSubmissionViewSetTests(APITestCase):
         self.client.force_authenticate(user=self.winner)
         data = {
             "tournament": self.tournament.id,
-            "video": self._generate_dummy_image("video.mp4"),
+            "image": self._generate_dummy_image("image.png"),
         }
         response = self.client.post(self.submissions_url, data, format="multipart")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -1092,7 +1092,7 @@ class WinnerSubmissionViewSetTests(APITestCase):
         self.client.force_authenticate(user=self.winner)
         data = {
             "tournament": team_tournament.id,
-            "video": self._generate_dummy_image("video.mp4"),
+            "image": self._generate_dummy_image("image.png"),
         }
         response = self.client.post(self.submissions_url, data, format="multipart")
 
@@ -1127,7 +1127,7 @@ class WinnerSubmissionViewSetTests(APITestCase):
         self.client.force_authenticate(user=outsider)
         data = {
             "tournament": team_tournament.id,
-            "video": self._generate_dummy_image("video.mp4"),
+            "image": self._generate_dummy_image("image.png"),
         }
         response = self.client.post(self.submissions_url, data, format="multipart")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -1139,7 +1139,7 @@ class WinnerSubmissionViewSetTests(APITestCase):
 
     def test_approve_submission(self):
         submission = WinnerSubmission.objects.create(
-            winner=self.winner, tournament=self.tournament, video="v.mp4"
+            winner=self.winner, tournament=self.tournament, image=self._generate_dummy_image()
         )
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.post(f"{self.submissions_url}{submission.id}/approve/")
@@ -1149,7 +1149,7 @@ class WinnerSubmissionViewSetTests(APITestCase):
 
     def test_reject_submission(self):
         submission = WinnerSubmission.objects.create(
-            winner=self.winner, tournament=self.tournament, video="v.mp4"
+            winner=self.winner, tournament=self.tournament, image=self._generate_dummy_image()
         )
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.post(f"{self.submissions_url}{submission.id}/reject/")
@@ -1164,7 +1164,7 @@ class WinnerSubmissionViewSetTests(APITestCase):
         self.tournament.creator = creator
         self.tournament.save()
         submission = WinnerSubmission.objects.create(
-            winner=self.winner, tournament=self.tournament, video="v.mp4"
+            winner=self.winner, tournament=self.tournament, image=self._generate_dummy_image()
         )
         self.client.force_authenticate(user=creator)
         response = self.client.post(f"{self.submissions_url}{submission.id}/approve/")
@@ -1179,7 +1179,7 @@ class WinnerSubmissionViewSetTests(APITestCase):
         self.tournament.creator = creator
         self.tournament.save()
         submission = WinnerSubmission.objects.create(
-            winner=self.winner, tournament=self.tournament, video="v.mp4"
+            winner=self.winner, tournament=self.tournament, image=self._generate_dummy_image()
         )
         self.client.force_authenticate(user=creator)
         response = self.client.post(f"{self.submissions_url}{submission.id}/reject/")
@@ -1192,7 +1192,7 @@ class WinnerSubmissionViewSetTests(APITestCase):
             username="non_creator", password="p", phone_number="+404"
         )
         submission = WinnerSubmission.objects.create(
-            winner=self.winner, tournament=self.tournament, video="v.mp4"
+            winner=self.winner, tournament=self.tournament, image=self._generate_dummy_image()
         )
         self.client.force_authenticate(user=non_creator)
         response = self.client.post(f"{self.submissions_url}{submission.id}/approve/")
@@ -1203,7 +1203,7 @@ class WinnerSubmissionViewSetTests(APITestCase):
             username="non_creator", password="p", phone_number="+404"
         )
         submission = WinnerSubmission.objects.create(
-            winner=self.winner, tournament=self.tournament, video="v.mp4"
+            winner=self.winner, tournament=self.tournament, image=self._generate_dummy_image()
         )
         self.client.force_authenticate(user=non_creator)
         response = self.client.post(f"{self.submissions_url}{submission.id}/reject/")

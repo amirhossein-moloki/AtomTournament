@@ -367,7 +367,7 @@ def _is_user_in_winning_teams(user: User, teams):
     return False
 
 
-def create_winner_submission_service(user: User, tournament: Tournament, video):
+def create_winner_submission_service(user: User, tournament: Tournament, image):
     """
     Creates a winner submission after checking if the user is an eligible winner.
     """
@@ -383,7 +383,7 @@ def create_winner_submission_service(user: User, tournament: Tournament, video):
             raise ValidationError("You are not one of the tournament winners.")
 
     submission = WinnerSubmission.objects.create(
-        winner=user, tournament=tournament, video=video
+        winner=user, tournament=tournament, image=image
     )
     send_notification(
         user=user,
