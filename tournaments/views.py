@@ -192,11 +192,11 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
         )
 
         queryset = (
-            Tournament.objects.select_related("image", "color", "creator")
+            Tournament.objects.select_related("image", "color", "creator", "game")
             .prefetch_related(
                 Prefetch("participant_set", queryset=participant_queryset),
+                "participants",  # Added for direct access in serializer
                 "teams",
-                Prefetch("game", queryset=game_queryset_with_counts),
             )
         )
 
@@ -326,6 +326,10 @@ class MatchViewSet(viewsets.ModelViewSet):
         "participant2_team",
         "winner_user",
         "winner_team",
+    ).prefetch_related(
+        "participant1_team__members",
+        "participant2_team__members",
+        "winner_team__members",
     )
 
     def get_serializer_class(self):
