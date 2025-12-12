@@ -376,17 +376,16 @@ class Report(models.Model):
 
 
 class WinnerSubmission(models.Model):
-    STATUS_CHOICES = (
-        ('PENDING', 'Pending'),
-        ('PROCESSING', 'Processing'),
-        ('COMPLETED', 'Completed'),
-        ('FAILED', 'Failed'),
+    SUBMISSION_STATUS_CHOICES = (
+        ("pending", "Pending"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
     )
     winner = models.ForeignKey("users.User", on_delete=models.CASCADE)
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
     image = OptimizedImageField(upload_to="winner_submissions/", null=True, blank=True)
     status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default='PENDING'
+        max_length=20, choices=SUBMISSION_STATUS_CHOICES, default="pending"
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -1145,7 +1145,7 @@ class WinnerSubmissionViewSetTests(APITestCase):
         response = self.client.post(f"{self.submissions_url}{submission.id}/approve/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         submission.refresh_from_db()
-        self.assertEqual(submission.status, "COMPLETED")
+        self.assertEqual(submission.status, "approved")
 
     def test_reject_submission(self):
         submission = WinnerSubmission.objects.create(
@@ -1170,7 +1170,7 @@ class WinnerSubmissionViewSetTests(APITestCase):
         response = self.client.post(f"{self.submissions_url}{submission.id}/approve/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         submission.refresh_from_db()
-        self.assertEqual(submission.status, "COMPLETED")
+        self.assertEqual(submission.status, "approved")
 
     def test_reject_submission_by_creator(self):
         creator = User.objects.create_user(
