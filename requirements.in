@@ -72,3 +72,16 @@ whitenoise
 pip-audit
 python-json-logger
 google-auth
+
+# Observability - Metrics
+django-prometheus==2.4.0
+
+# Observability - Tracing
+opentelemetry-distro
+opentelemetry-exporter-otlp-proto-http
+opentelemetry-instrumentation-django
+opentelemetry-instrumentation-celery
+opentelemetry-instrumentation-psycopg2
+opentelemetry-instrumentation-redis
+opentelemetry-instrumentation-requests
+opentelemetry-instrumentation-logging
