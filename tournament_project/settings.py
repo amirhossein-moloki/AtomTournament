@@ -58,6 +58,7 @@ ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", f"localhost,127.0.0.1,{DOMAIN}")
 # Application definition
 
 INSTALLED_APPS = [
+    "django_prometheus",
     "django_ckeditor_5",
     "unfold",
     "unfold.contrib.filters",
@@ -111,6 +112,8 @@ if "test" not in sys.argv and "pytest" not in sys.modules:
     AUTHENTICATION_BACKENDS.insert(0, "axes.backends.AxesStandaloneBackend")
 
 MIDDLEWARE = [
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
+    "common.middleware.RequestIDMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -122,6 +125,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "axes.middleware.AxesMiddleware",
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
 ROOT_URLCONF = "tournament_project.urls"
@@ -264,6 +268,11 @@ else:
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {
+        "request_id_filter": {
+            "()": "common.logging.RequestIDFilter",
+        },
+    },
     "formatters": {
         "verbose": {
             "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
@@ -277,12 +286,17 @@ LOGGING = {
             "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
             "format": "%(asctime)s %(name)s %(levelname)s %(module)s %(lineno)d %(message)s",
         },
+        "json_console": {
+            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "format": "%(asctime)s %(levelname)s %(name)s %(module)s %(lineno)d %(message)s %(request_id)s",
+        },
     },
     "handlers": {
         "console": {
             "level": "INFO",
             "class": "logging.StreamHandler",
-            "formatter": "simple",
+            "formatter": "json_console",
+            "filters": ["request_id_filter"],
         },
         "file_info": {
             "level": "INFO",
@@ -337,14 +351,9 @@ LOGGING = {
     },
 }
 
-# Use console logging in development and file/email logging in production
-if DEBUG or "test" in sys.argv or "pytest" in sys.modules:
-    LOGGING["loggers"]["django"]["handlers"] = ["console"]
-    LOGGING["loggers"]["root"]["handlers"] = ["console"]
-else:
-    LOGGING["loggers"]["django"]["handlers"] = ["file_info", "file_error"]
-    LOGGING["loggers"]["django"]["propagate"] = False
-    LOGGING["loggers"]["root"]["handlers"] = ["file_info", "file_error", "mail_admins"]
+# In production, add mail_admins to the root logger
+if not DEBUG and "test" not in sys.argv and "pytest" not in sys.modules:
+    LOGGING["loggers"]["root"]["handlers"].append("mail_admins")
 
 
 UNFOLD = {

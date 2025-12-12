@@ -1,16 +1,22 @@
 services:
   web:
     build: .
-    command: sh -c "/app/docker-entrypoint.sh"
+    command: env PYTHONPATH=/app opentelemetry-instrument --traces_exporter otlp_proto_http --metrics_exporter none --logs_exporter none sh -c "/app/docker-entrypoint.sh"
     volumes:
       - .:/app
       - static_volume:/app/staticfiles
       - media_volume:/app/media
+    ports:
+      - "8000:8000"
     env_file:
       - .env
+    environment:
+      - OTEL_SERVICE_NAME=django-web
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
     depends_on:
       - pgbouncer
       - redis
+      - otel-collector
 
   db:
     image: postgres:14
@@ -59,48 +65,66 @@ services:
 
   celery_high_priority:
     build: .
-    command: celery -A tournament_project worker -l info -Q high_priority
+    command: env PYTHONPATH=/app opentelemetry-instrument celery -A tournament_project worker -l info -Q high_priority
     volumes:
       - .:/app
       - media_volume:/app/media
     env_file:
       - .env
+    environment:
+      - OTEL_SERVICE_NAME=celery-high-priority
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
     depends_on:
       redis:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
 
   celery_default:
     build: .
-    command: celery -A tournament_project worker -l info -Q default
+    command: env PYTHONPATH=/app opentelemetry-instrument celery -A tournament_project worker -l info -Q default
     volumes:
       - .:/app
       - media_volume:/app/media
     env_file:
       - .env
+    environment:
+      - OTEL_SERVICE_NAME=celery-default
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
     depends_on:
       redis:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
 
   celery_low_priority:
     build: .
-    command: celery -A tournament_project worker -l info -Q low_priority
+    command: env PYTHONPATH=/app opentelemetry-instrument celery -A tournament_project worker -l info -Q low_priority
     volumes:
       - .:/app
       - media_volume:/app/media
     env_file:
       - .env
+    environment:
+      - OTEL_SERVICE_NAME=celery-low-priority
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
     depends_on:
       redis:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
 
   celery-beat:
     build: .
-    command: celery -A tournament_project beat -l info
+    command: env PYTHONPATH=/app opentelemetry-instrument celery -A tournament_project beat -l info
     volumes:
       - .:/app
       - media_volume:/app/media
     env_file:
       - .env
+    environment:
+      - OTEL_SERVICE_NAME=celery-beat
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
     depends_on:
       redis:
         condition: service_healthy
@@ -125,6 +149,101 @@ services:
     depends_on:
       - web
 
+  # --- Observability Stack ---
+  prometheus:
+    image: prom/prometheus:v2.47.1
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:10.1.1
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+
+  loki:
+    image: grafana/loki:2.9.2
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki_data:/loki
+
+  promtail:
+    image: grafana/promtail:2.9.2
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./promtail/config.yml:/etc/promtail/config.yml
+    depends_on:
+      - loki
+
+  otel-collector:
+    image: otel/opentelemetry-collector:0.88.0
+    command: --config=/etc/otel-collector-config.yml
+    volumes:
+      - ./otel-collector-config.yml:/etc/otel-collector-config.yml
+    ports:
+      - "4318:4318" # OTLP HTTP receiver
+    depends_on:
+      - tempo
+
+  tempo:
+    image: grafana/tempo:2.3.1
+    command: -config.file=/etc/tempo.yaml
+    volumes:
+      - ./tempo/tempo.yaml:/etc/tempo.yaml
+      - tempo_data:/var/tempo
+    ports:
+      - "3200:3200" # Tempo UI
+      - "4317:4317" # OTLP gRPC receiver
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.55.0
+    environment:
+      - REDIS_ADDR=redis:6379
+    ports:
+      - "9121:9121"
+    depends_on:
+      - redis
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    environment:
+      - DATA_SOURCE_NAME=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
+    ports:
+      - "9187:9187"
+    depends_on:
+      - db
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - "8080:8080"
+
+  celery-exporter:
+    image: oliver006/celery_exporter:v0.6.1
+    command: --broker-url=${REDIS_URL}
+    ports:
+      - "9808:9808"
+    depends_on:
+      - redis
+
   certbot:
     build:
       context: ./certbot
@@ -143,3 +262,7 @@ volumes:
   media_volume:
   certbot_data:
   webroot_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+  tempo_data:

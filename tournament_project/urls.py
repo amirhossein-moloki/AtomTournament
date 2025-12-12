@@ -22,6 +22,9 @@ from .views import page_not_found_view
 handler404 = page_not_found_view
 
 urlpatterns = [
+    # --- Observability ---
+    path('metrics/', include('django_prometheus.urls')),
+
     # --- JWT Token Authentication ---
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
