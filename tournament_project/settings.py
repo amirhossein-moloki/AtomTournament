@@ -494,12 +494,23 @@ CELERY_TASK_QUEUES = (
     Queue("high_priority", Exchange("high_priority"), routing_key="high_priority"),
     Queue("default", Exchange("default"), routing_key="default"),
     Queue("low_priority", Exchange("low_priority"), routing_key="low_priority"),
+    Queue("cpu_bound", Exchange("cpu_bound"), routing_key="cpu_bound"),
 )
 CELERY_TASK_ROUTES = {
+    # CPU-bound tasks
+    "common.tasks.convert_image_to_avif_task": {"queue": "cpu_bound"},
+    "tournaments.tasks.generate_matches_task": {"queue": "cpu_bound"},
+    # High Priority I/O tasks (already done, but good to be explicit)
+    "notifications.tasks.send_sms_notification": {"queue": "high_priority"},
+    "notifications.tasks.send_email_notification": {"queue": "high_priority"},
+    # Low Priority I/O tasks
+    "blog.tasks.increment_post_view_count": {"queue": "low_priority"},
+    "blog.tasks.notify_author_on_new_comment": {"queue": "low_priority"},
+    "notifications.tasks.send_tournament_credentials": {"queue": "low_priority"},
     "tournaments.tasks.run_seed_data_task": {
         "queue": "low_priority",
         "routing_key": "low_priority",
-    }
+    },
 }
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_ACKS_ON_FAILURE_OR_TIMEOUT = True

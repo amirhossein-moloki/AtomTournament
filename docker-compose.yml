@@ -65,7 +65,7 @@ services:
 
   celery_high_priority:
     build: .
-    command: env PYTHONPATH=/app opentelemetry-instrument celery -A tournament_project worker -l info -Q high_priority
+    command: env PYTHONPATH=/app opentelemetry-instrument celery -A tournament_project worker -l info -Q high_priority -c 10
     volumes:
       - .:/app
       - media_volume:/app/media
@@ -82,7 +82,7 @@ services:
 
   celery_default:
     build: .
-    command: env PYTHONPATH=/app opentelemetry-instrument celery -A tournament_project worker -l info -Q default
+    command: env PYTHONPATH=/app opentelemetry-instrument celery -A tournament_project worker -l info -Q default -c 10
     volumes:
       - .:/app
       - media_volume:/app/media
@@ -99,7 +99,7 @@ services:
 
   celery_low_priority:
     build: .
-    command: env PYTHONPATH=/app opentelemetry-instrument celery -A tournament_project worker -l info -Q low_priority
+    command: env PYTHONPATH=/app opentelemetry-instrument celery -A tournament_project worker -l info -Q low_priority -c 10
     volumes:
       - .:/app
       - media_volume:/app/media
@@ -107,6 +107,23 @@ services:
       - .env
     environment:
       - OTEL_SERVICE_NAME=celery-low-priority
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+    depends_on:
+      redis:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+
+  celery_cpu_bound:
+    build: .
+    command: env PYTHONPATH=/app opentelemetry-instrument celery -A tournament_project worker -l info -Q cpu_bound --concurrency=1
+    volumes:
+      - .:/app
+      - media_volume:/app/media
+    env_file:
+      - .env
+    environment:
+      - OTEL_SERVICE_NAME=celery-cpu-bound
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
     depends_on:
       redis:
