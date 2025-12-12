@@ -2,6 +2,7 @@ services:
   web:
     build: .
     command: env PYTHONPATH=/app opentelemetry-instrument --traces_exporter otlp_proto_http --metrics_exporter none --logs_exporter none sh -c "/app/docker-entrypoint.sh"
+    stop_grace_period: 30s
     volumes:
       - .:/app
       - static_volume:/app/staticfiles
@@ -17,6 +18,12 @@ services:
       - pgbouncer
       - redis
       - otel-collector
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   db:
     image: postgres:14
@@ -26,6 +33,11 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     command: >
       postgres
       -c shared_preload_libraries=pg_stat_statements
@@ -66,6 +78,7 @@ services:
   celery_high_priority:
     build: .
     command: env PYTHONPATH=/app opentelemetry-instrument celery -A tournament_project worker -l info -Q high_priority -c 10
+    stop_grace_period: 30s
     volumes:
       - .:/app
       - media_volume:/app/media
@@ -83,6 +96,7 @@ services:
   celery_default:
     build: .
     command: env PYTHONPATH=/app opentelemetry-instrument celery -A tournament_project worker -l info -Q default -c 10
+    stop_grace_period: 30s
     volumes:
       - .:/app
       - media_volume:/app/media
@@ -100,6 +114,7 @@ services:
   celery_low_priority:
     build: .
     command: env PYTHONPATH=/app opentelemetry-instrument celery -A tournament_project worker -l info -Q low_priority -c 10
+    stop_grace_period: 30s
     volumes:
       - .:/app
       - media_volume:/app/media
@@ -117,6 +132,7 @@ services:
   celery_cpu_bound:
     build: .
     command: env PYTHONPATH=/app opentelemetry-instrument celery -A tournament_project worker -l info -Q cpu_bound --concurrency=1
+    stop_grace_period: 30s
     volumes:
       - .:/app
       - media_volume:/app/media

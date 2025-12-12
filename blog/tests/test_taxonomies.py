@@ -53,12 +53,12 @@ class TagAPITest(BaseAPITestCase):
         Ensure the tag list API endpoint returns the tag ID.
         """
         self._authenticate_as_staff()
-        tag = TagFactory()
+        tag = Tag.objects.create(name='Test Tag', slug='test-tag')
         url = reverse('blog:tag-list')
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('id', response.data[0])
-        self.assertEqual(response.data[0]['id'], tag.id)
+        self.assertIn('id', response.data['results'][0])
+        self.assertEqual(response.data['results'][0]['id'], tag.id)
 
     def test_tag_detail_returns_id(self):
         """

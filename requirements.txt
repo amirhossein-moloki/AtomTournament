@@ -274,6 +274,7 @@ opentelemetry-api==1.26.0
     #   opentelemetry-instrumentation-celery
     #   opentelemetry-instrumentation-dbapi
     #   opentelemetry-instrumentation-django
+    #   opentelemetry-instrumentation-logging
     #   opentelemetry-instrumentation-psycopg2
     #   opentelemetry-instrumentation-redis
     #   opentelemetry-instrumentation-requests
@@ -292,6 +293,7 @@ opentelemetry-instrumentation==0.47b0
     #   opentelemetry-instrumentation-celery
     #   opentelemetry-instrumentation-dbapi
     #   opentelemetry-instrumentation-django
+    #   opentelemetry-instrumentation-logging
     #   opentelemetry-instrumentation-psycopg2
     #   opentelemetry-instrumentation-redis
     #   opentelemetry-instrumentation-requests
@@ -302,6 +304,8 @@ opentelemetry-instrumentation-dbapi==0.47b0
     # via opentelemetry-instrumentation-psycopg2
 opentelemetry-instrumentation-django==0.47b0
     # via -r requirements.in
+opentelemetry-instrumentation-logging==0.47b0
+    # via -r requirements.in
 opentelemetry-instrumentation-psycopg2==0.47b0
     # via -r requirements.in
 opentelemetry-instrumentation-redis==0.47b0
@@ -310,8 +314,6 @@ opentelemetry-instrumentation-requests==0.47b0
     # via -r requirements.in
 opentelemetry-instrumentation-wsgi==0.47b0
     # via opentelemetry-instrumentation-django
-opentelemetry-instrumentation-logging==0.47b0
-    # via -r requirements.in
 opentelemetry-proto==1.26.0
     # via
     #   opentelemetry-exporter-otlp-proto-common
@@ -387,6 +389,8 @@ pyasn1-modules==0.4.2
     # via
     #   google-auth
     #   service-identity
+pybreaker==1.4.1
+    # via -r requirements.in
 pycodestyle==2.14.0
     # via flake8
 pycparser==2.22

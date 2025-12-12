@@ -10,6 +10,7 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError, NotFound
 
+from common.services import HttpClient
 from .models import Transaction, Wallet, WithdrawalRequest
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ class ZibalService:
         self.merchant_id = getattr(settings, "ZIBAL_MERCHANT_ID", "zibal")
         self.api_base_url = "https://api.zibal.ir/v1"
         self.gateway_base_url = "https://gateway.zibal.ir/v1"
+        self.http_client = HttpClient(service_name='zibal')
 
     def _get_auth_headers(self):
         if not self.access_token:
@@ -36,10 +38,8 @@ class ZibalService:
         base_url = self.gateway_base_url if is_gateway else self.api_base_url
         full_url = f"{base_url}{url}"
         headers = {} if is_gateway else self._get_auth_headers()
-        timeout = int(os.environ.get("EXTERNAL_HTTP_TIMEOUT_SECONDS", 10))
         try:
-            response = requests.post(full_url, json=payload, headers=headers, timeout=timeout)
-            response.raise_for_status()
+            response = self.http_client.post(full_url, json=payload, headers=headers)
             return response.json()
         except requests.exceptions.RequestException as e:
             logger.error(f"Request Exception for {full_url}: {e}")
@@ -47,10 +47,8 @@ class ZibalService:
 
     def _get_request(self, url):
         full_url = f"{self.api_base_url}{url}"
-        timeout = int(os.environ.get("EXTERNAL_HTTP_TIMEOUT_SECONDS", 10))
         try:
-            response = requests.get(full_url, headers=self._get_auth_headers(), timeout=timeout)
-            response.raise_for_status()
+            response = self.http_client.get(full_url, headers=self._get_auth_headers())
             return response.json()
         except requests.exceptions.RequestException as e:
             logger.error(f"Request Exception for {full_url}: {e}")
