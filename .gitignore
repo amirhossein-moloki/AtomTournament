@@ -30,3 +30,4 @@ reports/
 
 frontend/
 celerybeat-schedule
+\n# Backup files\n/backups/
