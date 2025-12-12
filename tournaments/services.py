@@ -421,16 +421,41 @@ def distribute_scores_for_tournament(tournament: Tournament, score_distribution=
 
 
 def approve_winner_submission_service(submission: WinnerSubmission):
-    submission.status = "approved"
-    submission.save()
-    pay_prize(submission.tournament, submission.winner)
-    send_notification(
-        user=submission.winner,
-        message=_("Your submission for %(tournament_name)s has been approved.")
-        % {"tournament_name": submission.tournament.name},
-        notification_type="winner_submission_status_change",
-    )
-    return submission
+    with transaction.atomic():
+        # submission را قفل کن تا تسک دیگری همزمان روی آن کار نکند
+        submission_to_process = WinnerSubmission.objects.select_for_update().get(pk=submission.pk)
+
+        # اگر تسک قبلاً انجام شده یا در حال انجام است، خارج شو
+        if submission_to_process.status in ['PROCESSING', 'COMPLETED']:
+            logger.warning(f"Submission {submission.pk} is already being processed or is completed. Skipping.")
+            return submission_to_process # Idempotency: عملیات قبلاً انجام شده
+
+        # وضعیت را به "در حال پردازش" تغییر بده
+        submission_to_process.status = 'PROCESSING'
+        submission_to_process.save(update_fields=['status'])
+
+    try:
+        # ... منطق فعلی پرداخت جایزه ...
+        pay_prize(submission_to_process.tournament, submission_to_process.winner)
+
+        # در صورت موفقیت، وضعیت را نهایی کن
+        submission_to_process.status = 'COMPLETED'
+        submission_to_process.save(update_fields=['status'])
+
+        send_notification(
+            user=submission_to_process.winner,
+            message=_("Your submission for %(tournament_name)s has been approved.")
+            % {"tournament_name": submission_to_process.tournament.name},
+            notification_type="winner_submission_status_change",
+        )
+    except Exception as e:
+        # در صورت خطا، وضعیت را به "شکست‌خورده" تغییر بده تا بعداً بررسی شود
+        submission_to_process.status = 'FAILED'
+        submission_to_process.save(update_fields=['status'])
+        logger.error(f"Failed to process submission {submission.pk}. Error: {e}")
+        raise e # خطا را دوباره throw کن تا Celery بتواند retry کند
+
+    return submission_to_process
 
 
 def reject_winner_submission_service(submission: WinnerSubmission):
