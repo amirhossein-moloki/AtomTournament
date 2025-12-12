@@ -1,0 +1,13 @@
+# userlist.txt for PgBouncer
+# Format: "username" "md5_hashed_password"
+#
+# IMPORTANT: This file contains sensitive credentials.
+# In a production environment, this should be managed securely,
+# for example, using Docker Secrets or another secret management tool.
+#
+# To generate the md5 hash for a password, you can use the following command:
+# echo -n '<password><username>' | md5sum | awk '{print "md5"$1}'
+#
+# The entry below uses the environment variables that will be passed to the pgbouncer service.
+# The entrypoint script of the pgbouncer container will generate this file dynamically.
+"dummyuser" "dummypass"

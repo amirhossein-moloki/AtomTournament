@@ -9,7 +9,7 @@ services:
     env_file:
       - .env
     depends_on:
-      - db
+      - pgbouncer
       - redis
 
   db:
@@ -20,6 +20,34 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements
+      -c pg_stat_statements.track=all
+      -c pg_stat_statements.max=10000
+      -c pg_stat_statements.save=on
+      -c log_min_duration_statement=500ms
+      -c log_lock_waits=on
+      -c deadlock_timeout=1s
+      -c log_temp_files=0
+      -c log_autovacuum_min_duration=0
+      -c log_line_prefix='%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '
+      -c max_connections=100
+      -c statement_timeout=15s
+      -c idle_in_transaction_session_timeout=30s
+
+  pgbouncer:
+    image: pgbouncer/pgbouncer
+    volumes:
+      - ./pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini
+      - ./pgbouncer/userlist.txt.template:/etc/pgbouncer/userlist.txt.template
+      - ./pgbouncer/entrypoint.sh:/entrypoint.sh
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    entrypoint: /entrypoint.sh
+    depends_on:
+      - db
 
   redis:
     image: redis:8.2-alpine
