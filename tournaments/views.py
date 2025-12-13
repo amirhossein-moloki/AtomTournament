@@ -145,6 +145,7 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
     """
 
     queryset = Tournament.objects.all()
+    lookup_field = 'slug'
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     ordering_fields = ['start_date', 'prize_pool', 'entry_fee']
     filterset_class = TournamentFilter
@@ -261,7 +262,7 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
         return super().get_throttles()
 
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
-    def join(self, request, pk=None):
+    def join(self, request, slug=None):
         """
         Join a tournament.
         """
@@ -286,7 +287,7 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
-    def generate_matches(self, request, pk=None):
+    def generate_matches(self, request, slug=None):
         """
         Generate matches for a tournament.
         """
@@ -298,7 +299,7 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
-    def start_countdown(self, request, pk=None):
+    def start_countdown(self, request, slug=None):
         """
         Start the countdown for a tournament.
         """
@@ -448,6 +449,7 @@ class GameViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing games.
     """
+    lookup_field = 'slug'
     pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):

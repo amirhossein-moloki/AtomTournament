@@ -342,7 +342,7 @@ class TournamentViewSetTests(APITestCase):
         InGameID.objects.create(user=self.user, game=self.game, player_id="testuser-ingame")
         self.client.force_authenticate(user=self.user)
         response = self.client.post(
-            f"{self.tournaments_url}tournaments/{self.tournament.id}/join/"
+            f"{self.tournaments_url}tournaments/{self.tournament.slug}/join/"
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(self.tournament.participants.filter(id=self.user.id).exists())
@@ -366,7 +366,7 @@ class TournamentViewSetTests(APITestCase):
         InGameID.objects.create(user=member, game=self.game, player_id="member-ingame-id-2")
         data = {"team_id": team.id, "member_ids": [self.user.id, member.id]}
         response = self.client.post(
-            f"{self.tournaments_url}tournaments/{team_tournament.id}/join/", data
+            f"{self.tournaments_url}tournaments/{team_tournament.slug}/join/", data
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(team_tournament.teams.filter(id=team.id).exists())
@@ -390,7 +390,7 @@ class TournamentViewSetTests(APITestCase):
         self.client.force_authenticate(user=self.user)
         InGameID.objects.create(user=self.user, game=self.game, player_id="testuser-ingame")
         response = self.client.post(
-            f"{self.tournaments_url}tournaments/{paid_tournament.id}/join/"
+            f"{self.tournaments_url}tournaments/{paid_tournament.slug}/join/"
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.user.refresh_from_db()
@@ -429,7 +429,7 @@ class TournamentViewSetTests(APITestCase):
         InGameID.objects.create(user=member, game=self.game, player_id="member-ingame-id")
         data = {"team_id": team.id, "member_ids": [self.user.id, member.id]}
         response = self.client.post(
-            f"{self.tournaments_url}tournaments/{paid_tournament.id}/join/", data
+            f"{self.tournaments_url}tournaments/{paid_tournament.slug}/join/", data
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.user.refresh_from_db()
@@ -455,7 +455,7 @@ class TournamentViewSetTests(APITestCase):
         )
         self.client.force_authenticate(user=self.user)
         response = self.client.post(
-            f"{self.tournaments_url}tournaments/{paid_tournament.id}/join/"
+            f"{self.tournaments_url}tournaments/{paid_tournament.slug}/join/"
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.user.refresh_from_db()
@@ -470,7 +470,7 @@ class TournamentViewSetTests(APITestCase):
         p2 = User.objects.create_user(username="p2", password="p", phone_number="+4")
         self.tournament.participants.add(p1, p2)
         response = self.client.post(
-            f"{self.tournaments_url}tournaments/{self.tournament.id}/generate_matches/"
+            f"{self.tournaments_url}tournaments/{self.tournament.slug}/generate_matches/"
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(self.tournament.matches.count(), 1)
@@ -479,7 +479,7 @@ class TournamentViewSetTests(APITestCase):
     def test_start_countdown(self, mock_apply_async):
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.post(
-            f"{self.tournaments_url}tournaments/{self.tournament.id}/start_countdown/"
+            f"{self.tournaments_url}tournaments/{self.tournament.slug}/start_countdown/"
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.tournament.refresh_from_db()
@@ -532,14 +532,14 @@ class TournamentViewSetTests(APITestCase):
         InGameID.objects.create(user=first_user, game=self.game, player_id="firstuser-ingame")
         self.client.force_authenticate(user=first_user)
         response = self.client.post(
-            f"{self.tournaments_url}tournaments/{full_tournament.id}/join/"
+            f"{self.tournaments_url}tournaments/{full_tournament.slug}/join/"
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         # Second user tries to join, which should fail
         self.client.force_authenticate(user=self.user)
         response = self.client.post(
-            f"{self.tournaments_url}tournaments/{full_tournament.id}/join/"
+            f"{self.tournaments_url}tournaments/{full_tournament.slug}/join/"
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data["error"], "This tournament is full.")
@@ -1476,3 +1476,65 @@ class TournamentColorCRUDTests(APITestCase):
         response = self.client.delete(f"{self.colors_url}{color.id}/")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(TournamentColor.objects.filter(id=color.id).exists())
+
+
+class SlugGenerationTests(APITestCase):
+    def setUp(self):
+        self.game = Game.objects.create(name="Test Game")
+        self.start_date = timezone.now() + timedelta(days=1)
+        self.end_date = timezone.now() + timedelta(days=2)
+        self.tournaments_url = "/api/tournaments/tournaments/"
+        self.games_url = "/api/tournaments/games/"
+
+    def test_game_slug_creation(self):
+        """Test that a slug is automatically created for a Game."""
+        self.assertEqual(self.game.slug, "test-game")
+
+    def test_tournament_slug_creation(self):
+        """Test that a slug is automatically created for a Tournament."""
+        tournament = Tournament.objects.create(
+            name="My Awesome Tournament",
+            game=self.game,
+            start_date=self.start_date,
+            end_date=self.end_date,
+        )
+        self.assertEqual(tournament.slug, "my-awesome-tournament")
+
+    def test_slug_uniqueness(self):
+        """Test that slugs are unique and suffixes are added correctly."""
+        game2 = Game.objects.create(name="Test Game")
+        self.assertNotEqual(self.game.slug, game2.slug)
+        self.assertEqual(game2.slug, "test-game-1")
+
+        tournament1 = Tournament.objects.create(
+            name="Clash Royale",
+            game=self.game,
+            start_date=self.start_date,
+            end_date=self.end_date,
+        )
+        tournament2 = Tournament.objects.create(
+            name="Clash Royale",
+            game=self.game,
+            start_date=self.start_date,
+            end_date=self.end_date,
+        )
+        self.assertNotEqual(tournament1.slug, tournament2.slug)
+        self.assertEqual(tournament2.slug, "clash-royale-1")
+
+    def test_api_access_with_slug(self):
+        """Test that API endpoints can be accessed using the slug."""
+        game_response = self.client.get(f"{self.games_url}{self.game.slug}/")
+        self.assertEqual(game_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(game_response.data["name"], self.game.name)
+
+        tournament = Tournament.objects.create(
+            name="API Test Tournament",
+            game=self.game,
+            start_date=self.start_date,
+            end_date=self.end_date,
+        )
+        tournament_response = self.client.get(
+            f"{self.tournaments_url}{tournament.slug}/"
+        )
+        self.assertEqual(tournament_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(tournament_response.data["name"], tournament.name)
