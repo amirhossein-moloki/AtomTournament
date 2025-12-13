@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
+from django.test import override_settings
 from PIL import Image
 
 from .models import Conversation, Message, Attachment
@@ -108,8 +109,9 @@ class AttachmentAPITests(APITestCase):
             )
         )
 
+    @override_settings(MAX_UPLOAD_SIZE_BYTES=100)
     def test_create_attachment_with_oversized_file(self):
-        oversized_content = b"a" * (11 * 1024 * 1024)
+        oversized_content = b"a" * 101
         oversized_file = SimpleUploadedFile(
             "large_file.jpg", oversized_content, content_type="image/jpeg"
         )
@@ -118,5 +120,5 @@ class AttachmentAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("file", response.data)
         self.assertTrue(
-            any("حجم فایل شما بیشتر از ۱۰ مگابایت است." in str(e) for e in response.data["file"])
+            any("حجم فایل شما بیشتر از 0.1 کیلوبایت است." in str(e) for e in response.data["file"])
         )

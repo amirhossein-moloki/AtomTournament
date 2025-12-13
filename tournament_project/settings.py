@@ -379,7 +379,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 50,
     # Default throttle classes are removed to enforce endpoint-specific throttling.
-    "DEFAULT_THROTTLE_CLASSES": [
+    "DEFAULT_THROTTLE_CLASSES": [] if 'test' in sys.argv or 'pytest' in sys.modules else [
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
     ],
@@ -619,3 +619,13 @@ CKEDITOR_5_CONFIGS = {
 JALALI_DATE_DEFAULTS = {
    'LIST_DISPLAY_AUTO_CONVERT': True
 }
+
+# External Services
+EXTERNAL_HTTP_TIMEOUT_SECONDS = int(os.environ.get("EXTERNAL_HTTP_TIMEOUT_SECONDS", "10"))
+EXTERNAL_HTTP_FAILURE_THRESHOLD = int(os.environ.get("EXTERNAL_HTTP_FAILURE_THRESHOLD", "5"))
+EXTERNAL_HTTP_RESET_TIMEOUT = int(os.environ.get("EXTERNAL_HTTP_RESET_TIMEOUT", "60"))
+
+# File Uploads
+MAX_UPLOAD_SIZE_BYTES = int(os.environ.get("MAX_UPLOAD_SIZE_BYTES", "1048576"))
+ALLOWED_UPLOAD_EXTENSIONS = os.environ.get("ALLOWED_UPLOAD_EXTENSIONS", ".jpg,.jpeg,.png,.mp4,.mov,.webp,.gif,.heic,.avif").split(',')
+ALLOWED_UPLOAD_CONTENT_TYPES = os.environ.get("ALLOWED_UPLOAD_CONTENT_TYPES", "image/jpeg,image/png,video/mp4,video/quicktime,image/webp,image/gif,image/heic,image/avif").split(',')

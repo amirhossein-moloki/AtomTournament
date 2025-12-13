@@ -51,6 +51,7 @@ shortuuid==1.0.11
 smsir-python==1.0.8
 pillow==11.3.0
 requests
+pybreaker
 pyopenssl
 scikit-learn
 pillow-avif-plugin

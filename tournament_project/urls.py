@@ -18,10 +18,13 @@ from tournaments.views import private_media_view
 from tournament_project.ckeditor_views import ckeditor5_upload
 from blog.ckeditor_views import ckeditor_upload_view
 from .views import page_not_found_view
+from common.views import healthz
 
 handler404 = page_not_found_view
 
 urlpatterns = [
+    # --- Health Check ---
+    path('healthz/', healthz, name='healthz'),
     # --- Observability ---
     path('metrics/', include('django_prometheus.urls')),
 

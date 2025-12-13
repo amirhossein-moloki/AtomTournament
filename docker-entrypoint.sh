@@ -24,4 +24,4 @@ fi
 
 # Start server
 echo "Starting server..."
-daphne -b 0.0.0.0 -p 8000 tournament_project.asgi:application
+daphne -b 0.0.0.0 -p 8000 --shutdown-timeout ${DAPHNE_SHUTDOWN_TIMEOUT:-30} tournament_project.asgi:application

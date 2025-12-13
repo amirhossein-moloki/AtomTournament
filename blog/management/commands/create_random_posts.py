@@ -1,6 +1,7 @@
 import random
 import requests
 from django.core.management.base import BaseCommand
+from common.services import HttpClient
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from faker import Faker
@@ -10,6 +11,10 @@ User = get_user_model()
 
 class Command(BaseCommand):
     help = 'Creates a specified number of random posts for testing and development.'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.http_client = HttpClient(service_name='placeholder_images')
 
     def add_arguments(self, parser):
         parser.add_argument('count', type=int, help='The number of random posts to create.')
@@ -77,8 +82,7 @@ class Command(BaseCommand):
     def _create_dummy_media(self, fake):
         """Downloads a placeholder image and creates a Media object."""
         try:
-            response = requests.get('https://via.placeholder.com/800x600.png/007bff/FFFFFF?text=Image')
-            response.raise_for_status()  # Raise an exception for bad status codes
+            response = self.http_client.get('https://via.placeholder.com/800x600.png/007bff/FFFFFF?text=Image')
 
             file_name = f"{fake.slug()}.png"
             media = Media(
