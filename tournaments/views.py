@@ -143,7 +143,7 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing tournaments.
     """
-
+    lookup_field = 'pk'
     queryset = Tournament.objects.all()
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     ordering_fields = ['start_date', 'prize_pool', 'entry_fee']
@@ -192,8 +192,9 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
         )
 
         queryset = (
-            Tournament.objects.select_related("image", "color", "creator", "game")
+            Tournament.objects.select_related("image", "color", "creator")
             .prefetch_related(
+                Prefetch("game", queryset=game_queryset_with_counts),
                 Prefetch("participant_set", queryset=participant_queryset),
                 "participants",  # Added for direct access in serializer
                 "teams",
