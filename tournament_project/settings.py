@@ -626,6 +626,6 @@ EXTERNAL_HTTP_FAILURE_THRESHOLD = int(os.environ.get("EXTERNAL_HTTP_FAILURE_THRE
 EXTERNAL_HTTP_RESET_TIMEOUT = int(os.environ.get("EXTERNAL_HTTP_RESET_TIMEOUT", "60"))
 
 # File Uploads
-MAX_UPLOAD_SIZE_BYTES = int(os.environ.get("MAX_UPLOAD_SIZE_BYTES", "10485760"))
+MAX_UPLOAD_SIZE_BYTES = int(os.environ.get("MAX_UPLOAD_SIZE_BYTES", "1048576"))
 ALLOWED_UPLOAD_EXTENSIONS = os.environ.get("ALLOWED_UPLOAD_EXTENSIONS", ".jpg,.jpeg,.png,.mp4,.mov,.webp,.gif,.heic,.avif").split(',')
 ALLOWED_UPLOAD_CONTENT_TYPES = os.environ.get("ALLOWED_UPLOAD_CONTENT_TYPES", "image/jpeg,image/png,video/mp4,video/quicktime,image/webp,image/gif,image/heic,image/avif").split(',')
