@@ -122,7 +122,7 @@ class TournamentColor(models.Model):
         return self.name
 
 
-class Tournament(models.Model):
+class Tournament(SlugMixin, models.Model):
     TOURNAMENT_TYPE_CHOICES = (
         ("individual", "Individual"),
         ("team", "Team"),
