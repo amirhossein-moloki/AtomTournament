@@ -59,7 +59,7 @@ urlpatterns = [
     # --- App URLs ---
     path("api/users/", include("users.urls")),
     path("api/teams/", include("teams.urls")),
-    path("api/tournaments/", include("tournaments.urls")),
+    path("api/tournaments/", include("tournaments.urls", namespace="tournaments")),
     path("api/chat/", include("chat.urls")),
     path("api/wallet/", include("wallet.urls")),
     path("api/notifications/", include("notifications.urls")),

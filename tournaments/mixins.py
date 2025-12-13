@@ -1,50 +1,55 @@
 from django.contrib import messages
-
-# To make this mixin more concrete, we can import models and check conditions.
-# Note: This creates a dependency from 'tournaments' to 'support'.
-# A more decoupled approach might use signals or a dedicated notifications app.
-from support.models import Ticket
-from tournaments.models import Match
+from django.db import models
+from django.utils.text import slugify
 
 
 class AdminAlertsMixin:
     """
-    A mixin for the Django admin to show important alerts on the changelist page.
-
-    This mixin checks for specific conditions (e.g., new support tickets)
-    and uses the Django messages framework to display them.
+    A mixin for the Django admin that displays alerts based on model state.
     """
 
     def changelist_view(self, request, extra_context=None):
-        # --- Alert Examples ---
+        extra_context = extra_context or {}
+        alerts = []
+        for obj in self.get_queryset(request):
+            obj_alerts = self.get_object_alerts(request, obj)
+            if obj_alerts:
+                alerts.extend(obj_alerts)
 
-        # 1. Alert for open support tickets.
-        # This will be shown on any admin page that uses this mixin.
-        try:
-            # Corrected model name to 'Ticket' and status to 'open'
-            open_tickets_count = Ticket.objects.filter(status="open").count()
-            if open_tickets_count > 0:
-                message = f"هشدار: {open_tickets_count} تیکت پشتیبانی باز منتظر بررسی است."
-                messages.add_message(
-                    request, messages.WARNING, message, extra_tags="warning"
-                )
-        except Exception:
-            # Fails silently if the Ticket model is not available for some reason
-            pass
+        for level, message in alerts:
+            messages.add_message(request, getattr(messages, level.upper(), messages.INFO), message)
 
-        # 2. Alert for disputed matches.
-        try:
-            disputed_matches_count = Match.objects.filter(is_disputed=True).count()
-            if disputed_matches_count > 0:
-                message = (
-                    f"توجه: {disputed_matches_count} مسابقه مورد مناقشه قرار گرفته "
-                    f"و نیاز به بررسی دارد."
-                )
-                messages.add_message(
-                    request, messages.INFO, message, extra_tags="info"
-                )
-        except Exception:
-            pass
+        return super().changelist_view(request, extra_context)
 
-        # Call the original changelist_view to render the page
-        return super().changelist_view(request, extra_context=extra_context)
+    def get_object_alerts(self, request, obj):
+        """
+        This method can be implemented in the ModelAdmin to return a list
+        of alerts for a specific object. Each alert should be a tuple of
+        (level, message).
+        Example: [('warning', 'This tournament has no participants.')]
+        """
+        return []
+
+
+class SlugMixin(models.Model):
+    """
+    A mixin that automatically generates a unique slug from the 'name' field
+    before saving the model instance.
+    """
+
+    class Meta:
+        abstract = True
+
+    def save(self, *args, **kwargs):
+        if hasattr(self, "slug") and hasattr(self, "name") and not self.slug:
+            self.slug = slugify(self.name, allow_unicode=True)
+            original_slug = self.slug
+            queryset = self.__class__.objects.all()
+            if self.pk:
+                queryset = queryset.exclude(pk=self.pk)
+
+            counter = 1
+            while queryset.filter(slug=self.slug).exists():
+                counter += 1
+                self.slug = f"{original_slug}-{counter}"
+        super().save(*args, **kwargs)

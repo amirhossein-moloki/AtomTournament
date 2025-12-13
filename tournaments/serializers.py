@@ -60,6 +60,7 @@ class GameReadOnlySerializer(serializers.ModelSerializer):
         model = Game
         fields = (
             "id",
+            "slug",
             "name",
             "description",
             "images",
@@ -137,6 +138,7 @@ class TournamentReadOnlySerializer(serializers.ModelSerializer):
         model = Tournament
         fields = (
             "id",
+            "slug",
             "name",
             "description",
             "image",
@@ -214,6 +216,7 @@ class TournamentListSerializer(TournamentReadOnlySerializer):
     class Meta(TournamentReadOnlySerializer.Meta):
         fields = (
             "id",
+            "slug",
             "name",
             "description",
             "image",

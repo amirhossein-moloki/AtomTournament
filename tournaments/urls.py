@@ -5,6 +5,8 @@ from .views import (AdminReportListView, AdminWinnerSubmissionListView,
                     TopTournamentsView, TotalPrizeMoneyView,
                     TotalTournamentsView, UserTournamentHistoryView)
 
+app_name = 'tournaments'
+
 urlpatterns = [
     path("", include(router.urls)),
     path(

@@ -1,8 +1,10 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
-from common.fields import OptimizedImageField, OptimizedVideoField
+from common.fields import OptimizedImageField
 from common.utils.files import get_sanitized_upload_path
+
+from .mixins import SlugMixin
 
 
 class Rank(models.Model):
@@ -14,13 +16,14 @@ class Rank(models.Model):
         return self.name
 
 
-class Game(models.Model):
+class Game(SlugMixin, models.Model):
     STATUS_CHOICES = (
         ("active", "Active"),
         ("inactive", "Inactive"),
         ("coming_soon", "Coming Soon"),
     )
     name = models.CharField(max_length=100)
+    slug = models.SlugField(max_length=100, unique=True)
     description = models.TextField()
     status = models.CharField(
         max_length=20, choices=STATUS_CHOICES, default="active", db_index=True
@@ -89,7 +92,7 @@ class TournamentColor(models.Model):
         return self.name
 
 
-class Tournament(models.Model):
+class Tournament(SlugMixin, models.Model):
     TOURNAMENT_TYPE_CHOICES = (
         ("individual", "Individual"),
         ("team", "Team"),
@@ -116,6 +119,7 @@ class Tournament(models.Model):
     )
     team_size = models.PositiveIntegerField(default=1)
     name = models.CharField(max_length=100)
+    slug = models.SlugField(max_length=100, unique=True)
     description = models.TextField(blank=True)
     image = models.ForeignKey(
         TournamentImage,
