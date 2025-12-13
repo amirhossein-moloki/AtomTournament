@@ -145,6 +145,7 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
     """
 
     queryset = Tournament.objects.all()
+    lookup_field = 'slug'
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     ordering_fields = ['start_date', 'prize_pool', 'entry_fee']
     filterset_class = TournamentFilter
@@ -453,6 +454,7 @@ class GameViewSet(viewsets.ModelViewSet):
     ViewSet for managing games.
     """
     pagination_class = StandardResultsSetPagination
+    lookup_field = 'slug'
 
     def get_queryset(self):
         now = timezone.now()

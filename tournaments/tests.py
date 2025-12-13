@@ -1476,3 +1476,73 @@ class TournamentColorCRUDTests(APITestCase):
         response = self.client.delete(f"{self.colors_url}{color.id}/")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(TournamentColor.objects.filter(id=color.id).exists())
+
+
+from django.test import TestCase
+from django.urls import reverse
+from rest_framework.test import APITestCase
+from rest_framework import status
+
+from tournaments.models import Game, Tournament
+from users.models import User
+
+
+class SlugGenerationTest(TestCase):
+    def test_game_slug_creation(self):
+        """Tests that a slug is automatically created for a Game."""
+        game = Game.objects.create(name="تست بازی ۱")
+        self.assertIsNotNone(game.slug)
+        self.assertEqual(game.slug, "تست-بازی-۱")
+
+    def test_tournament_slug_creation(self):
+        """Tests that a slug is automatically created for a Tournament."""
+        game = Game.objects.create(name="Game for Tournament")
+        tournament = Tournament.objects.create(
+            name="تست تورنومنت ۱",
+            game=game,
+            start_date="2025-01-01T12:00:00Z",
+            end_date="2025-01-02T12:00:00Z",
+        )
+        self.assertIsNotNone(tournament.slug)
+        self.assertEqual(tournament.slug, "تست-تورنومنت-۱")
+
+    def test_unique_slug_generation(self):
+        """Tests that unique slugs are generated for items with the same name."""
+        game1 = Game.objects.create(name="بازی تکراری")
+        game2 = Game.objects.create(name="بازی تکراری")
+        self.assertNotEqual(game1.slug, game2.slug)
+        self.assertEqual(game1.slug, "بازی-تکراری")
+        self.assertEqual(game2.slug, "بازی-تکراری-2")
+
+
+class SlugAPITest(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.game = Game.objects.create(name="My Test Game")
+        self.tournament = Tournament.objects.create(
+            name="My Test Tournament",
+            game=self.game,
+            start_date="2025-01-01T12:00:00Z",
+            end_date="2025-01-02T12:00:00Z",
+        )
+
+    def test_retrieve_game_by_slug(self):
+        """Tests that a Game can be retrieved from the API using its slug."""
+        url = reverse("tournaments:game-detail", kwargs={"slug": self.game.slug})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["name"], self.game.name)
+
+    def test_retrieve_tournament_by_slug(self):
+        """Tests that a Tournament can be retrieved from the API using its slug."""
+        url = reverse("tournaments:tournament-detail", kwargs={"slug": self.tournament.slug})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["name"], self.tournament.name)
+
+    def test_slug_in_api_output(self):
+        """Tests that the 'slug' field is present in the API response."""
+        url = reverse("tournaments:game-detail", kwargs={"slug": self.game.slug})
+        response = self.client.get(url)
+        self.assertIn("slug", response.data)
+        self.assertEqual(response.data["slug"], self.game.slug)
