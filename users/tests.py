@@ -26,7 +26,7 @@ class UserViewSetAPITest(BaseAPITestCase):
         url = reverse('user-detail', kwargs={'pk': other_user.pk})
         data = {'username': 'should_not_work'}
         response = self.client.patch(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_admin_can_update_other_profile(self):
         """

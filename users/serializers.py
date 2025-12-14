@@ -101,6 +101,12 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "score", "rank", "role", "verification")
 
     def update(self, instance, validated_data):
+        # If 'profile_picture' is not in the initial request data, it means the user
+        # did not intend to update it. We pop it from validated_data to prevent
+        # it from being set to null.
+        if "profile_picture" not in self.initial_data:
+            validated_data.pop("profile_picture", None)
+
         in_game_ids_data = validated_data.pop("in_game_ids", None)
         instance = super().update(instance, validated_data)
 
