@@ -1,7 +1,4 @@
 from django.db import models
-
-from tournaments.models import Game
-from users.models import User
 from common.fields import OptimizedFileField
 from common.utils.files import get_sanitized_upload_path
 
@@ -13,7 +10,7 @@ class Ticket(models.Model):
         ("answered", "پاسخ داده شده"),
         ("pending", "در انتظار پاسخ"),
     )
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
     status = models.CharField(
         max_length=20, choices=TICKET_STATUS_CHOICES, default="open", db_index=True
@@ -31,7 +28,7 @@ class TicketMessage(models.Model):
     ticket = models.ForeignKey(
         Ticket, on_delete=models.CASCADE, related_name="messages"
     )
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE)
     message = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -43,8 +40,8 @@ class TicketMessage(models.Model):
 
 
 class SupportAssignment(models.Model):
-    support_person = models.ForeignKey(User, on_delete=models.CASCADE)
-    game = models.ForeignKey(Game, on_delete=models.CASCADE)
+    support_person = models.ForeignKey("users.User", on_delete=models.CASCADE)
+    game = models.ForeignKey("tournaments.Game", on_delete=models.CASCADE)
     head_support = models.BooleanField(default=False)
 
     class Meta:

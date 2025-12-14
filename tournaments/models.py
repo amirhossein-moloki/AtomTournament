@@ -2,8 +2,10 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.text import slugify
 from django.utils import timezone
+
 from common.fields import OptimizedImageField, OptimizedVideoField
 from common.utils.files import get_sanitized_upload_path
+from .mixins import SlugMixin
 
 
 class Rank(models.Model):
@@ -13,38 +15,6 @@ class Rank(models.Model):
 
     def __str__(self):
         return self.name
-
-
-class SlugMixin(models.Model):
-    slug = models.SlugField(max_length=150, unique=True)
-
-    class Meta:
-        abstract = True
-
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(self.name, allow_unicode=True)
-
-        if not self.slug:
-            # handle cases where name is empty or contains only characters that are removed
-            base_slug = self._meta.model_name
-            self.slug = base_slug
-            counter = 1
-            while type(self).objects.filter(slug=self.slug).exists():
-                self.slug = f'{base_slug}-{counter}'
-                counter += 1
-        else:
-            original_slug = self.slug
-            counter = 1
-            queryset = type(self).objects.filter(slug=self.slug)
-            if self.pk:
-                queryset = queryset.exclude(pk=self.pk)
-
-            while queryset.exists():
-                self.slug = f'{original_slug}-{counter}'
-                counter += 1
-
-        super().save(*args, **kwargs)
 
 
 class Game(SlugMixin, models.Model):
