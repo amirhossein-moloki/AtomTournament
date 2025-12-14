@@ -122,6 +122,15 @@ server {
         internal;
     }
 
+    # Redirects for Persian slugs
+    location /tournament-loby/ {
+        try_files /tournament-loby.html =404;
+    }
+
+    location /game-tournaments/ {
+        try_files /game-tournaments.html =404;
+    }
+
     ########################
     # Frontend (SPA)
     ########################
