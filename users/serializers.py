@@ -101,6 +101,11 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "score", "rank", "role", "verification")
 
     def update(self, instance, validated_data):
+        # If 'profile_picture' is not in the request data, we prevent it from being updated.
+        # This is particularly important for PUT requests where DRF might otherwise set it to null.
+        if "profile_picture" not in self.initial_data:
+            validated_data.pop("profile_picture", None)
+
         in_game_ids_data = validated_data.pop("in_game_ids", None)
         instance = super().update(instance, validated_data)
 
