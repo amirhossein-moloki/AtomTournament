@@ -122,9 +122,16 @@ server {
         internal;
     }
 
-    # Redirects for Persian slugs
+    # SPA routing for tournament lobby
     location /tournament-loby/ {
-        try_files /tournament-loby.html =404;
+        try_files $uri /tournament-loby.html;
+    }
+
+    # Handle incorrect relative paths for assets requested from the lobby SPA
+    location ~ ^/tournament-loby/(css|js|fonts|images|vendors)/ {
+        rewrite ^/tournament-loby/(.*)$ /$1 break;
+        root /var/www/frontend;
+        try_files $uri =404;
     }
 
     location /game-tournaments/ {
