@@ -138,6 +138,11 @@ server {
         try_files /game-tournaments.html =404;
     }
 
+    # Handle legacy typo URL for game tournaments page (with optional slug)
+    location /game-touranments/ {
+        try_files /game-touranments.html =404;
+    }
+
     ########################
     # Frontend (SPA)
     ########################
