@@ -138,6 +138,18 @@ server {
         try_files /game-tournaments.html =404;
     }
 
+    # Handle legacy typo URL for game tournaments page (with optional slug)
+    location /game-touranments/ {
+        try_files /game-touranments.html =404;
+    }
+
+    # Serve static assets when the legacy typo page is accessed with a slug
+    location ~ ^/game-touranments/[^/]+/(css|js|fonts|images|vendors|assets)/ {
+        rewrite ^/game-touranments/[^/]+/(.*)$ /game-touranments/$1 break;
+        root /var/www/frontend;
+        try_files $uri =404;
+    }
+
     ########################
     # Frontend (SPA)
     ########################
