@@ -130,8 +130,8 @@ server {
         try_files /tournament-loby.html =404;
     }
 
-    location = /game-tournaments/سلاگ بازی {
-        try_files /game-tournaments.html =404;
+    location ^~ /game-tournaments/ {
+        try_files $uri $uri/ /game-tournaments.html =404;
     }
 
     location / {
