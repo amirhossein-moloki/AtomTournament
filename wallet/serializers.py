@@ -93,10 +93,40 @@ class PaymentSerializer(serializers.Serializer):
 
 
 class WithdrawalRequestSerializer(serializers.ModelSerializer):
+    card_number = serializers.SerializerMethodField()
+    sheba_number = serializers.SerializerMethodField()
+
+    def get_card_number(self, obj: WithdrawalRequest):
+        if hasattr(obj.user, "wallet"):
+            return obj.user.wallet.card_number
+        return None
+
+    def get_sheba_number(self, obj: WithdrawalRequest):
+        if hasattr(obj.user, "wallet"):
+            return obj.user.wallet.sheba_number
+        return None
+
     class Meta:
         model = WithdrawalRequest
-        fields = ('id', 'user', 'amount', 'status', 'created_at', 'updated_at')
-        read_only_fields = ('user', 'amount', 'status', 'created_at', 'updated_at')
+        fields = (
+            'id',
+            'user',
+            'amount',
+            'card_number',
+            'sheba_number',
+            'status',
+            'created_at',
+            'updated_at',
+        )
+        read_only_fields = (
+            'user',
+            'amount',
+            'card_number',
+            'sheba_number',
+            'status',
+            'created_at',
+            'updated_at',
+        )
 
 
 class AdminWithdrawalRequestUpdateSerializer(serializers.ModelSerializer):

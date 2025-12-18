@@ -112,7 +112,11 @@ class WithdrawalRequestAPIView(generics.CreateAPIView):
 
 
 class AdminWithdrawalRequestViewSet(viewsets.ModelViewSet):
-    queryset = WithdrawalRequest.objects.all().select_related('user')
+    queryset = (
+        WithdrawalRequest.objects.all()
+        .select_related('user')
+        .select_related('user__wallet')
+    )
     serializer_class = WithdrawalRequestSerializer
     permission_classes = [IsAdminUser]
     throttle_classes = [StrictThrottle]

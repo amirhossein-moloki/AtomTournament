@@ -68,8 +68,23 @@ class TransactionAdmin(ImportExportModelAdmin, SimpleHistoryAdmin, ModelAdmin):
 
 @admin.register(WithdrawalRequest)
 class WithdrawalRequestAdmin(ImportExportModelAdmin, SimpleHistoryAdmin, ModelAdmin):
-    list_display = ("user", "amount", "status", "created_at")
+    list_display = (
+        "user",
+        "amount",
+        "card_number",
+        "sheba_number",
+        "status",
+        "created_at",
+    )
     list_filter = ("status",)
     search_fields = ("user__username",)
     list_editable = ("status",)
     autocomplete_fields = ("user",)
+
+    @admin.display(description="شماره کارت")
+    def card_number(self, obj):
+        return getattr(obj.user.wallet, "card_number", None)
+
+    @admin.display(description="شماره شبا")
+    def sheba_number(self, obj):
+        return getattr(obj.user.wallet, "sheba_number", None)

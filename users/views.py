@@ -3,7 +3,10 @@ import logging
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Count, F, Prefetch, Q, Sum
+from decimal import Decimal
+
+from django.db.models import Count, F, Prefetch, Q, Sum, Value
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
@@ -272,9 +275,12 @@ class TopPlayersView(APIView):
     @method_decorator(cache_page(60 * 15))
     def get(self, request):
         users = User.objects.annotate(
-            total_winnings=models.Sum(
-                "wallet__transactions__amount",
-                filter=models.Q(wallet__transactions__transaction_type="prize"),
+            total_winnings=Coalesce(
+                models.Sum(
+                    "wallet__transactions__amount",
+                    filter=models.Q(wallet__transactions__transaction_type="prize"),
+                ),
+                Decimal("0.00"),
             )
         ).order_by("-total_winnings")
         serializer = TopPlayerSerializer(users, many=True)
@@ -293,10 +299,12 @@ class TopPlayersByRankView(APIView):
     def get(self, request):
         users = (
             User.objects.annotate(
-                total_winnings=Sum(
-                    "wallet__transactions__amount",
-                    filter=Q(wallet__transactions__transaction_type="prize"),
-                    default=0,
+                total_winnings=Coalesce(
+                    Sum(
+                        "wallet__transactions__amount",
+                        filter=Q(wallet__transactions__transaction_type="prize"),
+                    ),
+                    Value(Decimal("0.00")),
                 ),
                 wins=Count("won_matches", distinct=True),
             )

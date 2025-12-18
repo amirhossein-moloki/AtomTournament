@@ -84,8 +84,10 @@ class TeamViewSet(viewsets.ModelViewSet):
         """
         List all pending invitations for the current user.
         """
-        invitations = TeamInvitation.objects.filter(
-            to_user=request.user, status="pending"
+        invitations = (
+            TeamInvitation.objects.filter(to_user=request.user, status="pending")
+            .select_related("team", "team__captain")
+            .prefetch_related("team__members", "team__members__in_game_ids")
         )
         serializer = TeamInvitationSerializer(invitations, many=True)
         return Response(serializer.data)

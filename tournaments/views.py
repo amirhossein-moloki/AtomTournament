@@ -21,6 +21,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 from rest_framework.filters import OrderingFilter
 from rest_framework import generics, status, viewsets
+from rest_framework.generics import get_object_or_404
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -234,6 +235,19 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
             )
 
         return queryset
+
+    def get_object(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        lookup_value = self.kwargs.get(self.lookup_field)
+
+        filters = Q(slug=lookup_value)
+
+        if str(lookup_value).isdigit():
+            filters |= Q(pk=lookup_value)
+
+        obj = get_object_or_404(queryset, filters)
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     def get_permissions(self):
         if self.action in ["list", "retrieve"]:
@@ -481,6 +495,19 @@ class GameViewSet(viewsets.ModelViewSet):
         if self.action in ["create", "update", "partial_update", "destroy"]:
             return [IsAdminUser()]
         return [IsAuthenticated()]
+
+    def get_object(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        lookup_value = self.kwargs.get(self.lookup_field)
+
+        filters = Q(slug=lookup_value)
+
+        if str(lookup_value).isdigit():
+            filters |= Q(pk=lookup_value)
+
+        obj = get_object_or_404(queryset, filters)
+        self.check_object_permissions(self.request, obj)
+        return obj
 
 
 class GameImageViewSet(viewsets.ModelViewSet):
