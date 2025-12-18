@@ -5,6 +5,7 @@ from verification.serializers import VerificationSerializer
 from teams.models import Team
 
 from .models import InGameID, Role, User, Referral
+from django.core.files.uploadedfile import UploadedFile
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -99,6 +100,17 @@ class UserSerializer(serializers.ModelSerializer):
             "verification",
         )
         read_only_fields = ("id", "score", "rank", "role", "verification")
+
+    def to_internal_value(self, data):
+        # If the profile picture is provided as an existing URL/string (e.g. when the
+        # client sends back the current value), we ignore it to avoid image
+        # validation errors. Only uploaded files should be processed here.
+        data = data.copy()
+        profile_picture = data.get("profile_picture")
+        if profile_picture is not None and not isinstance(profile_picture, UploadedFile):
+            data.pop("profile_picture")
+
+        return super().to_internal_value(data)
 
     def update(self, instance, validated_data):
         # If 'profile_picture' is not in the request data, we prevent it from being updated.
