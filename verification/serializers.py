@@ -15,6 +15,7 @@ class VerificationSerializer(serializers.ModelSerializer):
             "selfie_image",
             "video",
             "is_verified",
+            "rejection_reason",
             "created_at",
             "updated_at",
         )
