@@ -1,12 +1,17 @@
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
+from notifications.services import send_notification
+
 from .models import Verification
-from .serializers import (VerificationLevel2Serializer,
-                          VerificationLevel3Serializer, VerificationSerializer)
+from .serializers import (
+    VerificationLevel2Serializer,
+    VerificationLevel3Serializer,
+    VerificationSerializer,
+)
 
 
 class VerificationViewSet(viewsets.GenericViewSet):
@@ -92,6 +97,7 @@ class VerificationViewSet(viewsets.GenericViewSet):
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
         is_verified = request.data.get("is_verified")
+        rejection_reason = request.data.get("rejection_reason")
 
         if is_verified is None:
             return Response(
@@ -99,8 +105,29 @@ class VerificationViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        if isinstance(is_verified, str):
+            is_verified = is_verified.lower() == "true"
+
+        if not is_verified and not rejection_reason:
+            return Response(
+                {"detail": "rejection_reason is required when rejecting a request."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         instance.is_verified = is_verified
+        instance.rejection_reason = "" if is_verified else rejection_reason
         instance.save()
+
+        message = (
+            "درخواست احراز هویت شما تایید شد."
+            if is_verified
+            else f"درخواست احراز هویت شما رد شد: {rejection_reason}"
+        )
+        send_notification(
+            user=instance.user,
+            message=message,
+            notification_type="verification_status_change",
+        )
 
         return Response(
             {"detail": "Verification status updated successfully."},

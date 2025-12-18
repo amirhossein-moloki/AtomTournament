@@ -9,6 +9,7 @@ class Notification(models.Model):
         ("report_status_change", "تغییر وضعیت گزارش"),
         ("winner_submission_required", "نیاز به ارسال نتیجه"),
         ("winner_submission_status_change", "تغییر وضعیت ارسال نتیجه"),
+        ("verification_status_change", "تغییر وضعیت احراز هویت"),
     )
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="notifications"

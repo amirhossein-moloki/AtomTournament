@@ -94,11 +94,12 @@ class VerificationViewTests(APITestCase):
         )
         self.client.force_authenticate(user=self.admin_user)
         url = reverse("verification-approve", kwargs={"pk": verification.pk})
-        data = {"is_verified": False}
+        data = {"is_verified": False, "rejection_reason": "اطلاعات ناقص"}
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         verification.refresh_from_db()
         self.assertFalse(verification.is_verified)
+        self.assertEqual(verification.rejection_reason, "اطلاعات ناقص")
 
     def test_non_admin_cannot_update_verification(self, mock_optimize_video):
         verification = Verification.objects.create(user=self.user, level=2)
