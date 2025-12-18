@@ -1,6 +1,10 @@
+from decimal import Decimal
+
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from rest_framework import status
 from blog.tests.base import BaseAPITestCase  # Reusing the base test case for convenience
+from wallet.models import Transaction, Wallet
 from .models import User
 
 class UserViewSetAPITest(BaseAPITestCase):
@@ -51,3 +55,37 @@ class UserViewSetAPITest(BaseAPITestCase):
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(User.objects.filter(pk=user_to_delete.pk).exists())
+
+
+class TopPlayersByRankAPITest(BaseAPITestCase):
+    def test_top_players_by_rank_includes_winnings_and_avatar(self):
+        prize_amount = Decimal("150.00")
+        self.user.score = 10
+        self.user.profile_picture = SimpleUploadedFile(
+            "avatar.png",
+            (
+                b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01"
+                b"\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"
+                b"\x00\x00\x00\x0cIDATx\x9cc````\x00\x00\x00\x04\x00\x01"
+                b"\x0b\xe7\x02\x9a\x00\x00\x00\x00IEND\xaeB`\x82"
+            ),
+            content_type="image/png",
+        )
+        self.user.save()
+
+        wallet, _ = Wallet.objects.get_or_create(user=self.user)
+        Transaction.objects.create(
+            wallet=wallet,
+            amount=prize_amount,
+            transaction_type=Transaction.TransactionType.PRIZE,
+        )
+
+        response = self.client.get(reverse("top-players-by-rank"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 1)
+        top_player = response.data[0]
+
+        self.assertEqual(top_player["id"], self.user.id)
+        self.assertEqual(top_player["total_winnings"], str(prize_amount))
+        self.assertIsNotNone(top_player.get("profile_picture"))

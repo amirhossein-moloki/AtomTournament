@@ -57,6 +57,27 @@ class TournamentModelTests(TestCase):
             )
             tournament.clean()
 
+    def test_same_day_end_after_start_is_valid(self):
+        """
+        Ensure tournaments can end later on the same day they start.
+        """
+        start = (timezone.now() + timedelta(days=1)).replace(
+            hour=10, minute=30, second=0, microsecond=0
+        )
+        end = start + timedelta(hours=2)
+
+        tournament = Tournament(
+            name="Same Day Tournament",
+            game=self.game,
+            start_date=start,
+            end_date=end,
+        )
+
+        try:
+            tournament.clean()
+        except ValidationError:
+            self.fail("Validation unexpectedly failed for same-day end after start.")
+
     def test_paid_tournament_requires_entry_fee(self):
         """
         Test that a paid tournament must have an entry fee.
@@ -310,6 +331,28 @@ class TournamentViewSetTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(len(response.data["results"]), 1)
+
+    def test_list_tournaments_includes_team_size(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(f"{self.tournaments_url}tournaments/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        first_result = response.data["results"][0]
+        self.assertIn("team_size", first_result)
+        self.assertEqual(first_result["team_size"], self.tournament.team_size)
+
+    def test_retrieve_tournament_by_slug_or_id(self):
+        slug_response = self.client.get(
+            f"{self.tournaments_url}tournaments/{self.tournament.slug}/"
+        )
+        id_response = self.client.get(
+            f"{self.tournaments_url}tournaments/{self.tournament.id}/"
+        )
+
+        self.assertEqual(slug_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(id_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(slug_response.data["id"], id_response.data["id"])
 
     def test_create_tournament_by_admin(self):
         self.client.force_authenticate(user=self.admin_user)
@@ -1538,3 +1581,32 @@ class SlugGenerationTests(APITestCase):
         )
         self.assertEqual(tournament_response.status_code, status.HTTP_200_OK)
         self.assertEqual(tournament_response.data["name"], tournament.name)
+
+
+class GameLookupTests(APITestCase):
+    def setUp(self):
+        self.games_url = "/api/tournaments/games/"
+        self.game = Game.objects.create(name="Lookup Game")
+        self.admin_user = User.objects.create_superuser(
+            username="gameadmin", password="password", phone_number="+777"
+        )
+
+    def test_retrieve_game_by_slug_or_id(self):
+        slug_response = self.client.get(f"{self.games_url}{self.game.slug}/")
+        id_response = self.client.get(f"{self.games_url}{self.game.id}/")
+
+        self.assertEqual(slug_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(id_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(slug_response.data["id"], id_response.data["id"])
+
+    def test_update_and_delete_game_by_id(self):
+        self.client.force_authenticate(user=self.admin_user)
+
+        update_response = self.client.patch(
+            f"{self.games_url}{self.game.id}/", {"description": "Updated description"}
+        )
+        self.assertEqual(update_response.status_code, status.HTTP_200_OK)
+
+        delete_response = self.client.delete(f"{self.games_url}{self.game.id}/")
+        self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Game.objects.filter(id=self.game.id).exists())

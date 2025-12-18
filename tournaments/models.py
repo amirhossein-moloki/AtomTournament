@@ -36,11 +36,11 @@ class SlugMixin(models.Model):
         else:
             original_slug = self.slug
             counter = 1
-            queryset = type(self).objects.filter(slug=self.slug)
+            queryset = type(self).objects.all()
             if self.pk:
                 queryset = queryset.exclude(pk=self.pk)
 
-            while queryset.exists():
+            while queryset.filter(slug=self.slug).exists():
                 self.slug = f'{original_slug}-{counter}'
                 counter += 1
 
@@ -217,7 +217,10 @@ class Tournament(SlugMixin, models.Model):
     def clean(self):
         super().clean()
         if self.start_date and self.end_date and self.start_date >= self.end_date:
-            raise ValidationError("End date must be after start date.")
+            raise ValidationError(
+                "End date must be after start date and time; same-day endings are"
+                " allowed only if they occur later than the start time."
+            )
         if not self.is_free and self.entry_fee is None:
             raise ValidationError("Entry fee must be set for paid tournaments.")
         if self.pk is not None:

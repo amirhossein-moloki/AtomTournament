@@ -9,7 +9,11 @@ from rest_framework.settings import reload_api_settings
 from rest_framework.test import APIClient, APITestCase
 
 from .models import Transaction, Wallet, WithdrawalRequest
-from .serializers import PaymentSerializer, CreateWithdrawalRequestSerializer
+from .serializers import (
+    PaymentSerializer,
+    CreateWithdrawalRequestSerializer,
+    WithdrawalRequestSerializer,
+)
 from .services import ZibalService
 from django.conf import settings
 
@@ -40,6 +44,29 @@ class SerializerTests(SimpleTestCase):
         serializer = CreateWithdrawalRequestSerializer(data=data)
         self.assertFalse(serializer.is_valid())
         self.assertIn("card_number", serializer.errors)
+
+
+class WithdrawalRequestSerializerTests(TestCase):
+    def test_serializer_includes_card_and_sheba_numbers(self):
+        user = User.objects.create_user(
+            username="withdrawal-user",
+            password="password",
+            phone_number="+989121111111",
+        )
+        wallet = user.wallet
+        wallet.card_number = "6037997599999999"
+        wallet.sheba_number = "IR120120000000001234567890"
+        wallet.save()
+
+        request = WithdrawalRequest.objects.create(
+            user=user,
+            amount=Decimal("50000"),
+        )
+
+        serialized = WithdrawalRequestSerializer(request).data
+
+        self.assertEqual(serialized["card_number"], wallet.card_number)
+        self.assertEqual(serialized["sheba_number"], wallet.sheba_number)
 
 class WalletSignalTests(TestCase):
     def test_wallet_is_created_for_new_user(self):

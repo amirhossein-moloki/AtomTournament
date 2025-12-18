@@ -228,6 +228,7 @@ class TournamentListSerializer(TournamentReadOnlySerializer):
             "entry_fee",
             "prize_pool",
             "type",
+            "team_size",
             "spots_left",
         )
 

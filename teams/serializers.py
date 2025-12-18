@@ -19,6 +19,8 @@ class TeamSerializer(serializers.ModelSerializer):
 class TeamInvitationSerializer(serializers.ModelSerializer):
     """Serializer for the TeamInvitation model."""
 
+    team = TeamSerializer(read_only=True)
+
     class Meta:
         model = TeamInvitation
         fields = ("id", "from_user", "to_user", "team", "status", "timestamp")
