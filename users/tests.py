@@ -5,6 +5,7 @@ from django.urls import reverse
 from rest_framework import status
 from blog.tests.base import BaseAPITestCase  # Reusing the base test case for convenience
 from wallet.models import Transaction, Wallet
+from tournaments.models import Game
 from .models import User
 
 class UserViewSetAPITest(BaseAPITestCase):
@@ -30,7 +31,7 @@ class UserViewSetAPITest(BaseAPITestCase):
         url = reverse('user-detail', kwargs={'pk': other_user.pk})
         data = {'username': 'should_not_work'}
         response = self.client.patch(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_admin_can_update_other_profile(self):
         """
@@ -55,6 +56,47 @@ class UserViewSetAPITest(BaseAPITestCase):
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(User.objects.filter(pk=user_to_delete.pk).exists())
+
+    def test_setting_in_game_id_ignores_existing_profile_picture_url(self):
+        """
+        Ensure users with an existing profile picture can still update their in-game IDs
+        when the client sends back the current profile picture URL.
+        """
+        self._authenticate()
+
+        # Create a stored profile picture for the user
+        self.user.profile_picture = SimpleUploadedFile(
+            "avatar.png",
+            (
+                b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01"
+                b"\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"
+                b"\x00\x00\x00\x0cIDATx\x9cc````\x00\x00\x00\x04\x00\x01"
+                b"\x0b\xe7\x02\x9a\x00\x00\x00\x00IEND\xaeB`\x82"
+            ),
+            content_type="image/png",
+        )
+        self.user.save()
+
+        game = Game.objects.create(name="Test Game", description="desc")
+
+        url = reverse('user-detail', kwargs={'pk': self.user.pk})
+        data = {
+            'profile_picture': self.user.profile_picture.url,
+            'in_game_ids': [
+                {
+                    'game': game.id,
+                    'player_id': 'player-123',
+                }
+            ],
+        }
+
+        response = self.client.patch(url, data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.in_game_ids.count(), 1)
+        self.assertEqual(self.user.in_game_ids.first().player_id, 'player-123')
+        self.assertTrue(self.user.profile_picture)
 
 
 class TopPlayersByRankAPITest(BaseAPITestCase):
