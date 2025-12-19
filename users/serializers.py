@@ -107,6 +107,12 @@ class UserSerializer(serializers.ModelSerializer):
         # validation errors. Only uploaded files should be processed here.
         data = data.copy()
         profile_picture = data.get("profile_picture")
+
+        # DRF's ImageField expects an UploadedFile instance. When clients PATCH the
+        # user with the already-stored profile picture URL, the incoming value is a
+        # string, which would otherwise trigger the image validator and block
+        # updating unrelated fields such as in-game IDs. By discarding any
+        # non-upload values here we let the existing image remain untouched.
         if profile_picture is not None and not isinstance(profile_picture, UploadedFile):
             data.pop("profile_picture")
 
