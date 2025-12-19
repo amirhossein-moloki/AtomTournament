@@ -113,6 +113,9 @@ class UserSerializer(serializers.ModelSerializer):
         # string, which would otherwise trigger the image validator and block
         # updating unrelated fields such as in-game IDs. By discarding any
         # non-upload values here we let the existing image remain untouched.
+        # مشکل قبلی: وقتی کلاینت URL فعلی عکس (مثلاً `https://.../avatar.png`) را می‌فرستاد،
+        # ImageField آن را به‌عنوان فایل نمی‌پذیرفت و خطای «Upload a valid image» می‌داد؛
+        # در نتیجه، درخواست PATCH حتی با in-game ID جدید هم با خطای 400 رد می‌شد.
         if profile_picture is not None and not isinstance(profile_picture, UploadedFile):
             data.pop("profile_picture")
 

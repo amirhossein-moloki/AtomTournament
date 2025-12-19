@@ -60,7 +60,9 @@ class UserViewSetAPITest(BaseAPITestCase):
     def test_setting_in_game_id_ignores_existing_profile_picture_url(self):
         """
         Ensure users with an existing profile picture can still update their in-game IDs
-        when the client sends back the current profile picture URL.
+        when the client sends back the current profile picture URL. Previously the
+        ImageField validator raised "Upload a valid image" for the URL string and the
+        request failed with 400, so the in-game ID never got saved.
         """
         self._authenticate()
 
