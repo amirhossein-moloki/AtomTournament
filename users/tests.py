@@ -100,6 +100,51 @@ class UserViewSetAPITest(BaseAPITestCase):
         self.assertEqual(self.user.in_game_ids.first().player_id, 'player-123')
         self.assertTrue(self.user.profile_picture)
 
+    def test_setting_in_game_id_with_formdata_profile_picture_url(self):
+        """
+        The same scenario as above, but with multipart/form-data payloads that include
+        the stored profile_picture URL as a string. The serializer should drop the
+        non-file value so the in-game ID update succeeds.
+        """
+        self._authenticate()
+
+        # Create a stored profile picture for the user
+        self.user.profile_picture = SimpleUploadedFile(
+            "avatar.png",
+            (
+                b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01"
+                b"\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"
+                b"\x00\x00\x00\x0cIDATx\x9cc````\x00\x00\x00\x04\x00\x01"
+                b"\x0b\xe7\x02\x9a\x00\x00\x00\x00IEND\xaeB`\x82"
+            ),
+            content_type="image/png",
+        )
+        self.user.save()
+
+        game = Game.objects.create(name="Test Game", description="desc")
+
+        url = reverse('user-detail', kwargs={'pk': self.user.pk})
+        data = {
+            'profile_picture': self.user.profile_picture.url,
+            'in_game_ids': """
+                [
+                    {
+                        "game": %d,
+                        "player_id": "player-456"
+                    }
+                ]
+            """
+            % game.id,
+        }
+
+        response = self.client.patch(url, data, format='multipart')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.in_game_ids.count(), 1)
+        self.assertEqual(self.user.in_game_ids.first().player_id, 'player-456')
+        self.assertTrue(self.user.profile_picture)
+
 
 class TopPlayersByRankAPITest(BaseAPITestCase):
     def test_top_players_by_rank_includes_winnings_and_avatar(self):
