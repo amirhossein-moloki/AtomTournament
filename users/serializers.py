@@ -1,5 +1,8 @@
+import json
+
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
+from django.http import QueryDict
 
 from verification.serializers import VerificationSerializer
 from teams.models import Team
@@ -101,14 +104,43 @@ class UserSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id", "score", "rank", "role", "verification")
 
-    def to_internal_value(self, data):
+    def _strip_non_file_profile_picture(self, data):
         # If the profile picture is provided as an existing URL/string (e.g. when the
         # client sends back the current value), we ignore it to avoid image
         # validation errors. Only uploaded files should be processed here.
-        data = data.copy()
+        if not hasattr(data, "get"):
+            return data
+
         profile_picture = data.get("profile_picture")
+
+        # DRF's ImageField expects an UploadedFile instance. When clients PATCH the
+        # user with the already-stored profile picture URL, the incoming value is a
+        # string, which would otherwise trigger the image validator and block
+        # updating unrelated fields such as in-game IDs. By discarding any
+        # non-upload values here we let the existing image remain untouched.
+        # مشکل قبلی: وقتی کلاینت URL فعلی عکس (مثلاً `https://.../avatar.png`) را می‌فرستاد،
+        # ImageField آن را به‌عنوان فایل نمی‌پذیرفت و خطای «Upload a valid image» می‌داد؛
+        # در نتیجه، درخواست PATCH حتی با in-game ID جدید هم با خطای 400 رد می‌شد.
         if profile_picture is not None and not isinstance(profile_picture, UploadedFile):
-            data.pop("profile_picture")
+            data = data.copy()
+            data.pop("profile_picture", None)
+
+        return data
+
+    def to_internal_value(self, data):
+        data = self._strip_non_file_profile_picture(data)
+
+        if hasattr(data, "get"):
+            in_game_ids = data.get("in_game_ids")
+            if isinstance(in_game_ids, str):
+                try:
+                    parsed = json.loads(in_game_ids)
+                except ValueError:
+                    parsed = None
+
+                if parsed is not None:
+                    data = data.dict() if isinstance(data, QueryDict) else data.copy()
+                    data["in_game_ids"] = parsed
 
         return super().to_internal_value(data)
 
