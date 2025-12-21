@@ -176,7 +176,7 @@ class PostListSerializer(DynamicFieldsMixin, serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = (
-            'id', 'slug', 'title', 'excerpt', 'reading_time_sec', 'status',
+            'id', 'slug', 'title', 'excerpt', 'reading_time_sec', 'status', 'is_hot',
             'published_at', 'author', 'category', 'cover_media',
             'views_count', 'likes_count', 'comments_count', 'tags'
         )
@@ -235,7 +235,7 @@ class PostCreateUpdateSerializer(ContentNormalizationMixin, serializers.ModelSer
     class Meta:
         model = Post
         fields = (
-            'title', 'excerpt', 'content', 'status', 'visibility',
+            'title', 'excerpt', 'content', 'status', 'visibility', 'is_hot',
             'published_at', 'scheduled_at', 'category', 'series',
             'cover_media', 'seo_title', 'seo_description', 'og_image',
             'tags', 'slug', 'canonical_url', 'likes_count', 'views_count',

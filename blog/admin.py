@@ -103,8 +103,8 @@ class PostMediaInline(admin.TabularInline):
 @admin.register(Post)
 class PostAdmin(ModelAdminJalaliMixin, admin.ModelAdmin):
     form = PostAdminForm
-    list_display = ('title', 'slug', 'author', 'category', 'status', 'published_at')
-    list_filter = ('status', 'visibility', 'category', 'author')
+    list_display = ('title', 'slug', 'author', 'category', 'status', 'published_at', 'is_hot')
+    list_filter = ('status', 'visibility', 'category', 'author', 'is_hot')
     search_fields = ('title', 'content')
     prepopulated_fields = {'slug': ('title',)}
     autocomplete_fields = ('cover_media', 'og_image')
@@ -120,7 +120,7 @@ class PostAdmin(ModelAdminJalaliMixin, admin.ModelAdmin):
             'fields': ('cover_media', 'og_image')
         }),
         ('Status & Visibility', {
-            'fields': ('status', 'visibility', 'published_at', 'scheduled_at')
+            'fields': ('status', 'visibility', 'published_at', 'scheduled_at', 'is_hot')
         }),
         ('SEO', {
             'classes': ('collapse',),

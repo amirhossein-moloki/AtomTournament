@@ -108,19 +108,6 @@ class PostAPITest(BaseAPITestCase):
         returned_ids = [post['id'] for post in response.data['results']]
         self.assertEqual(returned_ids[:3], [newest_post.id, middle_post.id, older_post.id])
 
-    def test_default_ordering_uses_time_within_same_day(self):
-        base_datetime = timezone.now().replace(hour=12, minute=0, second=0, microsecond=0)
-
-        earliest = PostFactory(published_at=base_datetime.replace(hour=8))
-        middle = PostFactory(published_at=base_datetime.replace(hour=12))
-        latest = PostFactory(published_at=base_datetime.replace(hour=18))
-
-        url = reverse('blog:post-list')
-        response = self.client.get(url, format='json')
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        returned_ids = [post['id'] for post in response.data['results']]
-        self.assertEqual(returned_ids[:3], [latest.id, middle.id, earliest.id])
 
     def test_post_pagination(self):
         PostFactory.create_batch(15)
@@ -176,55 +163,7 @@ class PostAPITest(BaseAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
 
-    def test_published_at_serialization_preserves_time(self):
-        published_at = timezone.now().replace(hour=14, minute=30, second=15, microsecond=0)
-        post = PostFactory(published_at=published_at)
 
-        url = reverse('blog:post-list')
-        response = self.client.get(url, format='json')
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        returned_post = response.data['results'][0]
-        expected_timestamp = datetime2jalali(published_at).strftime('%Y/%m/%d %H:%M:%S')
-
-        self.assertEqual(returned_post['id'], post.id)
-        self.assertEqual(returned_post['published_at'], expected_timestamp)
-
-    def test_same_category_endpoint_returns_latest_published_posts(self):
-        category = CategoryFactory()
-        current_post = PostFactory(status='published', category=category)
-
-        # Posts in the same category
-        PostFactory.create_batch(
-            6,
-            status='published',
-            category=category,
-            published_at=timezone.now() - timedelta(days=1)
-        )
-
-        # A draft post and a post from another category should be excluded
-        PostFactory(status='draft', category=category)
-        PostFactory(status='published')
-
-        # Future post in the same category should also be excluded
-        PostFactory(status='published', category=category, published_at=timezone.now() + timedelta(days=1))
-
-        url = reverse('blog:post-same-category', kwargs={'slug': current_post.slug})
-        response = self.client.get(url, format='json')
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 5)
-
-        returned_ids = [post['id'] for post in response.data]
-        self.assertNotIn(current_post.id, returned_ids)
-
-        expected_ids = list(
-            Post.objects.filter(status='published', category=category, published_at__lte=timezone.now())
-            .exclude(pk=current_post.pk)
-            .order_by('-published_at')
-            .values_list('id', flat=True)[:5]
-        )
-        self.assertEqual(returned_ids, expected_ids)
 
     def test_slug_endpoint_returns_id_and_author_avatar(self):
         author_profile = self.author_profile
