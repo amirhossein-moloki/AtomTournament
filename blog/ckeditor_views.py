@@ -5,13 +5,20 @@ from django.contrib.auth.decorators import login_required
 
 from common.utils.files import get_sanitized_filename
 from common.utils.images import convert_image_to_avif
+from django.http import HttpResponseForbidden
 from .models import Media
+
 
 @login_required
 @csrf_exempt
 def ckeditor_upload_view(request):
-    if request.method == 'POST' and request.FILES.get('upload'):
-        uploaded_file = request.FILES['upload']
+    # Permission check: User must be staff or an author
+    is_author = hasattr(request.user, "author_profile")
+    if not (request.user.is_staff or is_author):
+        return HttpResponseForbidden("شما اجازه‌ی آپلود فایل را ندارید.")
+
+    if request.method == "POST" and request.FILES.get("upload"):
+        uploaded_file = request.FILES["upload"]
 
         # Check if the uploaded file is an image
         if 'image' not in uploaded_file.content_type:
