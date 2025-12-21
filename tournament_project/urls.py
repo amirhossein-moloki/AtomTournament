@@ -14,9 +14,11 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
+from django.views.generic.base import RedirectView
 from tournaments.views import private_media_view
 from tournament_project.ckeditor_views import ckeditor5_upload
 from blog.ckeditor_views import ckeditor_upload_view
+from blog.ssr_views import post_detail_redirect
 from .views import page_not_found_view
 from common.views import healthz
 
@@ -75,7 +77,14 @@ urlpatterns = [
     path("api/management/", include("management_dashboard.urls")),
     path("api/atomgamebot/", include("atomgamebot.urls")),
     path("api/blog/", include("blog.urls", namespace="blog")),
-    path("blog/", include("blog.ssr_urls")),
+
+    # --- Blog URLs ---
+    # Redirects for old blog URLs
+    path("blog/<slug:slug>/", post_detail_redirect, name="post_detail_redirect"),
+    path("blog/", RedirectView.as_view(pattern_name='post_list', permanent=True), name="post_list_redirect"),
+
+    # New blog URLs
+    path("blog/posts/", include("blog.ssr_urls")),
     path("blog/upload/", ckeditor_upload_view, name="ckeditor_upload"),
 ]
 
