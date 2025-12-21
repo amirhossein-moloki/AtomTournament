@@ -1,8 +1,12 @@
 from django.contrib import messages
-from django.shortcuts import redirect
+from django.shortcuts import redirect, reverse
 from django.views.generic import ListView, DetailView
 from .models import Post
 from .forms import CommentForm
+
+
+def post_detail_redirect(request, slug):
+    return redirect(reverse('post_detail', kwargs={'slug': slug}), permanent=True)
 
 
 class PostListView(ListView):
