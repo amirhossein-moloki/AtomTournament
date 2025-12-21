@@ -266,9 +266,6 @@ server {
     #####################################
     # Django - Non-Cached API
     #####################################
-    location = /blog {
-        return 302 /blog/html/index.html;
-    }
 
     location ~ ^/(api|select2) {
         limit_req zone=api_limit burst=20 nodelay;
