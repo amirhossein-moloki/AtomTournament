@@ -69,7 +69,7 @@ urlpatterns = [
     path("api/management/", include("management_dashboard.urls")),
     path("api/atomgamebot/", include("atomgamebot.urls")),
     path("api/blog/", include("blog.urls", namespace="blog")),
-    path("blog/upload/", ckeditor_upload_view, name="ckeditor_upload"),
+    path("api/editor/upload/", ckeditor_upload_view, name="ckeditor_upload"),
 ]
 
 # --- Debug Tools & Static/Media ---
