@@ -1,6 +1,7 @@
 import random
 import string
 
+from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -55,7 +56,9 @@ def send_otp_service(identifier=None):
             recipient_list=[identifier],
         )
     else:
-        send_sms_notification.delay(identifier, {"code": otp_code})
+        send_sms_notification.delay(
+            identifier, settings.SMSIR_OTP_TEMPLATE_ID, {"Code": otp_code}
+        )
 
 
 def verify_otp_service(identifier=None, code=None):

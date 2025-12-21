@@ -44,40 +44,61 @@ class NotificationTaskTests(TestCase):
             email="user2@test.com",
         )
 
-    @override_settings(SMSIR_API_KEY="dummy_api_key")
+    @override_settings(SMSIR_API_KEY="dummy_api_key", SMSIR_OTP_TEMPLATE_ID="123")
     @patch("notifications.tasks.SmsIr")
     def test_send_sms_notification_with_code(self, mock_smsir):
         """Test sending an SMS with a verification code."""
-        send_sms_notification(self.user1.phone_number, {"code": "12345"})
+        parameters = {"Code": "12345"}
+        send_sms_notification(
+            self.user1.phone_number, settings.SMSIR_OTP_TEMPLATE_ID, parameters
+        )
         mock_smsir.assert_called_once_with(
             api_key="dummy_api_key", line_number=settings.SMSIR_LINE_NUMBER
         )
         instance = mock_smsir.return_value
-        instance.send_bulk.assert_called_once_with(
-            "کد تأیید شما: 12345", [str(self.user1.phone_number)]
-        )
+        expected_payload = {
+            "ParameterArray": [{"Parameter": "Code", "ParameterValue": "12345"}],
+            "Mobile": str(self.user1.phone_number),
+            "TemplateId": "123",
+        }
+        instance.ultra_fast_send.assert_called_once_with(expected_payload)
 
-    @override_settings(SMSIR_API_KEY="dummy_api_key")
+    @override_settings(
+        SMSIR_API_KEY="dummy_api_key", SMSIR_TOURNAMENT_TEMPLATE_ID="456"
+    )
     @patch("notifications.tasks.SmsIr")
     def test_send_sms_notification_for_tournament(self, mock_smsir):
         """Test sending an SMS for a tournament notification."""
-        context = {"tournament_name": "Test Tourney", "room_id": "room123"}
-        send_sms_notification(self.user1.phone_number, context)
-        instance = mock_smsir.return_value
-        instance.send_bulk.assert_called_once_with(
-            "شما به تورنمنت Test Tourney پیوستید. شناسه اتاق: room123",
-            [str(self.user1.phone_number)],
+        parameters = {"TournamentName": "Test Tourney", "RoomId": "room123"}
+        send_sms_notification(
+            self.user1.phone_number, settings.SMSIR_TOURNAMENT_TEMPLATE_ID, parameters
         )
+        instance = mock_smsir.return_value
+        expected_payload = {
+            "ParameterArray": [
+                {"Parameter": "TournamentName", "ParameterValue": "Test Tourney"},
+                {"Parameter": "RoomId", "ParameterValue": "room123"},
+            ],
+            "Mobile": str(self.user1.phone_number),
+            "TemplateId": "456",
+        }
+        instance.ultra_fast_send.assert_called_once_with(expected_payload)
 
+    @patch("notifications.tasks.render_to_string")
     @patch("notifications.tasks.send_mail")
-    def test_send_email_notification(self, mock_send_mail):
+    def test_send_email_notification(self, mock_send_mail, mock_render_to_string):
         """Test sending an email notification."""
+        mock_render_to_string.return_value = "<h1>Test</h1>"
+        context = {"title": "Test"}
         send_email_notification(
             subject="Test Subject",
             message="This is a test message.",
             recipient_list=[self.user1.email],
-            html_message="<h1>Test</h1>",
+            html_template="dummy.html",
+            context=context,
         )
+
+        mock_render_to_string.assert_called_once_with("dummy.html", context)
         mock_send_mail.assert_called_once()
         args, kwargs = mock_send_mail.call_args
         self.assertEqual(args[0], "Test Subject")
@@ -86,6 +107,7 @@ class NotificationTaskTests(TestCase):
         self.assertEqual(args[3], [self.user1.email])
         self.assertEqual(kwargs["html_message"], "<h1>Test</h1>")
 
+    @override_settings(SMSIR_TOURNAMENT_TEMPLATE_ID="456")
     @patch("notifications.tasks.send_email_notification.delay")
     @patch("notifications.tasks.send_sms_notification.delay")
     def test_send_tournament_credentials(self, mock_send_sms, mock_send_email):
@@ -115,26 +137,44 @@ class NotificationTaskTests(TestCase):
 
         # Find the call for each user, regardless of order
         email_call_for_user1 = next(
-            call for call in mock_send_email.call_args_list if call.kwargs['recipient_list'] == [self.user1.email]
+            call
+            for call in mock_send_email.call_args_list
+            if call.kwargs["recipient_list"] == [self.user1.email]
         )
         email_call_for_user2 = next(
-            call for call in mock_send_email.call_args_list if call.kwargs['recipient_list'] == [self.user2.email]
+            call
+            for call in mock_send_email.call_args_list
+            if call.kwargs["recipient_list"] == [self.user2.email]
         )
         sms_call_for_user1 = next(
-            call for call in mock_send_sms.call_args_list if call[0][0] == str(self.user1.phone_number)
+            call
+            for call in mock_send_sms.call_args_list
+            if call[0][0] == str(self.user1.phone_number)
         )
         sms_call_for_user2 = next(
-            call for call in mock_send_sms.call_args_list if call[0][0] == str(self.user2.phone_number)
+            call
+            for call in mock_send_sms.call_args_list
+            if call[0][0] == str(self.user2.phone_number)
         )
 
         # Assertions for user1's notification
         kwargs_user1 = email_call_for_user1.kwargs
         self.assertEqual(kwargs_user1["subject"], "اطلاعات مسابقه شما")
         self.assertIn("room1", kwargs_user1["message"])
-        self.assertIn(self.user2.username, kwargs_user1["html_message"])
-        self.assertEqual(sms_call_for_user1.args[1]["opponent_name"], self.user2.username)
+        self.assertEqual(
+            kwargs_user1["html_template"], "notifications/email/tournament_joined.html"
+        )
+        context_user1 = kwargs_user1["context"]
+        self.assertEqual(context_user1["opponent_name"], self.user2.username)
+
+        sms_args_user1 = sms_call_for_user1.args
+        self.assertEqual(sms_args_user1[1], "456")  # Check template ID
+        self.assertEqual(sms_args_user1[2]["OpponentName"], self.user2.username)
 
         # Assertions for user2's notification
         kwargs_user2 = email_call_for_user2.kwargs
-        self.assertIn(self.user1.username, kwargs_user2["html_message"])
-        self.assertEqual(sms_call_for_user2.args[1]["opponent_name"], self.user1.username)
+        context_user2 = kwargs_user2["context"]
+        self.assertEqual(context_user2["opponent_name"], self.user1.username)
+
+        sms_args_user2 = sms_call_for_user2.args
+        self.assertEqual(sms_args_user2[2]["OpponentName"], self.user1.username)
