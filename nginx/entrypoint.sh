@@ -3,7 +3,13 @@ set -e  # در صورت هر خطا اسکریپت متوقف می‌شود
 
 # --- Configuration ---
 # اولین دامنه از متغیر محیطی DOMAINS به عنوان دامنه اصلی استفاده می‌شود
-export DOMAIN=$(echo "$DOMAINS" | cut -d',' -f1)
+if [ -z "$DOMAINS" ]; then
+  echo ">>> DOMAINS env not provided, defaulting to localhost to keep nginx config valid."
+  export DOMAIN=localhost
+else
+  export DOMAIN=$(echo "$DOMAINS" | cut -d',' -f1)
+fi
+
 LE_PATH="/etc/letsencrypt/live/$DOMAIN"  # مسیر گواهی Let's Encrypt
 DHPARAMS_PATH="/etc/letsencrypt/dhparams.pem"  # مسیر فایل dhparams
 DUMMY_CERT_SUBJ="/CN=localhost"  # مشخصات گواهی موقت

@@ -14,7 +14,7 @@ limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
 ########################
 server {
     listen 80;
-    server_name ${DOMAIN} www.${DOMAIN};
+server_name ${DOMAIN} www.${DOMAIN} localhost;
 
     # برای چالش‌های Let's Encrypt
     location /.well-known/acme-challenge/ {
@@ -32,7 +32,7 @@ server {
 ########################
 server {
     listen 443 ssl http2;
-    server_name ${DOMAIN} www.${DOMAIN};
+    server_name ${DOMAIN} www.${DOMAIN} localhost;
 
     # Root & index برای frontend (SPA)
     root /var/www/frontend;
