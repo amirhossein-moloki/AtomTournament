@@ -20,31 +20,31 @@ logger = logging.getLogger(__name__)
     ignore_result=True,
     queue='high_priority'
 )
-def send_sms_notification(self, phone_number, context):
+def send_sms_notification(self, phone_number, template_id, parameters):
     """
-    Sends an SMS notification using sms.ir.
+    Sends an SMS notification using sms.ir's ultra fast send feature.
     """
-    if not settings.SMSIR_API_KEY:
-        print(f"--- FAKE SMS to {phone_number}: {context} ---")
+    if not settings.SMSIR_API_KEY or not template_id:
+        print(f"--- FAKE SMS to {phone_number} with template {template_id}: {parameters} ---")
         return
 
     smsir = SmsIr(
         api_key=settings.SMSIR_API_KEY, line_number=settings.SMSIR_LINE_NUMBER
     )
 
-    # Simple message formatting based on context
-    if "code" in context:
-        message = f"کد تأیید شما: {context['code']}"
-    elif "tournament_name" in context:
-        message = (
-            f"شما به تورنمنت {context['tournament_name']} پیوستید. "
-            f"شناسه اتاق: {context.get('room_id', 'نامشخص')}"
-        )
-    else:
-        message = f"یک اعلان جدید دارید: {context}"
+    # Convert the parameters dictionary to the format required by the smsir library.
+    parameter_array = [
+        {"Parameter": key, "ParameterValue": str(value)}
+        for key, value in parameters.items()
+    ]
 
-    # The smsir library expects a list of numbers.
-    smsir.send_bulk(message, [str(phone_number)])
+    payload = {
+        "ParameterArray": parameter_array,
+        "Mobile": str(phone_number),
+        "TemplateId": template_id,
+    }
+
+    smsir.ultra_fast_send(payload)
 
 
 @shared_task(
@@ -133,4 +133,14 @@ def send_tournament_credentials(tournament_id):
                         context=context,
                     )
                 if p.phone_number:
-                    send_sms_notification.delay(str(p.phone_number), context)
+                    parameters = {
+                        "TournamentName": tournament.name,
+                        "OpponentName": opponent.username,
+                        "RoomId": match.room_id,
+                        "Password": match.password,
+                    }
+                    send_sms_notification.delay(
+                        str(p.phone_number),
+                        settings.SMSIR_TOURNAMENT_TEMPLATE_ID,
+                        parameters,
+                    )

@@ -535,6 +535,8 @@ if "test" in sys.argv or "pytest" in sys.modules:
 # SMS.ir Configuration
 SMSIR_API_KEY = os.environ.get("SMSIR_API_KEY")
 SMSIR_LINE_NUMBER = os.environ.get("SMSIR_LINE_NUMBER")
+SMSIR_OTP_TEMPLATE_ID = os.environ.get("SMSIR_OTP_TEMPLATE_ID")
+SMSIR_TOURNAMENT_TEMPLATE_ID = os.environ.get("SMSIR_TOURNAMENT_TEMPLATE_ID")
 
 # Email Configuration
 EMAIL_BACKEND = os.environ.get(
