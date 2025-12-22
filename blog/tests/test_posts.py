@@ -246,3 +246,23 @@ class PostAPITest(BaseAPITestCase):
         post1 = PostFactory(title='My test post', author=self.staff_author_profile)
         post2 = PostFactory(title='My test post', author=self.staff_author_profile)
         self.assertNotEqual(post1.slug, post2.slug)
+
+    def test_related_posts_pagination(self):
+        tag = TagFactory()
+        post = PostFactory(tags=[tag])
+        PostFactory.create_batch(15, tags=[tag])
+        url = reverse('blog:post-related', kwargs={'slug': post.slug})
+        response = self.client.get(url, {'page_size': 5})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 5)
+        self.assertIn('next', response.data)
+
+    def test_same_category_posts_pagination(self):
+        category = CategoryFactory()
+        post = PostFactory(category=category)
+        PostFactory.create_batch(15, category=category)
+        url = reverse('blog:post-same-category', kwargs={'slug': post.slug})
+        response = self.client.get(url, {'page_size': 7})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 7)
+        self.assertIn('next', response.data)

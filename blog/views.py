@@ -162,18 +162,20 @@ class PostViewSet(DynamicSerializerViewMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='same-category')
     def same_category(self, request, slug=None):
         current_post = self.get_object()
+        paginator = self.pagination_class()
 
         if not current_post.category:
-            return Response([])
+            return paginator.get_paginated_response([])
 
         category_posts = Post.objects.filter(
             status='published',
             category=current_post.category,
             published_at__lte=timezone.now()
-        ).exclude(pk=current_post.pk).order_by('-published_at', '-id')[:5]
+        ).exclude(pk=current_post.pk).order_by('-published_at', '-id')
 
-        serializer = PostListSerializer(category_posts, many=True, context=self.get_serializer_context())
-        return Response(serializer.data)
+        paginated_posts = paginator.paginate_queryset(category_posts, request, view=self)
+        serializer = PostListSerializer(paginated_posts, many=True, context=self.get_serializer_context())
+        return paginator.get_paginated_response(serializer.data)
 
     @action(detail=False, methods=['get'], url_path='slug/(?P<slug>[^/.]+)')
     def by_slug(self, request, slug=None):
@@ -218,9 +220,10 @@ def related_posts(request, slug):
     except Post.DoesNotExist:
         raise NotFound('پست مورد نظر برای یافتن پست‌های مرتبط پیدا نشد.')
 
+    paginator = CustomPageNumberPagination()
     tag_ids = current_post.tags.values_list('id', flat=True)
     if not tag_ids:
-        return Response([])
+        return paginator.get_paginated_response([])
 
     related = Post.objects.filter(
         status='published',
@@ -228,10 +231,11 @@ def related_posts(request, slug):
     ).exclude(pk=current_post.pk).distinct()
     related = related.annotate(
         common_tags=Count('tags', filter=Q(tags__in=tag_ids))
-    ).order_by('-common_tags', '-published_at', '-id')[:5]
+    ).order_by('-common_tags', '-published_at', '-id')
 
-    serializer = PostListSerializer(related, many=True)
-    return Response(serializer.data)
+    paginated_related_posts = paginator.paginate_queryset(related, request)
+    serializer = PostListSerializer(paginated_related_posts, many=True, context={'request': request})
+    return paginator.get_paginated_response(serializer.data)
 
 
 class MediaViewSet(viewsets.ModelViewSet):
