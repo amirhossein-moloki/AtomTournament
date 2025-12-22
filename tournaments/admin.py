@@ -146,10 +146,10 @@ class TournamentAdmin(
     ModelAdmin,
 ):
     resource_class = TournamentResource
-    list_display = ("name", "description", "image", "color", "game", "type", "mode", "start_date", "is_free")
+    list_display = ("name", "slug", "description", "image", "color", "game", "type", "mode", "start_date", "is_free")
     list_display_links = ("name",)
     list_filter = ("type", "mode", "is_free", "game")
-    search_fields = ("name", "game__name")
+    search_fields = ("name", "slug", "game__name")
     autocomplete_fields = ("image", "color", "game", "creator")
     history_list_display = ["history_type", "history_user", "history_date"]
 
@@ -164,7 +164,13 @@ class TournamentAdmin(
     }
 
     fieldsets = (
-        ("Tournament Info", {"fields": ("name", "description", "image", "color", "game", "creator", "rules"), "classes": ("tab",)}),
+        (
+            "Tournament Info",
+            {
+                "fields": ("name", "slug", "description", "image", "color", "game", "creator", "rules"),
+                "classes": ("tab",),
+            },
+        ),
         (
             "Configuration",
             {

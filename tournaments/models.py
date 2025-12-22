@@ -116,6 +116,7 @@ class Tournament(models.Model):
     )
     team_size = models.PositiveIntegerField(default=1)
     name = models.CharField(max_length=100)
+    slug = models.SlugField(unique=True, blank=True, null=True)
     description = models.TextField(blank=True)
     image = models.ForeignKey(
         TournamentImage,
