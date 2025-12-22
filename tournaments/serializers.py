@@ -84,6 +84,7 @@ class TournamentCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tournament
         fields = (
+            "slug",
             "name",
             "description",
             "image",
@@ -104,6 +105,7 @@ class TournamentCreateUpdateSerializer(serializers.ModelSerializer):
             "team_size",
             "mode",
         )
+        extra_kwargs = {"slug": {"required": True}}
 
 
 class TournamentReadOnlySerializer(serializers.ModelSerializer):
@@ -137,6 +139,7 @@ class TournamentReadOnlySerializer(serializers.ModelSerializer):
         model = Tournament
         fields = (
             "id",
+            "slug",
             "name",
             "description",
             "image",
@@ -214,6 +217,7 @@ class TournamentListSerializer(TournamentReadOnlySerializer):
     class Meta(TournamentReadOnlySerializer.Meta):
         fields = (
             "id",
+            "slug",
             "name",
             "description",
             "image",
