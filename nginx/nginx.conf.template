@@ -31,7 +31,8 @@ server_name ${DOMAIN} www.${DOMAIN} localhost;
 # HTTPS Server
 ########################
 server {
-    listen 443 ssl http2;
+    listen 443 ssl;
+    http2 on;
     server_name ${DOMAIN} www.${DOMAIN} localhost;
 
     # Root & index برای frontend (SPA)
@@ -157,7 +158,7 @@ server {
     }
 
     # Single blog posts (slug preserved in URL)
-    location ~ ^/blog/(?<slug>[^/]+?)(?<!\.(?:css|js|png|jpe?g|gif|svg|webp|ico|woff2?|woff|ttf|otf|map))/?$ {
+    location ~ ^/blog/(?<slug>[^/]+?)(?!\.(?:css|js|png|jpe?g|gif|svg|webp|ico|woff2?|woff|ttf|otf|map))(?:/)?$ {
         rewrite ^ /blog-codes/html/single-post-page.html?slug=$slug last;
     }
 
