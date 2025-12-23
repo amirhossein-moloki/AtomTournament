@@ -134,6 +134,18 @@ server {
         try_files $uri $uri/ /game-tournaments.html =404;
     }
 
+    location = /blog {
+        try_files /blog-codes/html/blog.html =404;
+    }
+
+    location = /blog/ {
+        try_files /blog-codes/html/blog.html =404;
+    }
+
+    location ~ ^/blog/([A-Za-z0-9-]+)/?$ {
+        try_files /blog-codes/html/single-post-page.html /blog-codes/html/single-post-page.html?slug=$1 =404;
+    }
+
     location / {
         try_files $uri $uri.html /index.html;
     }
