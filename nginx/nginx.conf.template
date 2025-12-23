@@ -164,7 +164,6 @@ server {
 
     # Blog static assets and HTML files
     location ^~ /blog-codes/ {
-        alias /blog-codes/;
         try_files $uri =404;
     }
 
