@@ -146,6 +146,27 @@ server {
     ########################
     # Frontend (SPA)
     ########################
+
+    # Blog landing page
+    location = /blog {
+        try_files /blog-codes/html/blog.html =404;
+    }
+
+    location = /blog/ {
+        try_files /blog-codes/html/blog.html =404;
+    }
+
+    # Single blog posts (slug preserved in URL)
+    location ~ ^/blog/(?<slug>[^/]+?)(?<!\.(?:css|js|png|jpe?g|gif|svg|webp|ico|woff2?|woff|ttf|otf|map))/?$ {
+        rewrite ^ /blog-codes/html/single-post-page.html?slug=$slug last;
+    }
+
+    # Blog static assets and HTML files
+    location ^~ /blog-codes/ {
+        alias /blog-codes/;
+        try_files $uri =404;
+    }
+
     location / {
         try_files $uri $uri.html /index.html;
     }
