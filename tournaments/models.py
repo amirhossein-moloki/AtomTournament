@@ -165,6 +165,8 @@ class Tournament(SlugMixin, models.Model):
         related_name="tournaments",
     )
     game = models.ForeignKey(Game, on_delete=models.CASCADE)
+    registration_start_date = models.DateTimeField(null=True, blank=True)
+    registration_end_date = models.DateTimeField(null=True, blank=True)
     start_date = models.DateTimeField(db_index=True)
     end_date = models.DateTimeField(db_index=True)
     is_free = models.BooleanField(default=True)
@@ -216,6 +218,14 @@ class Tournament(SlugMixin, models.Model):
 
     def clean(self):
         super().clean()
+        if self.registration_start_date and self.registration_end_date and self.registration_start_date > self.registration_end_date:
+            raise ValidationError(
+                "Registration end date must be after registration start date."
+            )
+        if self.registration_end_date and self.start_date and self.registration_end_date > self.start_date:
+            raise ValidationError(
+                "Tournament start date must be after registration end date."
+            )
         if self.start_date and self.end_date and self.start_date >= self.end_date:
             raise ValidationError(
                 "End date must be after start date and time; same-day endings are"

@@ -30,6 +30,8 @@ class TournamentModelTests(TestCase):
         )
         self.start_date = timezone.now() + timedelta(days=1)
         self.end_date = timezone.now() + timedelta(days=2)
+        self.registration_start_date = timezone.now()
+        self.registration_end_date = timezone.now() + timedelta(hours=12)
 
     def test_tournament_creation(self):
         """
@@ -43,6 +45,45 @@ class TournamentModelTests(TestCase):
         )
         self.assertEqual(tournament.name, "Test Tournament")
         self.assertEqual(tournament.game, self.game)
+
+    def test_date_validation_logic(self):
+        """
+        Test the validation logic for tournament dates.
+        """
+        # Valid case
+        tournament = Tournament(
+            name="Valid Tournament",
+            game=self.game,
+            registration_start_date=self.registration_start_date,
+            registration_end_date=self.registration_end_date,
+            start_date=self.start_date,
+            end_date=self.end_date,
+        )
+        tournament.clean()
+
+        # Invalid: registration end before start
+        with self.assertRaises(ValidationError):
+            tournament = Tournament(
+                name="Invalid Tournament",
+                game=self.game,
+                registration_start_date=self.registration_end_date,
+                registration_end_date=self.registration_start_date,
+                start_date=self.start_date,
+                end_date=self.end_date,
+            )
+            tournament.clean()
+
+        # Invalid: tournament start before registration end
+        with self.assertRaises(ValidationError):
+            tournament = Tournament(
+                name="Invalid Tournament",
+                game=self.game,
+                registration_start_date=self.registration_start_date,
+                registration_end_date=self.start_date,
+                start_date=self.registration_end_date,
+                end_date=self.end_date,
+            )
+            tournament.clean()
 
     def test_end_date_before_start_date_fails(self):
         """
