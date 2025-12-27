@@ -1,5 +1,6 @@
 from django.contrib.sitemaps import Sitemap
 from django.urls import reverse
+from datetime import datetime
 
 from blog.models import Post
 from tournaments.models import Tournament, Game
@@ -12,6 +13,9 @@ class PostSitemap(Sitemap):
     def items(self):
         return Post.objects.published()
 
+    def lastmod(self, obj):
+        return obj.published_at
+
     def location(self, obj):
         return f"/blog/{obj.slug}"
 
@@ -23,6 +27,9 @@ class TournamentLobySitemap(Sitemap):
     def items(self):
         return Tournament.objects.all()
 
+    def lastmod(self, obj):
+        return obj.end_date
+
     def location(self, obj):
         return f"/tournament-loby/{obj.slug}"
 
@@ -33,6 +40,9 @@ class TournamentResultSitemap(Sitemap):
 
     def items(self):
         return Tournament.objects.all()
+
+    def lastmod(self, obj):
+        return obj.end_date
 
     def location(self, obj):
         return f"/tournament-result/{obj.slug}"
@@ -69,6 +79,9 @@ class StaticViewSitemap(Sitemap):
             "/user-dashboard/tickets",
             "/user-dashboard/chat",
         ]
+
+    def lastmod(self, item):
+        return datetime.now()
 
     def location(self, item):
         return item
