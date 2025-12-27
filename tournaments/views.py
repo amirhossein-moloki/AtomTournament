@@ -741,12 +741,28 @@ class TopTournamentsView(APIView):
 
     @method_decorator(cache_page(60 * 15))
     def get(self, request):
-        past_tournaments = Tournament.objects.filter(
-            end_date__lt=timezone.now()
-        ).order_by("-entry_fee")
-        future_tournaments = Tournament.objects.filter(
-            start_date__gte=timezone.now()
-        ).order_by("-entry_fee")
+        now = timezone.now()
+        game_queryset_with_counts = Game.objects.annotate(
+            held_tournaments_count=models.Count(
+                "tournament", filter=models.Q(tournament__end_date__lt=now)
+            ),
+            active_tournaments_count=models.Count(
+                "tournament", filter=models.Q(tournament__end_date__gte=now)
+            ),
+        )
+
+        past_tournaments = (
+            Tournament.objects.filter(end_date__lt=timezone.now())
+            .select_related("image")
+            .prefetch_related(Prefetch("game", queryset=game_queryset_with_counts))
+            .order_by("-entry_fee")
+        )
+        future_tournaments = (
+            Tournament.objects.filter(end_date__gte=timezone.now())
+            .select_related("image")
+            .prefetch_related(Prefetch("game", queryset=game_queryset_with_counts))
+            .order_by("-entry_fee")
+        )
 
         past_serializer = TournamentListSerializer(
             past_tournaments, many=True, context={"request": request}

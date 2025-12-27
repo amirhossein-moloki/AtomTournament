@@ -1651,3 +1651,58 @@ class GameLookupTests(APITestCase):
         delete_response = self.client.delete(f"{self.games_url}{self.game.id}/")
         self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Game.objects.filter(id=self.game.id).exists())
+
+
+class TournamentAPIViewsTests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.top_tournaments_url = "/api/tournaments/top-tournaments/"
+        self.game = Game.objects.create(name="Test Game for API Views")
+
+        now = timezone.now()
+
+        # Create a past tournament
+        self.past_tournament = Tournament.objects.create(
+            name="Past Tournament",
+            game=self.game,
+            start_date=now - timedelta(days=10),
+            end_date=now - timedelta(days=5),
+        )
+
+        # Create an ongoing tournament
+        self.ongoing_tournament = Tournament.objects.create(
+            name="Ongoing Tournament",
+            game=self.game,
+            start_date=now - timedelta(days=1),
+            end_date=now + timedelta(days=1),
+        )
+
+        # Create a future tournament
+        self.future_tournament = Tournament.objects.create(
+            name="Future Tournament",
+            game=self.game,
+            start_date=now + timedelta(days=5),
+            end_date=now + timedelta(days=10),
+        )
+
+    def test_top_tournaments_view_logic(self):
+        """
+        Verify that TopTournamentsView correctly categorizes past, ongoing, and future tournaments.
+        'future_tournaments' should include both upcoming and ongoing tournaments.
+        """
+        response = self.client.get(self.top_tournaments_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Check past tournaments
+        past_tournaments_data = response.data.get("past_tournaments", [])
+        self.assertEqual(len(past_tournaments_data), 1)
+        self.assertEqual(past_tournaments_data[0]['name'], self.past_tournament.name)
+
+        # Check future/active tournaments
+        future_tournaments_data = response.data.get("future_tournaments", [])
+        self.assertEqual(len(future_tournaments_data), 2)
+
+        future_tournament_names = {t['name'] for t in future_tournaments_data}
+        self.assertIn(self.ongoing_tournament.name, future_tournament_names)
+        self.assertIn(self.future_tournament.name, future_tournament_names)
+        self.assertNotIn(self.past_tournament.name, future_tournament_names)
