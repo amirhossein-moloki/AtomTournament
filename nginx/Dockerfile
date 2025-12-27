@@ -1,7 +1,7 @@
 FROM fholzer/nginx-brotli:latest
 
 # Install utilities we rely on in the entrypoint
-RUN apk add --no-cache openssl wget gettext inotify-tools \
+RUN apk add --no-cache openssl wget gettext inotify-tools netcat-openbsd \
     && mkdir -p /etc/nginx/modules
 
 COPY nginx.conf.template /app/nginx.conf.template
