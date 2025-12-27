@@ -167,8 +167,13 @@ server {
         try_files $uri =404;
     }
 
+  # SPA routing for tournament result
+    location /tournament-result/ {
+        try_files /tournament-result.html =404;
+    }
+    
     location / {
-        try_files $uri $uri.html /index.html;
+        try_files $uri $uri.html =404;
     }
 
     ########################
