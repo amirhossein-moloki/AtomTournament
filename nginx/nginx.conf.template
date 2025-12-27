@@ -1,12 +1,19 @@
-# تعریف upstream برای Django
+########################
+# Upstream (Django)
+########################
 upstream django_server {
     server web:8000;
 }
 
+########################
+# Cache
+########################
 proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=api_cache:100m max_size=1g inactive=60m use_temp_path=off;
 proxy_cache_key "$scheme$request_method$host$request_uri";
 
-# Rate limit برای API
+########################
+# Rate limit
+########################
 limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
 
 ########################
@@ -16,12 +23,10 @@ server {
     listen 80;
     server_name ${DOMAIN} www.${DOMAIN} localhost;
 
-    # برای چالش‌های Let's Encrypt
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
     }
 
-    # ریدایرکت همه‌ی HTTP به HTTPS
     location / {
         return 301 https://$host$request_uri;
     }
@@ -35,16 +40,19 @@ server {
     http2 on;
     server_name ${DOMAIN} www.${DOMAIN} localhost;
 
-    # Root & index برای frontend
+    ########################
+    # Frontend root
+    ########################
     root /var/www/frontend;
     index index.html;
 
-    # SSL – گواهی‌های Certbot
+    ########################
+    # SSL
+    ########################
     ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
     ssl_trusted_certificate /etc/letsencrypt/live/${DOMAIN}/chain.pem;
 
-    # تنظیمات مدرن TLS
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers 'TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:ECDHE-RSA-AES128-GCM-SHA256';
     ssl_prefer_server_ciphers off;
@@ -52,22 +60,22 @@ server {
     ssl_session_timeout 1d;
     ssl_session_tickets off;
 
-    # OCSP Stapling
     ssl_stapling on;
     ssl_stapling_verify on;
     resolver 1.1.1.1 1.0.0.1 valid=300s;
     resolver_timeout 5s;
 
     ########################
-    # Security Headers – پایه
+    # Security Headers
     ########################
     add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header Referrer-Policy "origin-when-cross-origin" always;
     add_header X-XSS-Protection "1; mode=block" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; frame-src 'self' https://accounts.google.com; connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; img-src 'self' data: https: https://lh3.googleusercontent.com https://accounts.google.com; font-src 'self' data:;" always;
     add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; frame-src 'self' https://accounts.google.com; connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; img-src 'self' data: https: https://lh3.googleusercontent.com https://accounts.google.com; font-src 'self' data:;" always;
 
     ########################
     # General settings
@@ -111,31 +119,28 @@ server {
         application/ld+json;
 
     ########################
-    # Error Pages (استاندارد: 404 واقعی + نمایش 404.html)
+    # Error Pages (فقط برای 404 واقعی)
     ########################
     error_page 404 /404.html;
     location = /404.html { internal; }
 
-    #####################################
-    # Django sitemap (قبل از location /)
-    #####################################
+    ########################
+    # Django sitemap (حتماً قبل از SPA)
+    ########################
     location = /sitemap.xml {
         proxy_pass http://django_server;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
-
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto https;
     }
 
-    # همه‌ی sitemapهای xml (مثل sitemap_index.xml / sitemap-1.xml و ...)
     location ~ ^/sitemap.*\.xml$ {
         proxy_pass http://django_server;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
-
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -143,7 +148,37 @@ server {
     }
 
     ########################
-    # Frontend pages (HTML fallbacks)
+    # Static & Media (Django)
+    ########################
+    location /static/ {
+        brotli_static on;
+        alias /app/staticfiles/;
+        expires 1y;
+        access_log off;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+    }
+
+    location /media/ {
+        alias /app/media/;
+        try_files $uri.avif $uri.webp $uri =404;
+        expires 30d;
+        access_log off;
+        gzip off;
+        add_header Cache-Control "public, max-age=2592000" always;
+    }
+
+    ########################
+    # Private Media (X-Accel-Redirect)
+    ########################
+    location /protected_media/ {
+        internal;
+        alias /app/private_media/;
+        expires off;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+    }
+
+    ########################
+    # Frontend special routes (اگر فایل html جدا دارند)
     ########################
     location /tournament-loby/ {
         try_files $uri $uri/ /tournament-loby.html;
@@ -155,21 +190,20 @@ server {
         try_files $uri =404;
     }
 
-    # مثل tournament-loby: برای /tournament-result/slug
     location /tournament-result/ {
         try_files $uri $uri/ /tournament-result.html;
     }
 
     location /game-tournaments/ {
-        try_files /game-tournaments.html =404;
+        try_files $uri $uri/ /game-tournaments.html;
     }
 
     location /game-touranments/ {
-        try_files /game-touranments.html =404;
+        try_files $uri $uri/ /game-touranments.html;
     }
 
     ########################
-    # Blog pages
+    # Blog pages (Static HTML)
     ########################
     location = /blog {
         try_files /blog-codes/html/blog.html =404;
@@ -188,31 +222,8 @@ server {
     }
 
     ########################
-    # Static files (Django)
-    ########################
-    location /static/ {
-        brotli_static on;
-        alias /app/staticfiles/;
-        expires 1y;
-        access_log off;
-        add_header Cache-Control "public, max-age=31536000, immutable" always;
-    }
-
-    ########################
-    # Media files (User uploads)
-    ########################
-    location /media/ {
-        alias /app/media/;
-        try_files $uri.avif $uri.webp $uri =404;
-        expires 30d;
-        access_log off;
-        gzip off;
-        add_header Cache-Control "public, max-age=2592000" always;
-    }
-
-    ################################
     # API Caching (Public Endpoints)
-    ################################
+    ########################
     location ~ ^/api/(tournaments|games|blog/(posts|categories|tags|series|authors|pages|menus)|wallet/currencies)/?$ {
         limit_req zone=api_limit burst=20 nodelay;
 
@@ -236,7 +247,7 @@ server {
         proxy_cache_bypass $api_cache_bypass;
         proxy_no_cache $api_cache_bypass;
 
-        add_header X-Cache-Status $upstream_cache_status;
+        add_header X-Cache-Status $upstream_cache_status always;
 
         proxy_pass http://django_server;
         proxy_http_version 1.1;
@@ -247,69 +258,16 @@ server {
         proxy_set_header X-Forwarded-Proto https;
     }
 
-    #####################################
-    # Private Media (X-Accel-Redirect)
-    #####################################
-    location /protected_media/ {
-        internal;
-        alias /app/private_media/;
-        expires off;
-        add_header Cache-Control "no-cache, no-store, must-revalidate";
-    }
-
-    #####################################
+    ########################
     # Django - Admin
-    #####################################
+    ########################
     location /admin/ {
         limit_req zone=api_limit burst=20 nodelay;
 
-        add_header X-Frame-Options "ALLOWALL" always;
         add_header Referrer-Policy "no-referrer-when-downgrade" always;
         add_header Cross-Origin-Opener-Policy "unsafe-none" always;
 
-        add_header Content-Security-Policy "default-src 'self' data: blob:; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com;" always;
-
-        proxy_pass http://django_server;
-        proxy_http_version 1.1;
-        proxy_set_header Connection "";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto https;
-    }
-
-    #####################################
-    # Django - CKEditor Upload
-    #####################################
-    location = /api/editor/upload/ {
-        limit_req zone=api_limit burst=5 nodelay;
-        client_max_body_size 10M;
-
-        add_header X-Frame-Options "ALLOWALL" always;
-        add_header Referrer-Policy "no-referrer-when-downgrade" always;
-        add_header Cross-Origin-Opener-Policy "unsafe-none" always;
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self';" always;
-
-        proxy_pass http://django_server;
-        proxy_http_version 1.1;
-        proxy_set_header Connection "";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto https;
-    }
-
-    #####################################
-    # Django - Non-Cached API
-    #####################################
-    location ~ ^/(api|select2) {
-        limit_req zone=api_limit burst=20 nodelay;
-
-        add_header X-Frame-Options "ALLOWALL" always;
-        add_header Referrer-Policy "no-referrer-when-downgrade" always;
-        add_header Cross-Origin-Opener-Policy "unsafe-none" always;
-
-        add_header Content-Security-Policy "default-src 'self' data: blob:; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com;" always;
+        add_header Content-Security-Policy "default-src 'self' data: blob:; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com; frame-ancestors *;" always;
 
         proxy_pass http://django_server;
         proxy_http_version 1.1;
@@ -321,9 +279,4 @@ server {
     }
 
     ########################
-    # Global fallback (استاندارد: =404 تا error_page اجرا بشه)
-    ########################
-    location / {
-        try_files $uri $uri/ =404;
-    }
-}
+    # Django -
