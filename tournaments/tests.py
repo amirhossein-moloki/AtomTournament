@@ -290,16 +290,22 @@ class JoinTournamentInGameIDTests(TestCase):
         TeamMembership.objects.create(user=member, team=team)
         InGameID.objects.create(user=captain, game=self.game, player_id="captain-1")
 
-        with self.assertRaises(ApplicationError) as exc:
-            join_tournament(tournament=tournament, user=captain, team_id=team.id)
+        # The test now uses the API client instead of calling the service directly
+        client = APIClient()
+        client.force_authenticate(user=captain)
+        join_url = f"/api/tournaments/tournaments/{tournament.slug}/join/"
 
-        self.assertIn(member.username, str(exc.exception))
+        response = client.post(join_url, data={"team_id": team.id})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn(member.username, response.data['error'])
 
         InGameID.objects.create(user=member, game=self.game, player_id="member-1")
 
-        result = join_tournament(tournament=tournament, user=captain, team_id=team.id)
+        response = client.post(join_url, data={"team_id": team.id})
 
-        self.assertEqual(result, team)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['id'], team.id)
         self.assertEqual(
             Participant.objects.filter(
                 tournament=tournament, user__in=[captain, member]
