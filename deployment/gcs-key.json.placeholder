@@ -1,0 +1,4 @@
+This is a placeholder file.
+You should replace this file with your actual Google Cloud Service Account JSON key.
+Ensure this file is named 'gcs-key.json' and placed in '/etc/wal-g/' on your server.
+It must be owned by the 'postgres' user and have 600 permissions.

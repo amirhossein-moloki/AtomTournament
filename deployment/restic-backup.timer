@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Restic Backup daily for Files
+
+[Timer]
+# Run at 3:00 AM daily
+OnCalendar=*-*-* 03:00:00
+AccuracySec=1s
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

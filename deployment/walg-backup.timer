@@ -1,0 +1,12 @@
+[Unit]
+Description=Run WAL-G Full Backup daily
+
+[Timer]
+# Run at 2:00 AM daily
+OnCalendar=*-*-* 02:00:00
+AccuracySec=1s
+Persistent=true
+RandomizedDelaySec=600
+
+[Install]
+WantedBy=timers.target

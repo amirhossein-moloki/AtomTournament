@@ -1,0 +1,21 @@
+[Unit]
+Description=Restic Backup Service for Files
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+
+# Load environment variables for Restic
+EnvironmentFile=/etc/restic/restic-env
+
+# Paths to be backed up are read from this file
+# This is done to avoid overly long ExecStart lines
+ExecStart=/bin/bash -c "restic backup --files-from /etc/restic/paths-to-backup.txt"
+
+# Harden the service
+ProtectSystem=full
+PrivateTmp=true
+NoNewPrivileges=true
