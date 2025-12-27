@@ -10,7 +10,7 @@ upstream django_server {
 ########################
 proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=api_cache:100m max_size=1g inactive=60m use_temp_path=off;
 
-# امن‌تر از حالت قبلی: اگر جواب API به Accept یا زبان وابسته باشد، کش اشتباه نمی‌دهیم
+# امن‌تر: اگر جواب API به Accept یا زبان وابسته باشد، کش اشتباه نمی‌دهیم
 proxy_cache_key "$scheme$request_method$host$request_uri$http_accept$http_accept_language";
 
 ########################
@@ -63,7 +63,7 @@ server {
     server_name ${DOMAIN} www.${DOMAIN};
 
     ########################
-    # Frontend root (SPA)
+    # Frontend root
     ########################
     root /var/www/frontend;
     index index.html;
@@ -97,7 +97,6 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
 
-    # CSP عمومی (مثل قبلی شما)
     add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; frame-src 'self' https://accounts.google.com; connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; img-src 'self' data: https: https://lh3.googleusercontent.com https://accounts.google.com; font-src 'self' data:;" always;
 
     ########################
@@ -147,8 +146,35 @@ server {
     error_page 404 /404.html;
     location = /404.html { internal; }
 
+    #####################################
+    # Django sitemap (IMPORTANT - before location /)
+    #####################################
+    # اگر فقط همین یکی را داری:
+    location = /sitemap.xml {
+        proxy_pass http://django_server;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
+    # اگر چندتا sitemap هم داری (اختیاری):
+    # location ~ ^/sitemap.*\.xml$ {
+    #     proxy_pass http://django_server;
+    #     proxy_http_version 1.1;
+    #     proxy_set_header Connection "";
+    #
+    #     proxy_set_header Host $host;
+    #     proxy_set_header X-Real-IP $remote_addr;
+    #     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    #     proxy_set_header X-Forwarded-Proto https;
+    # }
+
     ########################
-    # Blog pages (اگر واقعاً فایل جدا دارید نگه می‌داریم)
+    # Blog pages
     ########################
     location = /blog {
         try_files /blog-codes/html/blog.html =404;
@@ -158,7 +184,6 @@ server {
         try_files /blog-codes/html/blog.html =404;
     }
 
-    # Single blog posts (slug preserved in URL)
     location ~ ^/blog/(?<slug>[^/]+?)(?!\.(?:css|js|png|jpe?g|gif|svg|webp|ico|woff2?|woff|ttf|otf|map))(?:/)?$ {
         rewrite ^ /blog-codes/html/single-post-page.html?slug=$slug last;
     }
@@ -169,7 +194,6 @@ server {
 
     ########################
     # SPA routes (Front pages)
-    # اینجا مهم: به جای 404، fallback به فایل html
     ########################
     location /tournament-loby/ {
         try_files $uri $uri/ /tournament-loby.html;
@@ -182,17 +206,14 @@ server {
     }
 
     location /game-tournaments/ {
-        # اگر این صفحه SPA است، بهتره fallback بده
         try_files $uri $uri/ /game-tournaments.html;
     }
 
     location /game-touranments/ {
-        # این route شما slug می‌گیرد (SPA) پس باید fallback داشته باشد
         try_files $uri $uri/ /game-touranments.html;
     }
 
     location /tournament-result/ {
-        # route داینامیک (SPA) => fallback
         try_files $uri $uri/ /tournament-result.html;
     }
 
@@ -266,7 +287,6 @@ server {
         limit_req zone=api_limit burst=5 nodelay;
         client_max_body_size 10M;
 
-        # X-Frame-Options "ALLOWALL" معتبر نیست؛ اگر لازم داری iframe باز شود از CSP frame-ancestors استفاده کن.
         add_header Referrer-Policy "no-referrer-when-downgrade" always;
         add_header Cross-Origin-Opener-Policy "unsafe-none" always;
         add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors *;" always;
@@ -287,11 +307,9 @@ server {
     location /admin/ {
         limit_req zone=api_limit burst=20 nodelay;
 
-        add_header Referrer-Policy "no-referrer-when-downgrade" always;
+        add_header Referrer-Policy "no-referrer-when-cross-origin" always;
         add_header Cross-Origin-Opener-Policy "unsafe-none" always;
 
-        # برای iframe اگر لازم داری:
-        # frame-ancestors را تنظیم کن (اینجا آزاد گذاشتم؛ اگر می‌خواهی محدودش کن)
         add_header Content-Security-Policy "default-src 'self' data: blob:; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com; frame-ancestors *;" always;
 
         proxy_pass http://django_server;
@@ -310,7 +328,7 @@ server {
     location ~ ^/(api|select2) {
         limit_req zone=api_limit burst=20 nodelay;
 
-        add_header Referrer-Policy "no-referrer-when-downgrade" always;
+        add_header Referrer-Policy "no-referrer-when-cross-origin" always;
         add_header Cross-Origin-Opener-Policy "unsafe-none" always;
 
         add_header Content-Security-Policy "default-src 'self' data: blob:; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com;" always;
@@ -326,10 +344,9 @@ server {
     }
 
     ########################
-    # SPA fallback (مهم!)
-    # هر چیزی که فایل واقعی نیست، بره index.html
+    # Global fallback (YOU WANTED THIS)
     ########################
     location / {
-        try_files $uri $uri/ /index.html;
+        try_files $uri $uri/ /404.html;
     }
 }
