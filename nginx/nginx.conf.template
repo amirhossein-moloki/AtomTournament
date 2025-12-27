@@ -1,27 +1,54 @@
-# تعریف upstream برای Django
+########################
+# Upstream (Django)
+########################
 upstream django_server {
     server web:8000;
 }
 
+########################
+# Cache
+########################
 proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=api_cache:100m max_size=1g inactive=60m use_temp_path=off;
-proxy_cache_key "$scheme$request_method$host$request_uri";
 
-# Rate limit برای API
+# امن‌تر از حالت قبلی: اگر جواب API به Accept یا زبان وابسته باشد، کش اشتباه نمی‌دهیم
+proxy_cache_key "$scheme$request_method$host$request_uri$http_accept$http_accept_language";
+
+########################
+# Rate limit
+########################
 limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
+
+########################
+# Cache bypass (بدون if)
+########################
+map $http_authorization $has_auth {
+    default 0;
+    ~.+     1;
+}
+
+map $http_cookie $has_session_cookie {
+    default 0;
+    ~*(sessionid|csrftoken) 1;
+}
+
+map "$has_auth$has_session_cookie" $api_cache_bypass {
+    default 0;
+    "10" 1;
+    "01" 1;
+    "11" 1;
+}
 
 ########################
 # HTTP → HTTPS Redirect
 ########################
 server {
     listen 80;
-server_name ${DOMAIN} www.${DOMAIN} localhost;
+    server_name ${DOMAIN} www.${DOMAIN};
 
-    # برای چالش‌های Let's Encrypt
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
     }
 
-    # ریدایرکت همه‌ی HTTP به HTTPS
     location / {
         return 301 https://$host$request_uri;
     }
@@ -33,19 +60,21 @@ server_name ${DOMAIN} www.${DOMAIN} localhost;
 server {
     listen 443 ssl;
     http2 on;
-    server_name ${DOMAIN} www.${DOMAIN} localhost;
+    server_name ${DOMAIN} www.${DOMAIN};
 
-    # Root & index برای frontend (SPA)
+    ########################
+    # Frontend root (SPA)
+    ########################
     root /var/www/frontend;
     index index.html;
 
-    # SSL – گواهی‌های Certbot
+    ########################
+    # SSL
+    ########################
     ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
-    # برای OCSP stapling
     ssl_trusted_certificate /etc/letsencrypt/live/${DOMAIN}/chain.pem;
 
-    # تنظیمات مدرن TLS
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers 'TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:ECDHE-RSA-AES128-GCM-SHA256';
     ssl_prefer_server_ciphers off;
@@ -53,22 +82,23 @@ server {
     ssl_session_timeout 1d;
     ssl_session_tickets off;
 
-    # OCSP Stapling
     ssl_stapling on;
     ssl_stapling_verify on;
     resolver 1.1.1.1 1.0.0.1 valid=300s;
     resolver_timeout 5s;
 
     ########################
-    # Security Headers – پایه
+    # Security Headers
     ########################
     add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header Referrer-Policy "origin-when-cross-origin" always;
     add_header X-XSS-Protection "1; mode=block" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; frame-src 'self' https://accounts.google.com; connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; img-src 'self' data: https: https://lh3.googleusercontent.com https://accounts.google.com; font-src 'self' data:;" always;
     add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+
+    # CSP عمومی (مثل قبلی شما)
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; frame-src 'self' https://accounts.google.com; connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; img-src 'self' data: https: https://lh3.googleusercontent.com https://accounts.google.com; font-src 'self' data:;" always;
 
     ########################
     # General settings
@@ -80,8 +110,6 @@ server {
     ########################
     # Compression
     ########################
-
-    # Gzip
     gzip on;
     gzip_disable "msie6";
     gzip_vary on;
@@ -99,7 +127,6 @@ server {
         application/rss+xml
         application/ld+json;
 
-    # Brotli (نیاز به ngx_brotli)
     brotli on;
     brotli_comp_level 5;
     brotli_min_length 1024;
@@ -118,37 +145,11 @@ server {
     # Error Pages
     ########################
     error_page 404 /404.html;
-
-    location = /404.html {
-        internal;
-    }
-
-    # SPA routing for tournament lobby
-    location /tournament-loby/ {
-        try_files $uri /tournament-loby.html;
-    }
-
-    # Handle incorrect relative paths for assets requested from the lobby SPA
-    location ~ ^/tournament-loby/(css|js|fonts|images|vendors)/ {
-        rewrite ^/tournament-loby/(.*)$ /$1 break;
-        root /var/www/frontend;
-        try_files $uri =404;
-    }
-
-    location /game-tournaments/ {
-        try_files /game-tournaments.html =404;
-    }
-
-    # Handle legacy typo URL for game tournaments page (with optional slug)
-    location /game-touranments/ {
-        try_files /game-touranments.html =404;
-    }
+    location = /404.html { internal; }
 
     ########################
-    # Frontend (SPA)
+    # Blog pages (اگر واقعاً فایل جدا دارید نگه می‌داریم)
     ########################
-
-    # Blog landing page
     location = /blog {
         try_files /blog-codes/html/blog.html =404;
     }
@@ -162,18 +163,37 @@ server {
         rewrite ^ /blog-codes/html/single-post-page.html?slug=$slug last;
     }
 
-    # Blog static assets and HTML files
     location ^~ /blog-codes/ {
         try_files $uri =404;
     }
 
-  # SPA routing for tournament result
-    location /tournament-result/ {
-        try_files /tournament-result.html =404;
+    ########################
+    # SPA routes (Front pages)
+    # اینجا مهم: به جای 404، fallback به فایل html
+    ########################
+    location /tournament-loby/ {
+        try_files $uri $uri/ /tournament-loby.html;
     }
-    
-    location / {
-        try_files $uri $uri.html =404;
+
+    location ~ ^/tournament-loby/(css|js|fonts|images|vendors)/ {
+        rewrite ^/tournament-loby/(.*)$ /$1 break;
+        root /var/www/frontend;
+        try_files $uri =404;
+    }
+
+    location /game-tournaments/ {
+        # اگر این صفحه SPA است، بهتره fallback بده
+        try_files $uri $uri/ /game-tournaments.html;
+    }
+
+    location /game-touranments/ {
+        # این route شما slug می‌گیرد (SPA) پس باید fallback داشته باشد
+        try_files $uri $uri/ /game-touranments.html;
+    }
+
+    location /tournament-result/ {
+        # route داینامیک (SPA) => fallback
+        try_files $uri $uri/ /tournament-result.html;
     }
 
     ########################
@@ -205,28 +225,24 @@ server {
     location ~ ^/api/(tournaments|games|blog/(posts|categories|tags|series|authors|pages|menus)|wallet/currencies)/?$ {
         limit_req zone=api_limit burst=20 nodelay;
 
-        set $api_cache_bypass 0;
-        if ($http_authorization) {
-            set $api_cache_bypass 1;
-        }
-        if ($http_cookie ~* "(sessionid|csrftoken)") {
-            set $api_cache_bypass 1;
-        }
-
         proxy_cache api_cache;
         proxy_cache_methods GET HEAD;
         proxy_cache_lock on;
         proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
         proxy_cache_background_update on;
+
         proxy_cache_valid 200 5m;
         proxy_cache_valid 404 1m;
+
         proxy_cache_bypass $api_cache_bypass;
         proxy_no_cache $api_cache_bypass;
-        add_header X-Cache-Status $upstream_cache_status;
+
+        add_header X-Cache-Status $upstream_cache_status always;
 
         proxy_pass http://django_server;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
+
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -239,9 +255,30 @@ server {
     location /protected_media/ {
         internal;
         alias /app/private_media/;
-        # No caching for private files
         expires off;
         add_header Cache-Control "no-cache, no-store, must-revalidate";
+    }
+
+    #####################################
+    # Django - CKEditor Upload
+    #####################################
+    location = /api/editor/upload/ {
+        limit_req zone=api_limit burst=5 nodelay;
+        client_max_body_size 10M;
+
+        # X-Frame-Options "ALLOWALL" معتبر نیست؛ اگر لازم داری iframe باز شود از CSP frame-ancestors استفاده کن.
+        add_header Referrer-Policy "no-referrer-when-downgrade" always;
+        add_header Cross-Origin-Opener-Policy "unsafe-none" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors *;" always;
+
+        proxy_pass http://django_server;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
     }
 
     #####################################
@@ -250,17 +287,17 @@ server {
     location /admin/ {
         limit_req zone=api_limit burst=20 nodelay;
 
-        # Override security headers for API to be less restrictive
-        add_header X-Frame-Options "ALLOWALL" always;
         add_header Referrer-Policy "no-referrer-when-downgrade" always;
         add_header Cross-Origin-Opener-Policy "unsafe-none" always;
 
-        # CSP شل‌تر برای Django (برای اینکه ادمین و باندل‌ها گیر نکنن)
-        add_header Content-Security-Policy "default-src 'self' data: blob:; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com;" always;
+        # برای iframe اگر لازم داری:
+        # frame-ancestors را تنظیم کن (اینجا آزاد گذاشتم؛ اگر می‌خواهی محدودش کن)
+        add_header Content-Security-Policy "default-src 'self' data: blob:; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com; frame-ancestors *;" always;
 
         proxy_pass http://django_server;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
+
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -268,48 +305,31 @@ server {
     }
 
     #####################################
-    # Django - CKEditor Upload
+    # Django - Non-Cached API (fallback)
     #####################################
-    location = /api/editor/upload/ {
-        limit_req zone=api_limit burst=5 nodelay; # Stricter limit for uploads
-
-        client_max_body_size 10M; # Max size for uploaded images
-
-        add_header X-Frame-Options "ALLOWALL" always;
-        add_header Referrer-Policy "no-referrer-when-downgrade" always;
-        add_header Cross-Origin-Opener-Policy "unsafe-none" always;
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self';" always;
-
-        proxy_pass http://django_server;
-        proxy_http_version 1.1;
-        proxy_set_header Connection "";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto https;
-    }
-
-    #####################################
-    # Django - Non-Cached API
-    #####################################
-
     location ~ ^/(api|select2) {
         limit_req zone=api_limit burst=20 nodelay;
 
-        # Override security headers for API to be less restrictive
-        add_header X-Frame-Options "ALLOWALL" always;
         add_header Referrer-Policy "no-referrer-when-downgrade" always;
         add_header Cross-Origin-Opener-Policy "unsafe-none" always;
 
-        # CSP شل‌تر برای Django (برای اینکه ادمین و باندل‌ها گیر نکنن)
         add_header Content-Security-Policy "default-src 'self' data: blob:; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com;" always;
 
         proxy_pass http://django_server;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
+
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto https;
+    }
+
+    ########################
+    # SPA fallback (مهم!)
+    # هر چیزی که فایل واقعی نیست، بره index.html
+    ########################
+    location / {
+        try_files $uri $uri/ /index.html;
     }
 }
