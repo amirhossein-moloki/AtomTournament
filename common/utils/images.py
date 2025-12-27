@@ -54,3 +54,43 @@ def convert_image_to_avif(image_field, max_dimension=1920, quality=50, speed=6):
     new_name = f"{base_name}.avif"
 
     return ContentFile(buffer.read(), name=new_name)
+
+
+def create_image_variants(image_field, main_size=(1920, 1920), thumb_size=(400, 400), quality=50, speed=6):
+    """
+    Creates multiple versions (variants) of an image.
+    Returns a tuple: (main_image_content, variants_dict)
+    """
+    variants = {}
+
+    # 1. Create and save the main optimized AVIF image
+    main_image_content = convert_image_to_avif(
+        image_field, max_dimension=main_size[0], quality=quality, speed=speed
+    )
+
+    # 2. Create the thumbnail variant
+    # We need to re-open the original image to create a smaller version
+    image_field.seek(0)
+    img = Image.open(image_field)
+
+    # Ensure it's in a compatible mode before creating the thumbnail
+    if img.mode not in ("RGB", "L", "RGBA"):
+        img = img.convert("RGBA")
+
+    img.thumbnail(thumb_size, Image.Resampling.LANCZOS)
+
+    thumb_buffer = BytesIO()
+    img.save(thumb_buffer, format="AVIF", quality=quality-10, speed=speed+1) # Lower quality for smaller size
+    thumb_buffer.seek(0)
+
+    # Generate a unique name for the thumbnail
+    base_name, _ = os.path.splitext(main_image_content.name)
+    thumb_name = f"{base_name}_thumb.avif"
+
+    # Save the thumbnail to storage
+    thumb_storage_key = os.path.join(os.path.dirname(main_image_content.name), thumb_name)
+    thumb_url = default_storage.save(thumb_storage_key, ContentFile(thumb_buffer.read()))
+
+    variants['thumbnail'] = default_storage.url(thumb_url)
+
+    return main_image_content, variants

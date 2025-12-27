@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     PostViewSet,
-    publish_post, related_posts,
+    related_posts,
     AuthorProfileViewSet, CategoryViewSet, TagViewSet, SeriesViewSet,
     MediaViewSet, RevisionViewSet, CommentViewSet, ReactionViewSet,
     PageViewSet, MenuViewSet, MenuItemViewSet,
@@ -26,7 +26,6 @@ router.register(r'menus', MenuViewSet)
 router.register(r'menu-items', MenuItemViewSet)
 
 urlpatterns = [
-    path('posts/<slug:slug>/publish/', publish_post, name='post-publish'),
     path('posts/<slug:slug>/related/', related_posts, name='post-related'),
     path('media/<int:media_id>/download/', download_media, name='download_media'),
     path('', include(router.urls)),
