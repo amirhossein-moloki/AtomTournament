@@ -111,7 +111,7 @@ server {
         application/ld+json;
 
     ########################
-    # Error Pages
+    # Error Pages (استاندارد: 404 واقعی + نمایش 404.html)
     ########################
     error_page 404 /404.html;
     location = /404.html { internal; }
@@ -130,21 +130,23 @@ server {
         proxy_set_header X-Forwarded-Proto https;
     }
 
-     location ~ ^/sitemap.*\.xml$ {
-         proxy_pass http://django_server;
-         proxy_http_version 1.1;
-         proxy_set_header Connection "";
-         proxy_set_header Host $host;
-         proxy_set_header X-Real-IP $remote_addr;
-         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-         proxy_set_header X-Forwarded-Proto https;
-     }
+    # همه‌ی sitemapهای xml (مثل sitemap_index.xml / sitemap-1.xml و ...)
+    location ~ ^/sitemap.*\.xml$ {
+        proxy_pass http://django_server;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
 
     ########################
     # Frontend pages (HTML fallbacks)
     ########################
     location /tournament-loby/ {
-        try_files $uri /tournament-loby.html;
+        try_files $uri $uri/ /tournament-loby.html;
     }
 
     location ~ ^/tournament-loby/(css|js|fonts|images|vendors)/ {
@@ -153,8 +155,9 @@ server {
         try_files $uri =404;
     }
 
+    # مثل tournament-loby: برای /tournament-result/slug
     location /tournament-result/ {
-        try_files $uri /tournament-result.html;
+        try_files $uri $uri/ /tournament-result.html;
     }
 
     location /game-tournaments/ {
@@ -226,10 +229,13 @@ server {
         proxy_cache_lock on;
         proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
         proxy_cache_background_update on;
+
         proxy_cache_valid 200 5m;
         proxy_cache_valid 404 1m;
+
         proxy_cache_bypass $api_cache_bypass;
         proxy_no_cache $api_cache_bypass;
+
         add_header X-Cache-Status $upstream_cache_status;
 
         proxy_pass http://django_server;
@@ -315,9 +321,9 @@ server {
     }
 
     ########################
-    # Global fallback -> 404.html (طبق درخواست شما)
+    # Global fallback (استاندارد: =404 تا error_page اجرا بشه)
     ########################
     location / {
-        try_files $uri $uri/ /404.html;
+        try_files $uri $uri/ =404;
     }
 }
