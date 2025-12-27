@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from django.db import transaction
 from django.db.models import Count
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
@@ -142,6 +143,15 @@ def join_tournament(
     Handles the logic for a user or a team to join a tournament,
     including validation, fee deduction, and notification.
     """
+    now = timezone.now()
+    if (
+        tournament.registration_start_date
+        and now < tournament.registration_start_date
+    ):
+        raise ApplicationError(_("Registration has not started yet."))
+    if tournament.registration_end_date and now > tournament.registration_end_date:
+        raise ApplicationError(_("Registration has already ended."))
+
     if tournament.type == "individual":
         if tournament.participants.count() >= tournament.max_participants:
             raise ApplicationError("This tournament is full.")
