@@ -15,6 +15,7 @@ from django.utils.translation import gettext_lazy as _
 from urllib.parse import urlparse, urlunparse
 
 from common.utils.images import convert_image_to_avif
+from .utils import calculate_reading_time_from_json, sync_media_attachments_from_json
 
 
 User = get_user_model()
@@ -48,6 +49,12 @@ class Media(models.Model):
     title = models.CharField(max_length=255, blank=True)
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # Fields for advanced image management
+    variants = models.JSONField(default=dict, blank=True)
+    focus_point_x = models.FloatField(default=0.5)
+    focus_point_y = models.FloatField(default=0.5)
+    crop_box = models.JSONField(default=dict, blank=True)
 
     def __str__(self):
         return self.title or self.storage_key
@@ -137,7 +144,7 @@ class Post(models.Model):
     title = models.CharField(max_length=255)
     excerpt = models.TextField()
     is_hot = models.BooleanField(default=False)
-    content = CKEditor5Field(config_name="default")
+    content = models.JSONField(default=list, blank=True)
     reading_time_sec = models.PositiveIntegerField(default=0)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='draft')
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default='public')
@@ -154,6 +161,12 @@ class Post(models.Model):
     likes_count = models.PositiveIntegerField(default=0)
     tags = models.ManyToManyField(Tag, through='PostTag')
     reactions = GenericRelation('Reaction', object_id_field='object_id', content_type_field='content_type')
+
+    # Concurrency control
+    locked_by = models.ForeignKey(
+        User, related_name='locked_posts', null=True, blank=True, on_delete=models.SET_NULL
+    )
+    locked_at = models.DateTimeField(null=True, blank=True)
 
     objects = PostManager()
 
@@ -178,53 +191,14 @@ class Post(models.Model):
             self.slug = f'{original_slug}-{counter}'
             counter += 1
 
-        if self.content:
-            words = re.findall(r'\w+', self.content)
-            word_count = len(words)
-            reading_time_minutes = word_count / 200  # Average reading speed
-            self.reading_time_sec = int(reading_time_minutes * 60)
-        else:
-            self.reading_time_sec = 0
+        # Calculate reading time from JSON content
+        self.reading_time_sec = calculate_reading_time_from_json(self.content)
 
-        super().save(*args, **kwargs)  # Save post first to get an ID
+        # Save the post instance before manipulating ManyToMany relations
+        super().save(*args, **kwargs)
 
-        # Sync Cover and OG images
-        # Remove old attachments that are no longer linked
-        self.media_attachments.filter(attachment_type='cover').exclude(media=self.cover_media).delete()
-        if self.cover_media:
-            self.media_attachments.update_or_create(media=self.cover_media, defaults={'attachment_type': 'cover'})
-
-        self.media_attachments.filter(attachment_type='og-image').exclude(media=self.og_image).delete()
-        if self.og_image:
-            self.media_attachments.update_or_create(media=self.og_image, defaults={'attachment_type': 'og-image'})
-
-        # Sync in-content images
-        media_paths_in_content = set()
-        # Find URLs in src attributes of img tags
-        for url in re.findall(r'<img [^>]*src="([^"]+)"', self.content):
-            path = urlparse(url).path
-            if path.startswith(settings.MEDIA_URL):
-                # Strip /media/ part to get the storage_key
-                media_paths_in_content.add(path[len(settings.MEDIA_URL):])
-
-        # Find media objects matching the paths found
-        linked_media_ids = set(
-            Media.objects.filter(storage_key__in=media_paths_in_content).values_list('id', flat=True)
-        )
-
-        # Find media objects currently attached as 'in-content'
-        current_media_ids = set(
-            self.media_attachments.filter(attachment_type='in-content').values_list('media_id', flat=True)
-        )
-
-        # Add new attachments
-        ids_to_add = linked_media_ids - current_media_ids
-        for media_id in ids_to_add:
-            self.media_attachments.create(media_id=media_id, attachment_type='in-content')
-
-        # Remove old attachments
-        ids_to_remove = current_media_ids - linked_media_ids
-        self.media_attachments.filter(media_id__in=ids_to_remove, attachment_type='in-content').delete()
+        # Sync media attachments from JSON content
+        sync_media_attachments_from_json(self)
 
 
 class PostTag(models.Model):
@@ -239,7 +213,7 @@ class PostTag(models.Model):
 class Revision(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE)
     editor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    content = CKEditor5Field(config_name="default")
+    content = models.JSONField()
     title = models.CharField(max_length=255)
     excerpt = models.TextField()
     change_note = models.CharField(max_length=255, blank=True)

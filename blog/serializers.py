@@ -56,8 +56,24 @@ class MediaDetailSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'storage_key', 'url', 'type', 'mime',
             'width', 'height', 'duration', 'size_bytes',
-            'alt_text', 'title', 'uploaded_by', 'created_at'
+            'alt_text', 'title', 'uploaded_by', 'created_at',
+            'variants', 'focus_point_x', 'focus_point_y', 'crop_box'
         )
+
+
+class MediaFinalizeSerializer(serializers.Serializer):
+    upload_id = serializers.CharField()
+    title = serializers.CharField(required=False)
+    alt_text = serializers.CharField(required=False)
+
+    def validate_upload_id(self, value):
+        # Here you would typically check if the upload_id is valid,
+        # e.g., by checking a temporary storage location or a cache key.
+        # For this example, we assume it's valid if it exists.
+        if not default_storage.exists(value):
+            raise serializers.ValidationError("Invalid upload_id. File does not exist.")
+        return value
+
 
 class MediaCreateSerializer(serializers.ModelSerializer):
     file = serializers.FileField(write_only=True, validators=[validate_file])
