@@ -62,12 +62,19 @@ create_dhparams() {
 create_dummy_cert
 create_dhparams
 
-# 2. تولید کانفیگ Nginx از template
+# 2. Wait for Django to be ready
+echo ">>> Waiting for Django server to be available..."
+while ! nc -z web 8000; do
+  sleep 1
+done
+echo ">>> Django server is ready."
+
+# 3. تولید کانفیگ Nginx از template
 # متغیر $DOMAIN از محیط گرفته می‌شود و در template جایگزین می‌شود
 envsubst '$DOMAIN' < /app/nginx.conf.template > /etc/nginx/conf.d/default.conf
 echo ">>> Nginx config generated from template."
 
-# 3. اجرای Nginx در پس‌زمینه
+# 4. اجرای Nginx در پس‌زمینه
 echo ">>> Starting Nginx with initial configuration..."
 nginx -g "daemon off;" &
 NGINX_PID=$!
