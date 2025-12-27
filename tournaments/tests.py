@@ -628,6 +628,67 @@ class TournamentViewSetTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data["error"], "This tournament is full.")
 
+    def test_join_tournament_before_registration_starts_fails(self):
+        """
+        Test that a user cannot join a tournament before the registration period has started.
+        """
+        now = timezone.now()
+        early_tournament = Tournament.objects.create(
+            name="Early Tournament",
+            game=self.game,
+            registration_start_date=now + timedelta(days=1),
+            registration_end_date=now + timedelta(days=2),
+            start_date=now + timedelta(days=3),
+            end_date=now + timedelta(days=4),
+        )
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(
+            f"{self.tournaments_url}tournaments/{early_tournament.slug}/join/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["error"], "Registration has not started yet.")
+
+    def test_join_tournament_after_registration_ends_fails(self):
+        """
+        Test that a user cannot join a tournament after the registration period has ended.
+        """
+        now = timezone.now()
+        late_tournament = Tournament.objects.create(
+            name="Late Tournament",
+            game=self.game,
+            registration_start_date=now - timedelta(days=2),
+            registration_end_date=now - timedelta(days=1),
+            start_date=now + timedelta(days=1),
+            end_date=now + timedelta(days=2),
+        )
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(
+            f"{self.tournaments_url}tournaments/{late_tournament.slug}/join/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["error"], "Registration has already ended.")
+
+    def test_join_tournament_within_registration_period_succeeds(self):
+        """
+        Test that a user can successfully join a tournament within the registration period.
+        """
+        now = timezone.now()
+        open_tournament = Tournament.objects.create(
+            name="Open Tournament",
+            game=self.game,
+            registration_start_date=now - timedelta(days=1),
+            registration_end_date=now + timedelta(days=1),
+            start_date=now + timedelta(days=2),
+            end_date=now + timedelta(days=3),
+        )
+        InGameID.objects.create(user=self.user, game=self.game, player_id="testuser-ingame-open")
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(
+            f"{self.tournaments_url}tournaments/{open_tournament.slug}/join/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(open_tournament.participants.filter(id=self.user.id).exists())
+
 
 class MatchViewSetTests(APITestCase):
     def setUp(self):
