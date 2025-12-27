@@ -2,6 +2,14 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path, re_path
+from django.contrib.sitemaps.views import sitemap
+from .sitemaps import (
+    PostSitemap,
+    TournamentLobySitemap,
+    TournamentResultSitemap,
+    GameTournamentsSitemap,
+    StaticViewSitemap,
+)
 
 # Import drf-spectacular views
 from drf_spectacular.views import (
@@ -21,7 +29,21 @@ from .views import page_not_found_view
 
 handler404 = page_not_found_view
 
+sitemaps = {
+    "posts": PostSitemap,
+    "tournament_lobies": TournamentLobySitemap,
+    "tournament_results": TournamentResultSitemap,
+    "game_tournaments": GameTournamentsSitemap,
+    "static": StaticViewSitemap,
+}
+
 urlpatterns = [
+    path(
+        "sitemap.xml",
+        sitemap,
+        {"sitemaps": sitemaps},
+        name="django.contrib.sitemaps.views.sitemap",
+    ),
     # --- JWT Token Authentication ---
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
