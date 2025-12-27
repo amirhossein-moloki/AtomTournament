@@ -198,6 +198,12 @@ def join_tournament(
         if len(members) < tournament.team_size:
             raise ApplicationError("Your team does not have enough members.")
 
+        for member in members:
+            if not InGameID.objects.filter(user=member, game=tournament.game).exists():
+                raise ApplicationError(
+                    f"User {member.username} must set their in-game ID for this game."
+                )
+
         if not tournament.is_free:
             transaction_type = (
                 Transaction.TransactionType.TOKEN_SPENT

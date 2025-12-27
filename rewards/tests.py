@@ -32,13 +32,13 @@ class WheelViewSetTests(APITestCase):
         self.rank3 = Rank.objects.create(name="Gold", required_score=200)
 
         self.user_low_rank = User.objects.create_user(
-            username="lowrank", password="p", phone_number="+101", score=0
+            username="lowrank", password="p", phone_number="+101", score=0, rank=self.rank1
         )
         self.user_mid_rank = User.objects.create_user(
-            username="midrank", password="p", phone_number="+103", score=100
+            username="midrank", password="p", phone_number="+103", score=100, rank=self.rank2
         )
         self.user_high_rank = User.objects.create_user(
-            username="highrank", password="p", phone_number="+102", score=200
+            username="highrank", password="p", phone_number="+102", score=200, rank=self.rank3
         )
 
         self.wheel = Wheel.objects.create(name="Test Wheel", required_rank=self.rank2)

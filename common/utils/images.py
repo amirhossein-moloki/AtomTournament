@@ -15,6 +15,8 @@ def convert_image_to_avif(image_field, max_dimension=1920, quality=50, speed=6):
     ورودی: یک ImageField/File
     خروجی: یک ContentFile که فرمتش AVIF هست و آماده‌ی ذخیره تو ImageField
     """
+    # Move the file pointer to the beginning of the file
+    image_field.seek(0)
 
     # فایل رو با Pillow باز می‌کنیم
     img = Image.open(image_field)
