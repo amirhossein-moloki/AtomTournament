@@ -66,7 +66,7 @@ server {
     resolver_timeout 5s;
 
     ########################
-    # Security Headers
+    # Security Headers (Base)
     ########################
     add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
     add_header X-Content-Type-Options "nosniff" always;
@@ -119,14 +119,14 @@ server {
         application/ld+json;
 
     ########################
-    # Error Pages (فقط برای 404 واقعی)
+    # Error Pages (404 واقعی)
     ########################
     error_page 404 /404.html;
     location = /404.html { internal; }
 
-    ########################
-    # Django sitemap (حتماً قبل از SPA)
-    ########################
+    #####################################
+    # Django sitemap (قبل از SPA)
+    #####################################
     location = /sitemap.xml {
         proxy_pass http://django_server;
         proxy_http_version 1.1;
@@ -148,7 +148,7 @@ server {
     }
 
     ########################
-    # Static & Media (Django)
+    # Static files (Django)
     ########################
     location /static/ {
         brotli_static on;
@@ -158,6 +158,9 @@ server {
         add_header Cache-Control "public, max-age=31536000, immutable" always;
     }
 
+    ########################
+    # Media files (User uploads)
+    ########################
     location /media/ {
         alias /app/media/;
         try_files $uri.avif $uri.webp $uri =404;
@@ -167,9 +170,9 @@ server {
         add_header Cache-Control "public, max-age=2592000" always;
     }
 
-    ########################
+    #####################################
     # Private Media (X-Accel-Redirect)
-    ########################
+    #####################################
     location /protected_media/ {
         internal;
         alias /app/private_media/;
@@ -178,7 +181,7 @@ server {
     }
 
     ########################
-    # Frontend special routes (اگر فایل html جدا دارند)
+    # Frontend special pages (HTML fallbacks)
     ########################
     location /tournament-loby/ {
         try_files $uri $uri/ /tournament-loby.html;
@@ -190,6 +193,7 @@ server {
         try_files $uri =404;
     }
 
+    # برای /tournament-result/slug
     location /tournament-result/ {
         try_files $uri $uri/ /tournament-result.html;
     }
@@ -203,7 +207,7 @@ server {
     }
 
     ########################
-    # Blog pages (Static HTML)
+    # Blog pages
     ########################
     location = /blog {
         try_files /blog-codes/html/blog.html =404;
@@ -221,19 +225,15 @@ server {
         try_files $uri =404;
     }
 
-    ########################
+    ################################
     # API Caching (Public Endpoints)
-    ########################
+    ################################
     location ~ ^/api/(tournaments|games|blog/(posts|categories|tags|series|authors|pages|menus)|wallet/currencies)/?$ {
         limit_req zone=api_limit burst=20 nodelay;
 
         set $api_cache_bypass 0;
-        if ($http_authorization) {
-            set $api_cache_bypass 1;
-        }
-        if ($http_cookie ~* "(sessionid|csrftoken)") {
-            set $api_cache_bypass 1;
-        }
+        if ($http_authorization) { set $api_cache_bypass 1; }
+        if ($http_cookie ~* "(sessionid|csrftoken)") { set $api_cache_bypass 1; }
 
         proxy_cache api_cache;
         proxy_cache_methods GET HEAD;
@@ -258,9 +258,9 @@ server {
         proxy_set_header X-Forwarded-Proto https;
     }
 
-    ########################
+    #####################################
     # Django - Admin
-    ########################
+    #####################################
     location /admin/ {
         limit_req zone=api_limit burst=20 nodelay;
 
@@ -278,5 +278,58 @@ server {
         proxy_set_header X-Forwarded-Proto https;
     }
 
+    #####################################
+    # Django - CKEditor Upload
+    #####################################
+    location = /api/editor/upload/ {
+        limit_req zone=api_limit burst=5 nodelay;
+        client_max_body_size 10M;
+
+        add_header Referrer-Policy "no-referrer-when-downgrade" always;
+        add_header Cross-Origin-Opener-Policy "unsafe-none" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors *;" always;
+
+        proxy_pass http://django_server;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
+    #####################################
+    # Django - Non-Cached API (fallback)
+    #####################################
+    location ~ ^/(api|select2) {
+        limit_req zone=api_limit burst=20 nodelay;
+
+        add_header Referrer-Policy "no-referrer-when-downgrade" always;
+        add_header Cross-Origin-Opener-Policy "unsafe-none" always;
+
+        add_header Content-Security-Policy "default-src 'self' data: blob:; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com;" always;
+
+        proxy_pass http://django_server;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
     ########################
-    # Django -
+    # Frontend assets (اگر فایل نبود 404 واقعی بده)
+    ########################
+    location ~* \.(?:css|js|map|png|jpe?g|gif|svg|webp|ico|woff2?|woff|ttf|otf)$ {
+        try_files $uri =404;
+    }
+
+    ########################
+    # SPA fallback (Fix اصلی مشکل شما)
+    # هر route که فایل واقعی نیست -> index.html
+    ########################
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
