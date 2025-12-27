@@ -1,0 +1,10 @@
+[Unit]
+Description=WAL-G Retention Policy Service
+
+[Service]
+Type=oneshot
+User=postgres
+Group=postgres
+EnvironmentFile=/etc/wal-g/walg-base-config.env
+# Keep 7 latest full backups and all WALs required for them
+ExecStart=/usr/local/bin/wal-g delete retain 7 --confirm

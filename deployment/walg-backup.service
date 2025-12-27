@@ -1,0 +1,13 @@
+[Unit]
+Description=WAL-G Full Backup Service
+Wants=postgresql.service
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=postgres
+Group=postgres
+EnvironmentFile=/etc/wal-g/walg-base-config.env
+ExecStart=/usr/local/bin/wal-g backup-push /var/lib/postgresql/14/main
+CPUQuota=50%
+Nice=19

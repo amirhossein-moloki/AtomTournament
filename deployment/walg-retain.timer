@@ -1,0 +1,11 @@
+[Unit]
+Description=Run WAL-G Retention daily
+
+[Timer]
+# Run at 4:00 AM daily, a few hours after the main backup job
+OnCalendar=*-*-* 04:00:00
+AccuracySec=1s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

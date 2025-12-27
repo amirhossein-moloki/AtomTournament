@@ -1,0 +1,46 @@
+# PostgreSQL Configuration Guide for WAL-G Backup
+
+# Please add or modify the following lines in your postgresql.conf file.
+# The typical location for this file is: /etc/postgresql/14/main/postgresql.conf
+
+# ------------------------------------------------------------------------------
+# WRITE-AHEAD LOG
+# ------------------------------------------------------------------------------
+
+# Set wal_level to 'replica' to enable WAL archiving.
+wal_level = replica
+
+# ------------------------------------------------------------------------------
+# ARCHIVING
+# ------------------------------------------------------------------------------
+
+# Enable archiving.
+archive_mode = on
+
+# Command to archive WAL segments.
+# This command loads the environment variables from the config file and then calls wal-g.
+archive_command = '. /etc/wal-g/walg-base-config.env && wal-g wal-push %p'
+
+# Force a WAL segment switch if a new segment file has not been started
+# within this many seconds. This ensures recent changes are archived promptly.
+archive_timeout = 60s
+
+# ------------------------------------------------------------------------------
+# REPLICATION
+# ------------------------------------------------------------------------------
+# These settings are also important for WAL archiving.
+
+# Set the maximum number of concurrent connections from standby servers or streaming backup clients.
+max_wal_senders = 10
+
+# Specifies the minimum number of past log file segments kept in the pg_wal directory.
+# This is a safeguard against replication clients falling too far behind.
+wal_keep_segments = 32
+
+# ------------------------------------------------------------------------------
+# RECOVERY
+# ------------------------------------------------------------------------------
+# This setting is ONLY needed on a new server when you are restoring a backup.
+
+# Command to fetch WAL segments from the archive during recovery.
+# restore_command = '. /etc/wal-g/walg-base-config.env && wal-g wal-fetch %f %p'

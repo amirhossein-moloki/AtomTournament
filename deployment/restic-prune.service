@@ -1,0 +1,24 @@
+[Unit]
+Description=Restic Prune Service (Retention Policy)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+
+# Load environment variables for Restic
+EnvironmentFile=/etc/restic/restic-env
+
+# Restic's 'forget' command applies the retention policy, and 'prune' cleans up the repository.
+# This policy keeps:
+# - 7 daily snapshots
+# - 4 weekly snapshots
+# - 3 monthly snapshots
+ExecStart=/usr/local/bin/restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+
+# Harden the service
+ProtectSystem=full
+PrivateTmp=true
+NoNewPrivileges=true

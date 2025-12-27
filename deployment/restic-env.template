@@ -1,0 +1,39 @@
+# --------------------------------------------------
+# Restic Configuration for Google Cloud Storage
+# --------------------------------------------------
+# Instructions:
+# 1. Fill in the values below.
+# 2. Rename this file to 'restic-env'.
+# 3. Place it in '/etc/restic/' on your server.
+# 4. Secure it: sudo chmod 600 /etc/restic/restic-env
+# --------------------------------------------------
+
+# --- GCP Settings ---
+# Restic can use the same key as WAL-G.
+# Ensure this path points to your actual GCP Service Account JSON key file.
+export GOOGLE_PROJECT_ID="your-gcp-project-id"
+export GOOGLE_APPLICATION_CREDENTIALS=/etc/wal-g/gcs-key.json
+
+# --- Restic Repository Settings ---
+# The GCS bucket and path where the Restic repository will be stored.
+# Replace 'your-gcs-bucket-name' with your actual bucket name.
+# It's a good practice to use a sub-path for restic backups.
+export RESTIC_REPOSITORY=gs:your-gcs-bucket-name:/restic-repo
+
+# --- Restic Password ---
+# !! IMPORTANT !!
+# The password used to encrypt the backup repository.
+# Generate a strong, random password and store it securely (e.g., in a password manager).
+# DO NOT LOSE THIS PASSWORD. WITHOUT IT, YOUR BACKUPS ARE UNRECOVERABLE.
+export RESTIC_PASSWORD="your-very-strong-and-secret-password"
+
+
+# --- Backup Paths ---
+# Create a separate file that lists the directories to be backed up.
+# This makes the backup command cleaner and easier to manage.
+# The default path is /etc/restic/paths-to-backup.txt
+#
+# Example content for /etc/restic/paths-to-backup.txt:
+# /var/www/media
+# /opt/my-app/uploads
+# /etc/nginx/sites-available

@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Restic Prune daily
+
+[Timer]
+# Run at 5:00 AM daily, after all backup jobs are complete
+OnCalendar=*-*-* 05:00:00
+AccuracySec=1s
+Persistent=true
+
+[Install]
+WantedBy=timers.target
