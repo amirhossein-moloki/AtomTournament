@@ -71,7 +71,7 @@ echo ">>> Django server is ready."
 
 # 3. تولید کانفیگ Nginx از template
 # متغیر $DOMAIN از محیط گرفته می‌شود و در template جایگزین می‌شود
-envsubst '$DOMAIN' < /app/nginx.conf.template > /etc/nginx/conf.d/default.conf
+envsubst '$DOMAIN' < /app/default.conf.template > /etc/nginx/conf.d/default.conf
 echo ">>> Nginx config generated from template."
 
 # 4. اجرای Nginx در پس‌زمینه
