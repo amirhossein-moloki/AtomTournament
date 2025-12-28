@@ -171,6 +171,24 @@ server {
         try_files $uri =404;
     }
 
+    # Favicon
+    location = /favicon.ico {
+        alias /var/www/frontend/my-favicon/favicon.ico;
+        access_log off;
+        log_not_found off;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000";
+    }
+
+    # Favicon assets
+    location /my-favicon/ {
+        root /var/www/frontend;
+        access_log off;
+        log_not_found off;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000";
+    }
+
     location / {
         try_files $uri $uri.html /index.html;
     }
