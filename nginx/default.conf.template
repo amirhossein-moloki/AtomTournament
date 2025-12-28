@@ -1,5 +1,5 @@
 proxy_cache_path /var/cache/nginx/api_cache levels=1:2 keys_zone=api_cache:10m max_size=1g inactive=60m use_temp_path=off;
-limit_req_zone $binary_remote_addr zone=api_limit rate=10r/s;
+limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
 
 upstream django_server {
     server web:8000;
