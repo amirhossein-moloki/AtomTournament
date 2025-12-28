@@ -4,7 +4,8 @@ FROM fholzer/nginx-brotli:latest
 RUN apk add --no-cache openssl wget gettext inotify-tools netcat-openbsd \
     && mkdir -p /etc/nginx/modules
 
-COPY nginx.conf.template /app/nginx.conf.template
+COPY nginx.conf /etc/nginx/nginx.conf
+COPY default.conf.template /app/default.conf.template
 COPY modules.conf /etc/nginx/modules/mod-http-brotli.conf
 COPY entrypoint.sh /app/entrypoint.sh
 
