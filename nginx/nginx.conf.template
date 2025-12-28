@@ -14,7 +14,7 @@ limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
 ########################
 server {
     listen 80;
-server_name ${DOMAIN} www.${DOMAIN} localhost;
+    server_name ${DOMAIN} www.${DOMAIN} localhost;
 
     # برای چالش‌های Let's Encrypt
     location /.well-known/acme-challenge/ {
@@ -42,7 +42,6 @@ server {
     # SSL – گواهی‌های Certbot
     ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
-    # برای OCSP stapling
     ssl_trusted_certificate /etc/letsencrypt/live/${DOMAIN}/chain.pem;
 
     # تنظیمات مدرن TLS
@@ -80,8 +79,6 @@ server {
     ########################
     # Compression
     ########################
-
-    # Gzip
     gzip on;
     gzip_disable "msie6";
     gzip_vary on;
@@ -99,7 +96,6 @@ server {
         application/rss+xml
         application/ld+json;
 
-    # Brotli (نیاز به ngx_brotli)
     brotli on;
     brotli_comp_level 5;
     brotli_min_length 1024;
@@ -151,8 +147,6 @@ server {
     ########################
     # Frontend (SPA)
     ########################
-
-    # Blog landing page
     location = /blog {
         try_files /blog-codes/html/blog.html =404;
     }
@@ -161,32 +155,36 @@ server {
         try_files /blog-codes/html/blog.html =404;
     }
 
-    # Single blog posts (slug preserved in URL)
     location ~ ^/blog/(?<slug>[^/]+?)(?!\.(?:css|js|png|jpe?g|gif|svg|webp|ico|woff2?|woff|ttf|otf|map))(?:/)?$ {
         rewrite ^ /blog-codes/html/single-post-page.html?slug=$slug last;
     }
 
-    # Blog static assets and HTML files
     location ^~ /blog-codes/ {
         try_files $uri =404;
     }
 
-    # Favicon
+    ########################
+    # Favicon (FIX)
+    ########################
+
+    # مهم: گوگل/مرورگرها اول /favicon.ico رو می‌خوان
     location = /favicon.ico {
-        alias /var/www/frontend/my-favicon/favicon.ico;
-        access_log off;
-        log_not_found off;
-        expires 30d;
-        add_header Cache-Control "public, max-age=2592000";
+        return 301 /my-favicon/favicon.ico;
     }
 
-    # Favicon assets
-    location /my-favicon/ {
+    # (اختیاری) سازگاری بهتر با iOS و بعضی crawlerها
+    location = /apple-touch-icon.png {
+        return 301 /my-favicon/apple-touch-icon.png;
+    }
+
+    # فولدر favicon assets
+    location ^~ /my-favicon/ {
         root /var/www/frontend;
         access_log off;
         log_not_found off;
         expires 30d;
-        add_header Cache-Control "public, max-age=2592000";
+        add_header Cache-Control "public, max-age=2592000" always;
+        try_files $uri =404;
     }
 
     location / {
@@ -268,7 +266,6 @@ server {
     location /protected_media/ {
         internal;
         alias /app/private_media/;
-        # No caching for private files
         expires off;
         add_header Cache-Control "no-cache, no-store, must-revalidate";
     }
@@ -279,12 +276,10 @@ server {
     location /admin/ {
         limit_req zone=api_limit burst=20 nodelay;
 
-        # Override security headers for API to be less restrictive
         add_header X-Frame-Options "ALLOWALL" always;
         add_header Referrer-Policy "no-referrer-when-downgrade" always;
         add_header Cross-Origin-Opener-Policy "unsafe-none" always;
 
-        # CSP شل‌تر برای Django (برای اینکه ادمین و باندل‌ها گیر نکنن)
         add_header Content-Security-Policy "default-src 'self' data: blob:; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com;" always;
 
         proxy_pass http://django_server;
@@ -300,9 +295,9 @@ server {
     # Django - CKEditor Upload
     #####################################
     location = /api/editor/upload/ {
-        limit_req zone=api_limit burst=5 nodelay; # Stricter limit for uploads
+        limit_req zone=api_limit burst=5 nodelay;
 
-        client_max_body_size 10M; # Max size for uploaded images
+        client_max_body_size 10M;
 
         add_header X-Frame-Options "ALLOWALL" always;
         add_header Referrer-Policy "no-referrer-when-downgrade" always;
@@ -321,16 +316,13 @@ server {
     #####################################
     # Django - Non-Cached API
     #####################################
-
     location ~ ^/(api|select2) {
         limit_req zone=api_limit burst=20 nodelay;
 
-        # Override security headers for API to be less restrictive
         add_header X-Frame-Options "ALLOWALL" always;
         add_header Referrer-Policy "no-referrer-when-downgrade" always;
         add_header Cross-Origin-Opener-Policy "unsafe-none" always;
 
-        # CSP شل‌تر برای Django (برای اینکه ادمین و باندل‌ها گیر نکنن)
         add_header Content-Security-Policy "default-src 'self' data: blob:; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https: https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com;" always;
 
         proxy_pass http://django_server;
