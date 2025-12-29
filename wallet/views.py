@@ -22,6 +22,7 @@ from .serializers import (
     RefundRequestSerializer,
     PaymentSerializer,
     TransactionSerializer,
+    WalletBalanceSerializer,
     WalletSerializer,
     WithdrawalRequestSerializer,
     ZibalWalletSerializer,
@@ -210,3 +211,14 @@ class ZibalWalletListView(APIView):
             return Response(wallets_response.get("data"), status=status.HTTP_200_OK)
         else:
             return Response({"error": wallets_response.get("message", "Failed to fetch wallets.")}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class WalletBalanceAPIView(generics.RetrieveAPIView):
+    serializer_class = WalletBalanceSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        try:
+            return self.request.user.wallet
+        except Wallet.DoesNotExist:
+            raise NotFound("کیف پول برای این کاربر یافت نشد.")

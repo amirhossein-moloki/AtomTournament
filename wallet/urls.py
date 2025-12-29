@@ -7,6 +7,7 @@ from .views import (
     RefundAPIView,  # Added
     TransactionViewSet,
     VerifyDepositAPIView,
+    WalletBalanceAPIView,
     WalletViewSet,
     WithdrawalRequestAPIView,
     ZibalWalletListView,  # Added
@@ -34,4 +35,5 @@ urlpatterns = [
     # New URLs
     path("refund/", RefundAPIView.as_view(), name="refund"),
     path("admin/zibal-wallets/", ZibalWalletListView.as_view(), name="zibal-wallets"),
+    path("balance/", WalletBalanceAPIView.as_view(), name="wallet-balance"),
 ]
