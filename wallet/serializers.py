@@ -172,3 +172,9 @@ class VerifyDepositSerializer(serializers.Serializer):
     trackId = serializers.CharField()
     success = serializers.CharField()
     orderId = serializers.CharField()
+
+
+class WalletBalanceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Wallet
+        fields = ("total_balance",)

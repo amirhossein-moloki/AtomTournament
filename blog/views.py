@@ -222,16 +222,17 @@ def related_posts(request, slug):
 
     paginator = CustomPageNumberPagination()
     tag_ids = current_post.tags.values_list('id', flat=True)
-    if not tag_ids:
-        return paginator.get_paginated_response([])
 
-    related = Post.objects.filter(
-        status='published',
-        tags__in=tag_ids
-    ).exclude(pk=current_post.pk).distinct()
-    related = related.annotate(
-        common_tags=Count('tags', filter=Q(tags__in=tag_ids))
-    ).order_by('-common_tags', '-published_at', '-id')
+    if not tag_ids:
+        related = Post.objects.none()
+    else:
+        related = Post.objects.filter(
+            status='published',
+            tags__in=tag_ids
+        ).exclude(pk=current_post.pk).distinct()
+        related = related.annotate(
+            common_tags=Count('tags', filter=Q(tags__in=tag_ids))
+        ).order_by('-common_tags', '-published_at', '-id')
 
     paginated_related_posts = paginator.paginate_queryset(related, request)
     serializer = PostListSerializer(paginated_related_posts, many=True, context={'request': request})
@@ -302,7 +303,7 @@ class RevisionViewSet(viewsets.ModelViewSet):
 class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
+    permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrAdmin]
 
     def get_queryset(self):
         user = self.request.user
