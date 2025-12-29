@@ -1,15 +1,16 @@
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 from users.models import User
 
 
 class Wallet(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    total_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_balance = models.DecimalField(max_digits=20, decimal_places=2, default=0)
     withdrawable_balance = models.DecimalField(
-        max_digits=10, decimal_places=2, default=0
+        max_digits=20, decimal_places=2, default=0
     )
-    token_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    token_balance = models.DecimalField(max_digits=20, decimal_places=2, default=0)
     card_number = models.CharField(
         max_length=16, blank=True, null=True, help_text="شماره کارت"
     )
@@ -32,7 +33,7 @@ class WithdrawalRequest(models.Model):
         REJECTED = "rejected", "رد شده"
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="withdrawal_requests")
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount = models.DecimalField(max_digits=20, decimal_places=2)
     status = models.CharField(
         max_length=10, choices=Status.choices, default=Status.PENDING, db_index=True
     )
@@ -57,14 +58,14 @@ class Transaction(models.Model):
         TOKEN_EARNED = "token_earned", "Token Earned"
 
     class Status(models.TextChoices):
-        PENDING = "pending", "Pending"
-        SUCCESS = "success", "Success"
-        FAILED = "failed", "Failed"
+        PENDING = "pending", _("Pending")
+        SUCCESS = "success", _("Success")
+        FAILED = "failed", _("Failed")
 
     wallet = models.ForeignKey(
         Wallet, on_delete=models.CASCADE, related_name="transactions"
     )
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount = models.DecimalField(max_digits=20, decimal_places=2)
     transaction_type = models.CharField(
         max_length=20, choices=TransactionType.choices
     )
@@ -107,7 +108,7 @@ class Refund(models.Model):
         FAILED = "failed", "ناموفق"
 
     transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE, related_name="refunds")
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount = models.DecimalField(max_digits=20, decimal_places=2)
     refund_id = models.CharField(max_length=255, unique=True, help_text="شناسه استرداد از زیبال")
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
     description = models.CharField(max_length=255, blank=True)

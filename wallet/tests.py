@@ -26,9 +26,9 @@ class SerializerTests(SimpleTestCase):
         self.assertTrue(serializer.is_valid(), serializer.errors)
 
     def test_payment_serializer_amount_invalid(self):
-        serializer = PaymentSerializer(data={"amount": "12345678901"})
+        serializer = PaymentSerializer(data={"amount": "-100"})
         self.assertFalse(serializer.is_valid())
-        self.assertIn("Ensure that there are no more than 10 digits in total.", str(serializer.errors))
+        self.assertIn("Amount must be positive.", str(serializer.errors))
 
     def test_create_withdrawal_request_serializer_valid(self):
         data = {
