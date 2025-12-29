@@ -695,6 +695,75 @@ class TournamentViewSetTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(open_tournament.participants.filter(id=self.user.id).exists())
 
+    def test_cancel_tournament_by_admin(self):
+        """
+        Test that an admin can cancel a tournament and participants are refunded.
+        """
+        self.client.force_authenticate(user=self.admin_user)
+        participant = User.objects.create_user(
+            username="participant", password="password", phone_number="+5"
+        )
+        participant.wallet.total_balance = 0
+        participant.wallet.withdrawable_balance = 0
+        participant.wallet.save()
+
+        paid_tournament = Tournament.objects.create(
+            name="Cancellable Tournament",
+            game=self.game,
+            start_date=timezone.now() + timedelta(days=1),
+            end_date=timezone.now() + timedelta(days=2),
+            is_free=False,
+            entry_fee=50,
+        )
+        Participant.objects.create(user=participant, tournament=paid_tournament)
+
+        response = self.client.post(
+            f"{self.tournaments_url}tournaments/{paid_tournament.slug}/cancel/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        paid_tournament.refresh_from_db()
+        self.assertEqual(paid_tournament.status, "cancelled")
+
+        participant.refresh_from_db()
+        self.assertEqual(participant.wallet.withdrawable_balance, 50)
+
+    def test_cancel_tournament_by_non_admin_fails(self):
+        """
+        Test that a non-admin user cannot cancel a tournament.
+        """
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(
+            f"{self.tournaments_url}tournaments/{self.tournament.slug}/cancel/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_cancel_finished_tournament_fails(self):
+        """
+        Test that a finished tournament cannot be cancelled.
+        """
+        self.client.force_authenticate(user=self.admin_user)
+        self.tournament.status = "finished"
+        self.tournament.save()
+
+        response = self.client.post(
+            f"{self.tournaments_url}tournaments/{self.tournament.slug}/cancel/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_cancel_cancelled_tournament_fails(self):
+        """
+        Test that a cancelled tournament cannot be cancelled again.
+        """
+        self.client.force_authenticate(user=self.admin_user)
+        self.tournament.status = "cancelled"
+        self.tournament.save()
+
+        response = self.client.post(
+            f"{self.tournaments_url}tournaments/{self.tournament.slug}/cancel/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
 
 class MatchViewSetTests(APITestCase):
     def setUp(self):

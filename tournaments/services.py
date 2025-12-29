@@ -229,6 +229,51 @@ def join_tournament(
 
         return team
 
+
+@transaction.atomic
+def cancel_tournament(tournament: Tournament):
+    """
+    Cancels a tournament, refunds all participants, and updates its status.
+    """
+    if tournament.status in ["finished", "cancelled"]:
+        raise ApplicationError(f"Cannot cancel a tournament that is {tournament.status}.")
+
+    # Get all participants
+    participant_entries = Participant.objects.filter(tournament=tournament).select_related('user')
+    participants = [p.user for p in participant_entries]
+
+    # Refund entry fees to all participants
+    if not tournament.is_free and tournament.entry_fee and tournament.entry_fee > 0:
+        for user in participants:
+            try:
+                WalletService.process_transaction(
+                    user=user,
+                    amount=tournament.entry_fee,
+                    transaction_type=Transaction.TransactionType.DEPOSIT,
+                    description=f"Refund for cancelled tournament: {tournament.name}",
+                )
+            except ValidationError as e:
+                logger.error(f"Failed to refund {user.username} for cancelled tournament {tournament.id}: {e.detail[0]}")
+                raise ApplicationError(f"Failed to process refund for {user.username}.")
+            except Exception as e:
+                logger.error(f"An unexpected error occurred during refund for {user.username} in tournament {tournament.id}: {e}")
+                raise ApplicationError(f"An unexpected error occurred during refund for {user.username}.")
+
+    # Update tournament status and save
+    tournament.status = "cancelled"
+    tournament.save()
+
+    # Send notification to all participants
+    for user in participants:
+        send_notification(
+            user=user,
+            message=f"The tournament '{tournament.name}' has been cancelled. Your entry fee has been refunded.",
+            notification_type="tournament_cancelled",
+        )
+
+    return tournament
+
+
 def pay_prize(tournament: Tournament, winner):
     """
     Pays the prize to the winner using the safe wallet service.

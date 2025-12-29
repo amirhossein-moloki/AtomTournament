@@ -131,6 +131,12 @@ class Tournament(SlugMixin, models.Model):
         ("team_deathmatch", "Team Deathmatch"),
         ("battle_royale", "Battle Royale"),
     )
+    STATUS_CHOICES = (
+        ("upcoming", "Upcoming"),
+        ("ongoing", "Ongoing"),
+        ("finished", "Finished"),
+        ("cancelled", "Cancelled"),
+    )
     type = models.CharField(
         max_length=20, choices=TOURNAMENT_TYPE_CHOICES, default="individual"
     )
@@ -215,6 +221,9 @@ class Tournament(SlugMixin, models.Model):
     top_teams = models.ManyToManyField(
         "teams.Team", related_name="top_placements", blank=True
     )
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="upcoming", db_index=True
+    )
 
     def clean(self):
         super().clean()
@@ -249,16 +258,6 @@ class Tournament(SlugMixin, models.Model):
 
     def __str__(self):
         return self.name
-
-    @property
-    def status(self):
-        now = timezone.now()
-        if self.start_date > now:
-            return "Upcoming"
-        elif self.start_date <= now < self.end_date:
-            return "Ongoing"
-        else:
-            return "Finished"
 
 
 class Participant(models.Model):

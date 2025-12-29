@@ -71,7 +71,7 @@ from .services import (approve_winner_submission_service, confirm_match_result,
                        create_report_service, create_winner_submission_service,
                        dispute_match_result, generate_matches, join_tournament,
                        reject_report_service, reject_winner_submission_service,
-                       resolve_report_service)
+                       resolve_report_service, cancel_tournament)
 from .tasks import generate_matches_task, approve_winner_submission_task
 from common.throttles import (
     VeryStrictThrottle,
@@ -259,6 +259,7 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
             "destroy",
             "generate_matches",
             "start_countdown",
+            "cancel",
         ]:
             return [IsGameManagerOrAdmin()]
         return [IsAuthenticated()]
@@ -325,6 +326,18 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
             eta=tournament.countdown_start_time + timezone.timedelta(minutes=5),
         )
         return Response({"message": "Countdown started."})
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
+    def cancel(self, request, slug=None):
+        """
+        Cancel a tournament.
+        """
+        tournament = self.get_object()
+        try:
+            cancel_tournament(tournament)
+            return Response({"message": "Tournament has been cancelled and participants refunded."})
+        except ApplicationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class MatchViewSet(viewsets.ModelViewSet):
