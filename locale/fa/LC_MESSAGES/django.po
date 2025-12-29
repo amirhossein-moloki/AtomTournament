@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-12-08 18:57+0330\n"
+"POT-Creation-Date: 2025-12-29 12:25+0330\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,25 +18,9 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
-#: blog/models.py:332 blog/models.py:333
+#: blog/models.py:335 blog/models.py:336
 msgid "Post Media"
 msgstr "رسانه پست"
-
-#: notifications/models.py:9
-msgid "New Report"
-msgstr "گزارش جدید"
-
-#: notifications/models.py:10
-msgid "Report Status Change"
-msgstr "تغییر وضعیت گزارش"
-
-#: notifications/models.py:11
-msgid "Winner Submission Required"
-msgstr "نیازمند ارسال فرم برنده"
-
-#: notifications/models.py:14
-msgid "Winner Submission Status Change"
-msgstr "تغییر وضعیت فرم برنده"
 
 #: templates/admin/index.html:4
 msgid "Dashboard"
@@ -135,7 +119,8 @@ msgstr "صفحه پیدا نشد."
 #: tournament_project/ckeditor_views.py:24
 msgid ""
 "اجازه‌ی آپلود ندارید. لطفاً با یک حساب کاربری دارای دسترسی مناسب وارد شوید."
-msgstr "اجازه‌ی آپلود ندارید. لطفاً با یک حساب کاربری دارای دسترسی مناسب وارد شوید."
+msgstr ""
+"اجازه‌ی آپلود ندارید. لطفاً با یک حساب کاربری دارای دسترسی مناسب وارد شوید."
 
 #: tournament_project/ckeditor_views.py:34
 msgid "هیچ فایلی برای آپلود ارسال نشده است."
@@ -145,7 +130,9 @@ msgstr "هیچ فایلی برای آپلود ارسال نشده است."
 msgid ""
 "فایل انتخاب‌شده یک تصویر معتبر نیست. لطفاً یکی از فرمت‌های پشتیبانی‌شده را آپلود "
 "کنید."
-msgstr "فایل انتخاب‌شده یک تصویر معتبر نیست. لطفاً یکی از فرمت‌های پشتیبانی‌شده را آپلود کنید."
+msgstr ""
+"فایل انتخاب‌شده یک تصویر معتبر نیست. لطفاً یکی از فرمت‌های پشتیبانی‌شده را آپلود "
+"کنید."
 
 #: tournament_project/ckeditor_views.py:52
 msgid "آپلود فایل با خطا مواجه شد. لطفاً دوباره تلاش کنید."
@@ -155,38 +142,196 @@ msgstr "آپلود فایل با خطا مواجه شد. لطفاً دوباره
 msgid "فایل ارسال‌شده معتبر نیست. لطفاً فرمت و حجم آن را بررسی کنید."
 msgstr "فایل ارسال‌شده معتبر نیست. لطفاً فرمت و حجم آن را بررسی کنید."
 
-#: tournaments/services.py:428
+#: tournaments/serializers.py:379
+msgid "Tournament is required when match is not provided."
+msgstr "در صورت عدم ارائه مسابقه، تورنمنت الزامی است."
+
+#: tournaments/serializers.py:385
+msgid "Match does not belong to the provided tournament."
+msgstr "مسابقه به تورنمنت ارائه شده تعلق ندارد."
+
+#: tournaments/serializers.py:395
+msgid "reported_user or reported_player_id is required."
+msgstr "ارائه `reported_user` یا `reported_player_id` الزامی است."
+
+#: tournaments/serializers.py:400
+msgid "Provide only one of reported_user or reported_player_id."
+msgstr "تنها یکی از `reported_user` یا `reported_player_id` را ارائه دهید."
+
+#: tournaments/serializers.py:406
+msgid "Tournament is required when using reported_player_id."
+msgstr "در صورت استفاده از `reported_player_id`، تورنمنت الزامی است."
+
+#: tournaments/serializers.py:416
+msgid "No user found with this in-game ID for the tournament's game."
+msgstr "هیچ کاربری با این آیدی بازی برای بازی تورنمنت پیدا نشد."
+
+#: tournaments/services.py:151
+msgid "Registration has not started yet."
+msgstr "ثبت‌نام هنوز شروع نشده است."
+
+#: tournaments/services.py:153
+msgid "Registration has already ended."
+msgstr "ثبت‌نام به پایان رسیده است."
+
+#: tournaments/services.py:323
 #, python-format
 msgid "You have been reported in tournament %(tournament_name)s."
 msgstr "گزارشی علیه شما در تورنمنت %(tournament_name)s ثبت شده است."
 
-#: tournaments/services.py:448
+#: tournaments/services.py:343
 #, python-format
 msgid ""
 "Your report against %(reported_user)s has been resolved and the user has "
 "been banned."
 msgstr "گزارش شما علیه %(reported_user)s بررسی و کاربر متخلف مسدود شد."
 
-#: tournaments/services.py:458
+#: tournaments/services.py:353
 #, python-format
 msgid "Your report against %(reported_user)s has been resolved."
 msgstr "گزارش شما علیه %(reported_user)s بررسی شد."
 
-#: tournaments/services.py:473
+#: tournaments/services.py:368
 #, python-format
 msgid "Your report against %(reported_user)s has been rejected."
 msgstr "گزارش شما علیه %(reported_user)s رد شد."
 
-#: tournaments/services.py:511
+#: tournaments/services.py:406
 msgid "Your winner submission has been received."
 msgstr "فرم اعلام برنده شدن شما دریافت شد."
 
-#: tournaments/services.py:575
+#: tournaments/services.py:445
 #, python-format
 msgid "Your submission for %(tournament_name)s has been approved."
 msgstr "فرم شما برای تورنمنت %(tournament_name)s تأیید شد."
 
-#: tournaments/services.py:591
+#: tournaments/services.py:458
 #, python-format
 msgid "Your submission for %(tournament_name)s has been rejected."
 msgstr "فرم شما برای تورنمنت %(tournament_name)s رد شد."
+
+#: tournaments/views.py:312
+msgid "Match generation has been started."
+msgstr "ساخت مسابقات شروع شده است."
+
+#: tournaments/views.py:328
+msgid "Countdown started."
+msgstr "شمارش معکوس شروع شد."
+
+#: tournaments/views.py:383
+msgid "This match is not in 'ongoing' status."
+msgstr "این مسابقه در وضعیت 'در حال برگزاری' قرار ندارد."
+
+#: tournaments/views.py:386
+msgid "The result of this match has already been submitted."
+msgstr "نتیجه این مسابقه قبلاً ثبت شده است."
+
+#: tournaments/views.py:395
+msgid "Invalid winner ID."
+msgstr "شناسه برنده نامعتبر است."
+
+#: tournaments/views.py:400
+#, fuzzy
+#| msgid "Page not found."
+msgid "Winner user not found."
+msgstr "کاربر برنده یافت نشد."
+
+#: tournaments/views.py:403
+msgid "Invalid winner team ID."
+msgstr "شناسه تیم برنده نامعتبر است."
+
+#: tournaments/views.py:408
+#, fuzzy
+#| msgid "Page not found."
+msgid "Winner team not found."
+msgstr "تیم برنده یافت نشد."
+
+#: tournaments/views.py:427 tournaments/views.py:451
+msgid "This match is not in 'pending confirmation' status."
+msgstr "این مسابقه در وضعیت 'در انتظار تایید' قرار ندارد."
+
+#: tournaments/views.py:430
+msgid "You cannot confirm a result you submitted."
+msgstr "شما نمی‌توانید نتیجه‌ای که خودتان ثبت کرده‌اید را تایید کنید."
+
+#: tournaments/views.py:448
+msgid "Reason for dispute must be provided."
+msgstr "دلیل اعتراض باید مشخص شود."
+
+#: tournaments/views.py:454
+msgid "You cannot dispute a result you submitted."
+msgstr "شما نمی‌توانید به نتیجه‌ای که خودتان ثبت کرده‌اید اعتراض کنید."
+
+#: tournaments/views.py:592
+msgid "You do not have permission to access this file."
+msgstr "شما اجازه دسترسی به این فایل را ندارید."
+
+#: tournaments/views.py:633
+msgid "Report resolved and user banned."
+msgstr "گزارش رسیدگی شد و کاربر مسدود شد."
+
+#: tournaments/views.py:633
+msgid "Report resolved."
+msgstr "گزارش رسیدگی شد."
+
+#: tournaments/views.py:643
+msgid "Report rejected."
+msgstr "گزارش رد شد."
+
+#: tournaments/views.py:691
+msgid "Submission approval process has been started."
+msgstr "فرآیند تایید فرم ارسالی شروع شده است."
+
+#: tournaments/views.py:700
+msgid "Submission rejected and entry fees refunded."
+msgstr "فرم ارسالی رد شد و هزینه ورودی بازگردانده شد."
+
+#: users/views.py:74
+msgid "You are not authorized to login from here."
+msgstr "شما مجاز به ورود از اینجا نیستید."
+
+#: users/views.py:166
+msgid "OTP sent successfully."
+msgstr "کد تایید با موفقیت ارسال شد."
+
+#: users/views.py:354
+msgid "You do not have permission to view this user's matches."
+msgstr "شما اجازه مشاهده مسابقات این کاربر را ندارید."
+
+#: users/views.py:373
+msgid "ID token is required."
+msgstr "توکن شناسایی الزامی است."
+
+#: users/views.py:380
+msgid "Google OAuth is not configured on the server."
+msgstr "ورود با گوگل روی سرور تنظیم نشده است."
+
+#: users/views.py:399
+msgid "Unable to verify token with Google at this time."
+msgstr "در حال حاضر امکان تایید توکن با گوگل وجود ندارد."
+
+#: users/views.py:405
+msgid "An unexpected error occurred. Please try again later."
+msgstr "خطای غیرمنتظره‌ای رخ داد. لطفاً بعداً دوباره تلاش کنید."
+
+#: users/views.py:412
+#, fuzzy
+#| msgid "Page not found."
+msgid "Email not found in token."
+msgstr "ایمیل در توکن یافت نشد."
+
+#: users/views.py:420
+msgid "User with this email does not exist."
+msgstr "کاربری با این ایمیل وجود ندارد."
+
+#~ msgid "New Report"
+#~ msgstr "گزارش جدید"
+
+#~ msgid "Report Status Change"
+#~ msgstr "تغییر وضعیت گزارش"
+
+#~ msgid "Winner Submission Required"
+#~ msgstr "نیازمند ارسال فرم برنده"
+
+#~ msgid "Winner Submission Status Change"
+#~ msgstr "تغییر وضعیت فرم برنده"

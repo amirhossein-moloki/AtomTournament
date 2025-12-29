@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import (
@@ -308,7 +309,7 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
         tournament = self.get_object()
         try:
             generate_matches_task.delay(tournament.id)
-            return Response({"message": "Match generation has been started."})
+            return Response({"message": _("Match generation has been started.")})
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -324,7 +325,7 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
             (tournament.id,),
             eta=tournament.countdown_start_time + timezone.timedelta(minutes=5),
         )
-        return Response({"message": "Countdown started."})
+        return Response({"message": _("Countdown started.")})
 
 
 class MatchViewSet(viewsets.ModelViewSet):
@@ -379,10 +380,10 @@ class MatchViewSet(viewsets.ModelViewSet):
         user = request.user
 
         if match.status != "ongoing":
-            return Response({"error": "این مسابقه در وضعیت 'در حال برگزاری' قرار ندارد."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": _("This match is not in 'ongoing' status.")}, status=status.HTTP_400_BAD_REQUEST)
 
         if match.result_submitted_by is not None:
-            return Response({"error": "نتیجه این مسابقه قبلاً ثبت شده است."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": _("The result of this match has already been submitted.")}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = MatchSubmitResultSerializer(data=request.data)
         if serializer.is_valid():
@@ -391,20 +392,20 @@ class MatchViewSet(viewsets.ModelViewSet):
 
             if match.match_type == 'individual':
                 if winner_id not in [match.participant1_user_id, match.participant2_user_id]:
-                     return Response({"error": "شناسه برنده نامعتبر است."}, status=status.HTTP_400_BAD_REQUEST)
+                     return Response({"error": _("Invalid winner ID.")}, status=status.HTTP_400_BAD_REQUEST)
                 try:
                     winner_user = User.objects.get(id=winner_id)
                     match.winner_user = winner_user
                 except User.DoesNotExist:
-                    return Response({"error": "کاربر برنده یافت نشد."}, status=status.HTTP_404_NOT_FOUND)
+                    return Response({"error": _("Winner user not found.")}, status=status.HTTP_404_NOT_FOUND)
             else:
                 if winner_id not in [match.participant1_team_id, match.participant2_team_id]:
-                     return Response({"error": "شناسه تیم برنده نامعتبر است."}, status=status.HTTP_400_BAD_REQUEST)
+                     return Response({"error": _("Invalid winner team ID.")}, status=status.HTTP_400_BAD_REQUEST)
                 try:
                     winner_team = Team.objects.get(id=winner_id)
                     match.winner_team = winner_team
                 except Team.DoesNotExist:
-                    return Response({"error": "تیم برنده یافت نشد."}, status=status.HTTP_404_NOT_FOUND)
+                    return Response({"error": _("Winner team not found.")}, status=status.HTTP_404_NOT_FOUND)
 
             match.result_proof = result_proof
             match.result_submitted_by = user
@@ -423,10 +424,10 @@ class MatchViewSet(viewsets.ModelViewSet):
         user = request.user
 
         if match.status != "pending_confirmation":
-            return Response({"error": "این مسابقه در وضعیت 'در انتظار تایید' قرار ندارد."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": _("This match is not in 'pending confirmation' status.")}, status=status.HTTP_400_BAD_REQUEST)
 
         if match.result_submitted_by == user:
-            return Response({"error": "شما نمی‌توانید نتیجه‌ای که خودتان ثبت کرده‌اید را تایید کنید."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": _("You cannot confirm a result you submitted.")}, status=status.HTTP_400_BAD_REQUEST)
 
         match.is_confirmed = True
         match.status = "completed"
@@ -444,13 +445,13 @@ class MatchViewSet(viewsets.ModelViewSet):
         reason = request.data.get("reason")
 
         if not reason:
-            return Response({"error": "دلیل اعتراض باید مشخص شود."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": _("Reason for dispute must be provided.")}, status=status.HTTP_400_BAD_REQUEST)
 
         if match.status != "pending_confirmation":
-            return Response({"error": "این مسابقه در وضعیت 'در انتظار تایید' قرار ندارد."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": _("This match is not in 'pending confirmation' status.")}, status=status.HTTP_400_BAD_REQUEST)
 
         if match.result_submitted_by == user:
-            return Response({"error": "شما نمی‌توانید به نتیجه‌ای که خودتان ثبت کرده‌اید اعتراض کنید."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": _("You cannot dispute a result you submitted.")}, status=status.HTTP_400_BAD_REQUEST)
 
         match.is_disputed = True
         match.status = "disputed"
@@ -588,7 +589,7 @@ def private_media_view(request, path):
         return response
     else:
         return Response(
-            {"error": "You do not have permission to access this file."},
+            {"error": _("You do not have permission to access this file.")},
             status=status.HTTP_403_FORBIDDEN,
         )
 
@@ -629,7 +630,7 @@ class ReportViewSet(viewsets.ModelViewSet):
         report = self.get_object()
         ban_user = request.data.get("ban_user", False)
         resolve_report_service(report, ban_user)
-        message = "Report resolved and user banned." if ban_user else "Report resolved."
+        message = _("Report resolved and user banned.") if ban_user else _("Report resolved.")
         return Response({"message": message})
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
@@ -639,7 +640,7 @@ class ReportViewSet(viewsets.ModelViewSet):
         """
         report = self.get_object()
         reject_report_service(report)
-        return Response({"message": "Report rejected."})
+        return Response({"message": _("Report rejected.")})
 
 
 class WinnerSubmissionViewSet(viewsets.ModelViewSet):
@@ -687,7 +688,7 @@ class WinnerSubmissionViewSet(viewsets.ModelViewSet):
         """
         submission = self.get_object()
         approve_winner_submission_task.delay(submission.id)
-        return Response({"message": "Submission approval process has been started."})
+        return Response({"message": _("Submission approval process has been started.")})
 
     @action(detail=True, methods=["post"], permission_classes=[IsTournamentCreatorOrAdmin])
     def reject(self, request, pk=None):
@@ -696,7 +697,7 @@ class WinnerSubmissionViewSet(viewsets.ModelViewSet):
         """
         submission = self.get_object()
         reject_winner_submission_service(submission)
-        return Response({"message": "Submission rejected and entry fees refunded."})
+        return Response({"message": _("Submission rejected and entry fees refunded.")})
 
 
 class AdminReportListView(generics.ListAPIView):
