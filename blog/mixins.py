@@ -1,3 +1,48 @@
+from rest_framework import status
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.contrib.contenttypes.models import ContentType
+
+from .models import Reaction
+
+
+from . import serializers
+
+class ReactionMixin:
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def react(self, request, pk=None, slug=None):
+        obj = self.get_object()
+        serializer = serializers.ReactionCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        reaction_value = serializer.validated_data['reaction']
+
+        try:
+            reaction = Reaction.objects.get(
+                user=request.user,
+                content_type=ContentType.objects.get_for_model(obj.__class__),
+                object_id=obj.pk,
+                reaction=reaction_value
+            )
+            reaction.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Reaction.DoesNotExist:
+            Reaction.objects.create(
+                user=request.user,
+                content_type=ContentType.objects.get_for_model(obj.__class__),
+                object_id=obj.pk,
+                reaction=reaction_value
+            )
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['get'], url_path='reactions')
+    def reactions(self, request, pk=None, slug=None):
+        obj = self.get_object()
+        reactions = obj.reactions.all()
+        serializer = serializers.ReactionSerializer(reactions, many=True)
+        return Response(serializer.data)
+
+
 class DynamicFieldsMixin:
     """
     A serializer mixin that takes an additional `fields` argument that controls

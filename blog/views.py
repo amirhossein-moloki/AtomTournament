@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from django_filters.rest_framework import DjangoFilterBackend
 
+from django.contrib.contenttypes.models import ContentType
 from .models import (
     Post, AuthorProfile, Category, Tag, Series, Media, Revision,
     Comment, Reaction, Page, Menu, MenuItem
@@ -16,6 +17,7 @@ from .serializers import (
     PostListSerializer, PostDetailSerializer, PostCreateUpdateSerializer,
     AuthorProfileSerializer, CategorySerializer, TagSerializer, SeriesSerializer,
     MediaDetailSerializer, MediaCreateSerializer, RevisionSerializer, CommentSerializer, ReactionSerializer,
+    ReactionCreateSerializer,
     PageSerializer, MenuSerializer, MenuItemSerializer
 )
 from .filters import PostFilter
@@ -24,7 +26,7 @@ from .permissions import IsOwnerOrReadOnly, IsAdminUserOrReadOnly, IsAuthorOrAdm
 from users.permissions import IsOwnerOrAdmin
 from .tasks import notify_author_on_new_comment
 from .exceptions import custom_exception_handler
-from .mixins import DynamicSerializerViewMixin
+from .mixins import DynamicSerializerViewMixin, ReactionMixin
 from rest_framework.views import APIView
 
 class BaseBlogAPIView(APIView):
@@ -35,7 +37,7 @@ class BaseBlogAPIView(APIView):
         return custom_exception_handler(exc, self.get_exception_handler_context())
 
 
-class PostViewSet(DynamicSerializerViewMixin, viewsets.ModelViewSet):
+class PostViewSet(DynamicSerializerViewMixin, ReactionMixin, viewsets.ModelViewSet):
     queryset = Post.objects.all()
     permission_classes = [IsAuthorOrAdminOrReadOnly]
     pagination_class = CustomPageNumberPagination
@@ -300,7 +302,7 @@ class RevisionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrAdmin]
 
 
-class CommentViewSet(viewsets.ModelViewSet):
+class CommentViewSet(ReactionMixin, viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrAdmin]

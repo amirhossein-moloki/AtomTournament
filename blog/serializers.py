@@ -303,3 +303,9 @@ class MenuSerializer(serializers.ModelSerializer):
     class Meta:
         model = Menu
         fields = '__all__'
+
+
+class ReactionCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Reaction
+        fields = ('reaction',)
