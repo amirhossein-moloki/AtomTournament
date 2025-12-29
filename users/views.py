@@ -1,6 +1,7 @@
 import logging
 
 from django.conf import settings
+from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 from django.db import models
 from decimal import Decimal
@@ -70,7 +71,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         user = serializer.user
         if not settings.DEBUG and not user.is_staff:
             return Response(
-                {"error": "You are not authorized to login from here."},
+                {"error": _("You are not authorized to login from here.")},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -162,7 +163,7 @@ class UserViewSet(viewsets.ModelViewSet):
         try:
             send_otp_service(identifier=identifier)
             return Response(
-                {"message": "OTP sent successfully."}, status=status.HTTP_200_OK
+                {"message": _("OTP sent successfully.")}, status=status.HTTP_200_OK
             )
         except ApplicationError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -350,7 +351,7 @@ class UserMatchHistoryView(generics.ListAPIView):
         ).exists()
 
         if not (user.is_staff or user == target_user or shares_team):
-            raise PermissionDenied("You do not have permission to view this user's matches.")
+            raise PermissionDenied(_("You do not have permission to view this user's matches."))
 
         return Match.objects.filter(
             Q(participant1_user=target_user)
@@ -369,14 +370,14 @@ class GoogleLoginView(APIView):
         token = request.data.get("id_token")
         if not token:
             return Response(
-                {"error": "ID token is required."},
+                {"error": _("ID token is required.")},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         if not settings.GOOGLE_CLIENT_ID:
             logger.error("Google OAuth client ID is not configured")
             return Response(
-                {"error": "Google OAuth is not configured on the server."},
+                {"error": _("Google OAuth is not configured on the server.")},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -389,26 +390,26 @@ class GoogleLoginView(APIView):
         except ValueError as exc:
             logger.warning("Invalid Google ID token: %s", exc)
             return Response(
-                {"error": f"Invalid token: {exc}"},
+                {"error": f"{_('Invalid token')}: {exc}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         except google_exceptions.TransportError as exc:
             logger.error("Failed to verify Google token with Google services: %s", exc)
             return Response(
-                {"error": "Unable to verify token with Google at this time."},
+                {"error": _("Unable to verify token with Google at this time.")},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except Exception:
             logger.exception("Unexpected error during Google login")
             return Response(
-                {"error": "An unexpected error occurred. Please try again later."},
+                {"error": _("An unexpected error occurred. Please try again later.")},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
         email = id_info.get("email")
         if not email:
             return Response(
-                {"error": "Email not found in token."},
+                {"error": _("Email not found in token.")},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -416,7 +417,7 @@ class GoogleLoginView(APIView):
             user = User.objects.get(email=email)
         except User.DoesNotExist:
             return Response(
-                {"error": "User with this email does not exist."},
+                {"error": _("User with this email does not exist.")},
                 status=status.HTTP_404_NOT_FOUND,
             )
 

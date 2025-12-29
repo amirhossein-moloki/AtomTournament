@@ -1,4 +1,5 @@
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -375,13 +376,13 @@ class ReportSerializer(serializers.ModelSerializer):
 
         if not tournament and not match:
             raise serializers.ValidationError(
-                {"tournament": "Tournament is required when match is not provided."}
+                {"tournament": _("Tournament is required when match is not provided.")}
             )
 
         if match and tournament:
             if match.tournament_id != tournament.id:
                 raise serializers.ValidationError(
-                    {"match": "Match does not belong to the provided tournament."}
+                    {"match": _("Match does not belong to the provided tournament.")}
                 )
 
         if match and not tournament:
@@ -391,18 +392,18 @@ class ReportSerializer(serializers.ModelSerializer):
 
         if not reported_user and not reported_player_id:
             raise serializers.ValidationError(
-                {"reported_user": "reported_user or reported_player_id is required."}
+                {"reported_user": _("reported_user or reported_player_id is required.")}
             )
 
         if reported_user and reported_player_id:
             raise serializers.ValidationError(
-                "Provide only one of reported_user or reported_player_id."
+                _("Provide only one of reported_user or reported_player_id.")
             )
 
         if reported_player_id:
             if not tournament:
                 raise serializers.ValidationError(
-                    {"tournament": "Tournament is required when using reported_player_id."}
+                    {"tournament": _("Tournament is required when using reported_player_id.")}
                 )
 
             try:
@@ -412,7 +413,7 @@ class ReportSerializer(serializers.ModelSerializer):
             except InGameID.DoesNotExist:
                 raise serializers.ValidationError(
                     {
-                        "reported_player_id": "No user found with this in-game ID for the tournament's game.",
+                        "reported_player_id": _("No user found with this in-game ID for the tournament's game."),
                     }
                 )
 
