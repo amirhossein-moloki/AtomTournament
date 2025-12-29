@@ -85,7 +85,7 @@ class VerifyDepositAPIView(APIView):
             try:
                 tx = Transaction.objects.get(order_id=order_id, authority=track_id, status=Transaction.Status.PENDING)
                 tx.status = Transaction.Status.FAILED
-                tx.description = "پرداخت توسط کاربر لغو شد یا در درگاه با خطا مواجه شد."
+                tx.description = "تراکنش ناموفق بود"
                 tx.save()
             except Transaction.DoesNotExist:
                 logger.error(f"تراکنش در بازگشت ناموفق یافت نشد. order_id={order_id}")
