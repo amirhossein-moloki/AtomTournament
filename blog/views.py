@@ -82,8 +82,6 @@ class PostViewSet(DynamicSerializerViewMixin, viewsets.ModelViewSet):
             if prefetches:
                 queryset = queryset.prefetch_related(*prefetches)
 
-            queryset = queryset.annotate(comments_count=Count('comments'))
-
             user = self.request.user
             if user.is_authenticated and user.is_staff:
                 return queryset

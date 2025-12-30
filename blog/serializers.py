@@ -175,7 +175,7 @@ class PostListSerializer(DynamicFieldsMixin, serializers.ModelSerializer):
     category = serializers.StringRelatedField()
     cover_media = MediaDetailSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
-    likes_count = serializers.SerializerMethodField()
+    likes_count = serializers.IntegerField(read_only=True)
     comments_count = serializers.IntegerField(read_only=True)
     published_at = JalaliDateTimeField()
 
@@ -186,9 +186,6 @@ class PostListSerializer(DynamicFieldsMixin, serializers.ModelSerializer):
             'published_at', 'author', 'category', 'cover_media',
             'views_count', 'likes_count', 'comments_count', 'tags'
         )
-
-    def get_likes_count(self, obj):
-        return obj.reactions.filter(reaction='like').count()
 
 
 class PostDetailSerializer(ContentNormalizationMixin, PostListSerializer):
@@ -249,11 +246,11 @@ class PostCreateUpdateSerializer(ContentNormalizationMixin, serializers.ModelSer
             'title', 'excerpt', 'content', 'status', 'visibility', 'is_hot',
             'published_at', 'scheduled_at', 'category', 'series',
             'cover_media', 'seo_title', 'seo_description', 'og_image',
-            'tags', 'slug', 'canonical_url', 'likes_count', 'views_count',
+            'tags', 'slug', 'canonical_url', 'views_count',
             'reading_time_sec', 'tag_ids', 'category_id', 'cover_media_id', 'og_image_id'
         )
         read_only_fields = (
-            'likes_count', 'views_count', 'reading_time_sec'
+            'views_count', 'reading_time_sec'
         )
         extra_kwargs = {
             'slug': {'required': False}
