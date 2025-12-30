@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-12-29 12:25+0330\n"
+"POT-Creation-Date: 2025-12-30 23:29+0330\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,7 +18,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
-#: blog/models.py:335 blog/models.py:336
+#: blog/models.py:339 blog/models.py:340
 msgid "Post Media"
 msgstr "رسانه پست"
 
@@ -231,8 +231,6 @@ msgid "Invalid winner ID."
 msgstr "شناسه برنده نامعتبر است."
 
 #: tournaments/views.py:400
-#, fuzzy
-#| msgid "Page not found."
 msgid "Winner user not found."
 msgstr "کاربر برنده یافت نشد."
 
@@ -241,8 +239,6 @@ msgid "Invalid winner team ID."
 msgstr "شناسه تیم برنده نامعتبر است."
 
 #: tournaments/views.py:408
-#, fuzzy
-#| msgid "Page not found."
 msgid "Winner team not found."
 msgstr "تیم برنده یافت نشد."
 
@@ -315,14 +311,24 @@ msgid "An unexpected error occurred. Please try again later."
 msgstr "خطای غیرمنتظره‌ای رخ داد. لطفاً بعداً دوباره تلاش کنید."
 
 #: users/views.py:412
-#, fuzzy
-#| msgid "Page not found."
 msgid "Email not found in token."
 msgstr "ایمیل در توکن یافت نشد."
 
 #: users/views.py:420
 msgid "User with this email does not exist."
 msgstr "کاربری با این ایمیل وجود ندارد."
+
+#: wallet/models.py:61
+msgid "Pending"
+msgstr "در انتظار"
+
+#: wallet/models.py:62
+msgid "Success"
+msgstr "موفق"
+
+#: wallet/models.py:63
+msgid "Failed"
+msgstr "ناموفق"
 
 #~ msgid "New Report"
 #~ msgstr "گزارش جدید"
