@@ -37,7 +37,7 @@ class BaseBlogAPIView(APIView):
 
 class PostViewSet(DynamicSerializerViewMixin, viewsets.ModelViewSet):
     queryset = Post.objects.all()
-    permission_classes = [IsAuthorOrAdminOrReadOnly]
+    permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrAdminOrReadOnly]
     pagination_class = CustomPageNumberPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = PostFilter
@@ -126,10 +126,10 @@ class PostViewSet(DynamicSerializerViewMixin, viewsets.ModelViewSet):
             return queryset
 
     def perform_create(self, serializer):
-        author_profile, _ = AuthorProfile.objects.get_or_create(
-            user=self.request.user,
-            defaults={'display_name': self.request.user.username}
-        )
+        try:
+            author_profile = AuthorProfile.objects.get(user=self.request.user)
+        except AuthorProfile.DoesNotExist:
+            raise PermissionDenied("You do not have permission to create a post.")
         serializer.save(author=author_profile)
 
     def retrieve(self, request, *args, **kwargs):

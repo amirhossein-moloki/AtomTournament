@@ -33,6 +33,10 @@ class CreateRandomPostsTest(TestCase):
     def test_command_creates_posts(self):
         """Test that the command creates the specified number of posts."""
         out = StringIO()
+        # Ensure at least one author profile exists for the command to use
+        user = UserFactory()
+        AuthorProfile.objects.create(user=user, display_name=user.username)
+
         call_command('create_random_posts', '5', stdout=out)
 
         self.assertEqual(Post.objects.count(), 5, "Should create 5 posts")
@@ -61,14 +65,16 @@ class CreateRandomPostsTest(TestCase):
         call_command('create_random_posts', '1', stdout=out)
 
         self.assertEqual(User.objects.count(), 1, "Should create a default user")
+        # The command should also create an AuthorProfile for the new user
+        self.assertTrue(AuthorProfile.objects.exists())
         self.assertEqual(Post.objects.count(), 1, "Should create 1 post")
         self.assertEqual(self.mock_get.call_count, 2, "Should call requests.get 2 times")
 
     def test_command_uses_existing_users(self):
         """Test that the command uses existing users to create posts."""
         user1 = UserFactory()
-        # The AuthorProfile is created by a signal, so we get it instead of creating it.
-        author_profile = AuthorProfile.objects.get(user=user1)
+        # Manually create the AuthorProfile since the signal is disabled
+        author_profile, _ = AuthorProfile.objects.get_or_create(user=user1, defaults={'display_name': 'User One'})
         author_profile.display_name = 'User One'
         author_profile.save()
 
