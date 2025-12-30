@@ -155,8 +155,14 @@ class SeriesSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class CommentUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('username', 'profile_picture')
+
+
 class CommentForPostSerializer(serializers.ModelSerializer):
-    user = serializers.StringRelatedField()
+    user = CommentUserSerializer(read_only=True)
     created_at = JalaliDateTimeField()
 
     class Meta:
@@ -188,7 +194,7 @@ class PostListSerializer(DynamicFieldsMixin, serializers.ModelSerializer):
 class PostDetailSerializer(ContentNormalizationMixin, PostListSerializer):
     series = SeriesSerializer(read_only=True)
     og_image = MediaDetailSerializer(read_only=True)
-    comments = CommentForPostSerializer(many=True, read_only=True)
+    comments = serializers.SerializerMethodField()
     content = serializers.CharField()
 
     media_attachments = serializers.SerializerMethodField()
@@ -198,6 +204,11 @@ class PostDetailSerializer(ContentNormalizationMixin, PostListSerializer):
             'content', 'canonical_url', 'series', 'seo_title',
             'seo_description', 'og_image', 'comments', 'media_attachments'
         )
+
+    def get_comments(self, obj):
+        approved_comments = obj.comments.filter(status='approved')
+        serializer = CommentForPostSerializer(approved_comments, many=True)
+        return serializer.data
 
     def get_media_attachments(self, obj):
         return PostMediaSerializer(obj.media_attachments.all(), many=True).data

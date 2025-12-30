@@ -312,11 +312,6 @@ class CommentViewSet(viewsets.ModelViewSet):
         if user.is_authenticated and user.is_staff:
             return queryset
 
-        if user.is_authenticated:
-            return queryset.filter(
-                Q(status='approved') | Q(user=user)
-            ).distinct()
-
         return queryset.filter(status='approved')
 
     def perform_create(self, serializer):
