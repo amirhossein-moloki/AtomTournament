@@ -10,7 +10,6 @@ from blog.factories import (
     PostFactory, CategoryFactory, TagFactory, SeriesFactory, MediaFactory, UserFactory
 )
 from blog.models import Post, AuthorProfile
-from blog.signals import create_author_profile
 from blog.tests.base import BaseAPITestCase
 
 
@@ -36,20 +35,16 @@ class PostPermissionAPITest(BaseAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_authenticated_user_without_author_profile_cannot_create_post(self):
-        # Disconnect the signal that creates author profiles
-        post_save.disconnect(create_author_profile, sender=UserFactory._meta.model)
-
         # Create a new user that doesn't have an author profile
         regular_user = UserFactory()
+        AuthorProfile.objects.filter(user=regular_user).delete() # Ensure no profile exists
         self._authenticate(regular_user)
         response = self.client.post(self.url, self.post_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        # Reconnect the signal to avoid affecting other tests
-        post_save.connect(create_author_profile, sender=UserFactory._meta.model)
-
     def test_author_user_can_create_post(self):
-        # self.user from BaseAPITestCase already has an author profile
+        # self.user from BaseAPITestCase needs an author profile explicitly created
+        AuthorProfile.objects.get_or_create(user=self.user, display_name=self.user.username)
         self._authenticate(self.user)
         response = self.client.post(self.url, self.post_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)

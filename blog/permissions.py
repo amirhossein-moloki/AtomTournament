@@ -6,21 +6,29 @@ from .models import AuthorProfile
 class IsAuthorOrAdminOrReadOnly(permissions.BasePermission):
     """
     Custom permission to allow read-only access to anyone,
-    but only allow post creation to authors and admin users.
+    but only allow write operations to the author of the post or admin users.
     """
 
     def has_permission(self, request, view):
+        # Allow all safe methods (GET, HEAD, OPTIONS)
         if request.method in permissions.SAFE_METHODS:
             return True
 
-        if not request.user.is_authenticated:
-            return False
+        # Deny writes for unauthenticated users
+        return request.user and request.user.is_authenticated
 
-        if request.method == 'POST':
-            is_author = AuthorProfile.objects.filter(user=request.user).exists()
-            return is_author or request.user.is_staff
+    def has_object_permission(self, request, view, obj):
+        # Allow all safe methods (GET, HEAD, OPTIONS)
+        if request.method in permissions.SAFE_METHODS:
+            return True
 
-        return True
+        # Allow writes if the user is an admin
+        if request.user.is_staff:
+            return True
+
+        # Allow writes if the user is the author of the post
+        # obj is the Post instance, so we check obj.author.user
+        return obj.author.user == request.user
 
 
 class IsOwnerOrReadOnly(permissions.BasePermission):
@@ -49,6 +57,7 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
                     return True
 
         return False
+
 
 class IsAdminUserOrReadOnly(permissions.BasePermission):
     """
