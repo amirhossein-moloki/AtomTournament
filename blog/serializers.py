@@ -155,8 +155,14 @@ class SeriesSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class CommentUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('username', 'profile_picture')
+
+
 class CommentForPostSerializer(serializers.ModelSerializer):
-    user = serializers.StringRelatedField()
+    user = CommentUserSerializer(read_only=True)
     created_at = JalaliDateTimeField()
 
     class Meta:
@@ -169,7 +175,7 @@ class PostListSerializer(DynamicFieldsMixin, serializers.ModelSerializer):
     category = serializers.StringRelatedField()
     cover_media = MediaDetailSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
-    likes_count = serializers.SerializerMethodField()
+    likes_count = serializers.IntegerField(read_only=True)
     comments_count = serializers.IntegerField(read_only=True)
     published_at = JalaliDateTimeField()
 
@@ -181,14 +187,11 @@ class PostListSerializer(DynamicFieldsMixin, serializers.ModelSerializer):
             'views_count', 'likes_count', 'comments_count', 'tags'
         )
 
-    def get_likes_count(self, obj):
-        return obj.reactions.filter(reaction='like').count()
-
 
 class PostDetailSerializer(ContentNormalizationMixin, PostListSerializer):
     series = SeriesSerializer(read_only=True)
     og_image = MediaDetailSerializer(read_only=True)
-    comments = CommentForPostSerializer(many=True, read_only=True)
+    comments = serializers.SerializerMethodField()
     content = serializers.CharField()
 
     media_attachments = serializers.SerializerMethodField()
@@ -198,6 +201,11 @@ class PostDetailSerializer(ContentNormalizationMixin, PostListSerializer):
             'content', 'canonical_url', 'series', 'seo_title',
             'seo_description', 'og_image', 'comments', 'media_attachments'
         )
+
+    def get_comments(self, obj):
+        approved_comments = obj.comments.filter(status='approved')
+        serializer = CommentForPostSerializer(approved_comments, many=True)
+        return serializer.data
 
     def get_media_attachments(self, obj):
         return PostMediaSerializer(obj.media_attachments.all(), many=True).data
@@ -238,11 +246,11 @@ class PostCreateUpdateSerializer(ContentNormalizationMixin, serializers.ModelSer
             'title', 'excerpt', 'content', 'status', 'visibility', 'is_hot',
             'published_at', 'scheduled_at', 'category', 'series',
             'cover_media', 'seo_title', 'seo_description', 'og_image',
-            'tags', 'slug', 'canonical_url', 'likes_count', 'views_count',
+            'tags', 'slug', 'canonical_url', 'views_count',
             'reading_time_sec', 'tag_ids', 'category_id', 'cover_media_id', 'og_image_id'
         )
         read_only_fields = (
-            'likes_count', 'views_count', 'reading_time_sec'
+            'views_count', 'reading_time_sec'
         )
         extra_kwargs = {
             'slug': {'required': False}
