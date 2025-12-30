@@ -14,4 +14,4 @@ class PostFilter(filters.FilterSet):
 
     class Meta:
         model = Post
-        fields = ['series', 'visibility', 'published_after', 'published_before', 'category', 'tags']
+        fields = ['series', 'visibility', 'published_after', 'published_before', 'category', 'tags', 'is_hot']

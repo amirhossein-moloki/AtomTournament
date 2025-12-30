@@ -152,6 +152,23 @@ class PostAPITest(BaseAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 2)
 
+    def test_post_is_hot_filtering(self):
+        PostFactory(is_hot=True)
+        PostFactory(is_hot=False)
+        url = reverse('blog:post-list')
+
+        # Filter by is_hot=True
+        response = self.client.get(url, {'is_hot': 'true'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertTrue(response.data['results'][0]['is_hot'])
+
+        # Filter by is_hot=False
+        response = self.client.get(url, {'is_hot': 'false'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertFalse(response.data['results'][0]['is_hot'])
+
     def test_post_date_filtering(self):
         PostFactory(published_at=timezone.now() - timedelta(days=5))
         PostFactory(published_at=timezone.now() - timedelta(days=15))
