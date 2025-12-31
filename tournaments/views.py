@@ -327,6 +327,47 @@ class TournamentViewSet(DynamicFieldsMixin, viewsets.ModelViewSet):
         )
         return Response({"message": _("Countdown started.")})
 
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
+    def declare_winner(self, request, slug=None):
+        """
+        Manually declares a winner for a tournament, sets their rank to 1,
+        and marks the tournament as finished. This is intended for tournaments
+        like battle royales where matches are not generated.
+        """
+        tournament = self.get_object()
+        user_id = request.data.get('user_id')
+
+        if tournament.status == "Finished":
+            return Response({"error": _("This tournament has already finished.")}, status=status.HTTP_400_BAD_REQUEST)
+
+        if tournament.mode != 'battle_royale':
+            return Response({"error": _("Winners can only be declared manually for 'battle_royale' mode tournaments.")}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not user_id:
+            return Response({"error": _("A user_id must be provided.")}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            winner = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"error": _("The specified user does not exist.")}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            participant = Participant.objects.get(tournament=tournament, user=winner)
+        except Participant.DoesNotExist:
+            return Response({"error": _("The specified user is not a participant in this tournament.")}, status=status.HTTP_404_NOT_FOUND)
+
+        # Set the winner's rank and finish the tournament
+        participant.rank = 1
+        participant.save()
+
+        # The tournament's `status` is a calculated property based on the end_date.
+        # Setting the end_date to now() effectively marks the tournament as "Finished".
+        tournament.end_date = timezone.now()
+        tournament.save()
+
+        serializer = self.get_serializer(tournament)
+        return Response(serializer.data)
+
 
 class MatchViewSet(viewsets.ModelViewSet):
     """
