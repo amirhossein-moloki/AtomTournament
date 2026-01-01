@@ -2,6 +2,7 @@ import random
 import string
 
 from django.core.cache import cache
+from django.db import IntegrityError
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -87,10 +88,23 @@ def verify_otp_service(identifier=None, code=None):
     query_field = "email" if is_email else "phone_number"
 
     # Get or create the user
-    user, created = User.objects.get_or_create(
-        **{query_field: identifier},
-        defaults={"username": identifier}  # Use identifier as username for simplicity
-    )
+    if is_email:
+        user = User.objects.filter(email__iexact=identifier).first()
+        if user:
+            created = False
+        else:
+            try:
+                user = User.objects.create(email=identifier.lower(), username=identifier)
+                created = True
+            except IntegrityError:
+                # Handle race condition where user was created between .first() and .create()
+                user = User.objects.filter(email__iexact=identifier).first()
+                created = False
+    else:
+        user, created = User.objects.get_or_create(
+            phone_number=identifier,
+            defaults={"username": identifier},
+        )
 
     if created:
         user.set_unusable_password()
