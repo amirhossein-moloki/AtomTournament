@@ -178,3 +178,33 @@ class TopPlayersByRankAPITest(BaseAPITestCase):
         self.assertEqual(top_player["id"], self.user.id)
         self.assertEqual(top_player["total_winnings"], str(prize_amount))
         self.assertIsNotNone(top_player.get("profile_picture"))
+
+
+class OTPServiceTest(BaseAPITestCase):
+    def test_verify_otp_handles_existing_duplicate_case_insensitive_emails(self):
+        """
+        Ensures OTP verification does not crash when multiple users with case-insensitive matching emails exist.
+        """
+        # Arrange
+        email1 = "DuplicateCase@Example.com"
+        email2 = "duplicatecase@example.com"
+
+        # Create two users with the same email but different casing
+        user1 = User.objects.create(username=email1, email=email1, phone_number="+989999999991")
+        user2 = User.objects.create(username=email2, email=email2, phone_number="+989999999992")
+        initial_user_count = User.objects.count()
+
+        # Create a valid OTP for one of the email variants
+        otp_code = "123456"
+        from .models import OTP
+        from .services import verify_otp_service
+        OTP.objects.create(identifier=email1, code=otp_code)
+
+        # Act
+        # This call would raise MultipleObjectsReturned with the faulty logic
+        verified_user = verify_otp_service(identifier=email1, code=otp_code)
+
+        # Assert
+        self.assertIsNotNone(verified_user)
+        self.assertIn(verified_user.pk, [user1.pk, user2.pk])
+        self.assertEqual(User.objects.count(), initial_user_count)
