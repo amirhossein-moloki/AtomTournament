@@ -1,6 +1,7 @@
 from celery import shared_task
 import logging
 from notifications.tasks import send_email_notification
+from django.utils import timezone
 from django.db.models import F
 
 logger = logging.getLogger(__name__)
@@ -42,3 +43,26 @@ def notify_author_on_new_comment(comment_id):
             )
     except Comment.DoesNotExist:
         logger.error(f"Comment with id {comment_id} not found for notification task.")
+
+
+@shared_task
+def publish_scheduled_posts():
+    """
+    Publish posts that were scheduled for a time in the past.
+    """
+    from .models import Post
+    now = timezone.now()
+    posts_to_publish = Post.objects.filter(
+        status='scheduled',
+        scheduled_at__lte=now
+    )
+
+    if posts_to_publish.exists():
+        num_published = posts_to_publish.update(
+            status='published',
+            published_at=F('scheduled_at'),
+            scheduled_at=None
+        )
+        logger.info(f"Successfully published {num_published} scheduled posts.")
+    else:
+        logger.info("No scheduled posts to publish.")

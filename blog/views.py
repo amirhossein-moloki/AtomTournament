@@ -198,14 +198,15 @@ def publish_post(request, slug):
     if post.author.user != request.user and not request.user.is_staff:
         raise PermissionDenied('شما اجازه‌ی انتشار این پست را ندارید.')
 
-    if post.status != 'draft':
+    if post.status not in ['draft', 'scheduled']:
         return Response(
-            {'detail': 'تنها پست‌های پیش‌نویس را می‌توان منتشر کرد.'},
+            {'detail': 'تنها پست‌های پیش‌نویس یا زمان‌بندی شده را می‌توان منتشر کرد.'},
             status=status.HTTP_400_BAD_REQUEST
         )
 
     post.status = 'published'
     post.published_at = timezone.now()
+    post.scheduled_at = None  # Clear schedule date if it was set
     post.save()
     serializer = PostDetailSerializer(post)
     return Response(serializer.data)
