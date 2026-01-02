@@ -147,21 +147,23 @@ server {
     ########################
     # Frontend (SPA)
     ########################
-    location = /blog {
-        try_files /blog-codes/html/blog.html =404;
-    }
+location = /blog {
+    return 301 /blog/;
+}
 
-    location = /blog/ {
-        try_files /blog-codes/html/blog.html =404;
-    }
+location = /blog/ {
+    try_files /blog/blog.html =404;
+}
 
-    location ~ ^/blog/(?<slug>[^/]+?)(?!\.(?:css|js|png|jpe?g|gif|svg|webp|ico|woff2?|woff|ttf|otf|map))(?:/)?$ {
-        rewrite ^ /blog-codes/html/single-post-page.html?slug=$slug last;
-    }
+# فایل‌های استاتیک داخل /blog/ اول سرو شوند
+location ^~ /blog/ {
+    try_files $uri $uri/ =404;
+}
 
-    location ^~ /blog-codes/ {
-        try_files $uri =404;
-    }
+# اگر فایل نبود، به صفحه single هدایت شود (slug)
+location ~ ^/blog/(?<slug>[^/]+?)(?!\.(?:css|js|png|jpe?g|gif|svg|webp|ico|woff2?|woff|ttf|otf|map))(?:/)?$ {
+    rewrite ^ /blog/single-post-page.html?slug=$slug last;
+}
 
     ########################
     # Favicon (FIX)
