@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.core.files.storage import default_storage
+from django.utils import timezone
 from jalali_date import datetime2jalali
 from markdownify import markdownify as html_to_markdown
 
@@ -239,6 +240,7 @@ class PostCreateUpdateSerializer(ContentNormalizationMixin, serializers.ModelSer
     category = CategorySerializer(read_only=True)
     published_at = JalaliDateTimeField()
     scheduled_at = JalaliDateTimeField()
+    publish_at = serializers.DateTimeField(write_only=True, required=False, allow_null=True)
 
     class Meta:
         model = Post
@@ -247,7 +249,8 @@ class PostCreateUpdateSerializer(ContentNormalizationMixin, serializers.ModelSer
             'published_at', 'scheduled_at', 'category', 'series',
             'cover_media', 'seo_title', 'seo_description', 'og_image',
             'tags', 'slug', 'canonical_url', 'views_count',
-            'reading_time_sec', 'tag_ids', 'category_id', 'cover_media_id', 'og_image_id'
+            'reading_time_sec', 'tag_ids', 'category_id', 'cover_media_id', 'og_image_id',
+            'publish_at'
         )
         read_only_fields = (
             'views_count', 'reading_time_sec'
@@ -255,6 +258,46 @@ class PostCreateUpdateSerializer(ContentNormalizationMixin, serializers.ModelSer
         extra_kwargs = {
             'slug': {'required': False}
         }
+
+    def _handle_publication_date(self, validated_data):
+        publish_at = validated_data.pop('publish_at', None)
+        status = validated_data.get('status', self.instance.status if self.instance else 'draft')
+
+        if publish_at:
+            if status == 'published':
+                # If the user intends to publish, respect the publish_at date.
+                if publish_at > timezone.now():
+                    validated_data['status'] = 'scheduled'
+                    validated_data['scheduled_at'] = publish_at
+                    validated_data['published_at'] = None
+                else:
+                    validated_data['status'] = 'published'
+                    validated_data['published_at'] = publish_at
+                    validated_data['scheduled_at'] = None
+            elif status == 'draft':
+                # If the post is a draft, just save the schedule date.
+                if publish_at > timezone.now():
+                    validated_data['scheduled_at'] = publish_at
+                else:
+                    # If backdating a draft, it doesn't make sense to set a past published_at
+                    # unless the status is also being changed to 'published'.
+                    # We will just clear scheduled_at if a past date is given for a draft.
+                    validated_data['scheduled_at'] = None
+
+        # If the status is being changed to 'published' and no publish_at is provided,
+        # set the publication date to now.
+        elif status == 'published' and (not self.instance or self.instance.status != 'published'):
+            validated_data['published_at'] = timezone.now()
+
+        return validated_data
+
+    def create(self, validated_data):
+        validated_data = self._handle_publication_date(validated_data)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        validated_data = self._handle_publication_date(validated_data)
+        return super().update(instance, validated_data)
 
 
 class RevisionSerializer(serializers.ModelSerializer):

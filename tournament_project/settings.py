@@ -515,6 +515,13 @@ CELERY_RESULT_EXPIRES = timedelta(
     hours=int(os.environ.get("CELERY_RESULT_EXPIRES_HOURS", "24"))
 )
 
+CELERY_BEAT_SCHEDULE = {
+    'publish-scheduled-posts': {
+        'task': 'blog.tasks.publish_scheduled_posts',
+        'schedule': timedelta(minutes=1),
+    },
+}
+
 if "test" in sys.argv or "pytest" in sys.modules:
     CELERY_TASK_ALWAYS_EAGER = True
     # Disable guardian's anonymous user during tests to prevent test failures
