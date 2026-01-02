@@ -1,7 +1,6 @@
 import random
 import string
 
-from django.core.cache import cache
 from django.db import IntegrityError
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken

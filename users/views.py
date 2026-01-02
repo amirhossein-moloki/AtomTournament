@@ -1,6 +1,7 @@
 import logging
 
 from django.conf import settings
+from django.core.cache import cache
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -9,10 +10,7 @@ from decimal import Decimal
 from django.db.models import Count, F, Prefetch, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
-from django.utils.decorators import method_decorator
-from django.views.decorators.cache import cache_page
 from django.shortcuts import get_object_or_404
-from django.views.decorators.vary import vary_on_headers
 from django_filters.rest_framework import DjangoFilterBackend
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
@@ -210,10 +208,13 @@ class DashboardView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    @method_decorator(cache_page(60 * 5))
-    @method_decorator(vary_on_headers("Authorization"))
     def get(self, request):
         user = request.user
+        cache_key = f"dashboard:user:{user.id}"
+        cached_data = cache.get(cache_key)
+
+        if cached_data:
+            return Response(cached_data)
 
         # Serialize user profile data
         user_profile_data = UserSerializer(user, context={'request': request}).data
@@ -263,6 +264,8 @@ class DashboardView(APIView):
             'teams': teams_data,
             'tournament_history': tournament_history_data,
         }
+
+        cache.set(cache_key, data, timeout=60 * 5)  # Cache for 5 minutes
         return Response(data)
 
 
@@ -273,8 +276,12 @@ class TopPlayersView(APIView):
     """
     permission_classes = [AllowAny]
 
-    @method_decorator(cache_page(60 * 15))
     def get(self, request):
+        cache_key = "top_players:prize"
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return Response(cached_data)
+
         users = User.objects.annotate(
             total_winnings=Coalesce(
                 models.Sum(
@@ -285,6 +292,7 @@ class TopPlayersView(APIView):
             )
         ).order_by("-total_winnings")
         serializer = TopPlayerSerializer(users, many=True)
+        cache.set(cache_key, serializer.data, timeout=60 * 15)  # Cache for 15 minutes
         return Response(serializer.data)
 
 
@@ -296,8 +304,12 @@ class TopPlayersByRankView(APIView):
 
     permission_classes = [AllowAny]
 
-    @method_decorator(cache_page(60 * 15))
     def get(self, request):
+        cache_key = "top_players:rank"
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return Response(cached_data)
+
         users = (
             User.objects.annotate(
                 total_winnings=Coalesce(
@@ -312,6 +324,7 @@ class TopPlayersByRankView(APIView):
             .order_by(F("rank__required_score").desc(nulls_last=True), "-score")
         )
         serializer = TopPlayerByRankSerializer(users, many=True)
+        cache.set(cache_key, serializer.data, timeout=60 * 15)  # Cache for 15 minutes
         return Response(serializer.data)
 
 
