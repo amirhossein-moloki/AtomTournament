@@ -122,7 +122,8 @@ class TournamentColor(models.Model):
         return self.name
 
 
-class Tournament(SlugMixin, models.Model):
+class Tournament(models.Model):
+    slug = models.SlugField(max_length=150, unique=True)
     TOURNAMENT_TYPE_CHOICES = (
         ("individual", "Individual"),
         ("team", "Team"),

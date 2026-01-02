@@ -164,7 +164,7 @@ class TournamentAdmin(
     }
 
     fieldsets = (
-        ("Tournament Info", {"fields": ("name", "description", "image", "color", "game", "creator", "rules"), "classes": ("tab",)}),
+        ("Tournament Info", {"fields": ("name", "slug", "description", "image", "color", "game", "creator", "rules"), "classes": ("tab",)}),
         (
             "Configuration",
             {

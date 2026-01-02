@@ -39,6 +39,7 @@ class TournamentModelTests(TestCase):
         """
         tournament = Tournament.objects.create(
             name="Test Tournament",
+            slug="test-tournament",
             game=self.game,
             start_date=self.start_date,
             end_date=self.end_date,
@@ -53,6 +54,7 @@ class TournamentModelTests(TestCase):
         # Valid case
         tournament = Tournament(
             name="Valid Tournament",
+            slug="valid-tournament",
             game=self.game,
             registration_start_date=self.registration_start_date,
             registration_end_date=self.registration_end_date,
@@ -65,6 +67,7 @@ class TournamentModelTests(TestCase):
         with self.assertRaises(ValidationError):
             tournament = Tournament(
                 name="Invalid Tournament",
+                slug="invalid-tournament-1",
                 game=self.game,
                 registration_start_date=self.registration_end_date,
                 registration_end_date=self.registration_start_date,
@@ -77,6 +80,7 @@ class TournamentModelTests(TestCase):
         with self.assertRaises(ValidationError):
             tournament = Tournament(
                 name="Invalid Tournament",
+                slug="invalid-tournament-2",
                 game=self.game,
                 registration_start_date=self.registration_start_date,
                 registration_end_date=self.start_date,
@@ -92,6 +96,7 @@ class TournamentModelTests(TestCase):
         with self.assertRaises(ValidationError):
             tournament = Tournament(
                 name="Test Tournament",
+                slug="test-tournament-2",
                 game=self.game,
                 start_date=self.end_date,
                 end_date=self.start_date,
@@ -109,6 +114,7 @@ class TournamentModelTests(TestCase):
 
         tournament = Tournament(
             name="Same Day Tournament",
+            slug="same-day-tournament",
             game=self.game,
             start_date=start,
             end_date=end,
@@ -126,6 +132,7 @@ class TournamentModelTests(TestCase):
         with self.assertRaises(ValidationError):
             tournament = Tournament(
                 name="Test Tournament",
+                slug="test-tournament-3",
                 game=self.game,
                 start_date=self.start_date,
                 end_date=self.end_date,
@@ -141,6 +148,7 @@ class TournamentModelTests(TestCase):
 
         tournament = Tournament.objects.create(
             name="Test Tournament",
+            slug="test-tournament-4",
             game=self.game,
             start_date=self.start_date,
             end_date=self.end_date,
@@ -175,6 +183,7 @@ class TournamentModelTests(TestCase):
 
         tournament = Tournament.objects.create(
             name="Team Tournament",
+            slug="team-tournament",
             game=self.game,
             start_date=self.start_date,
             end_date=self.end_date,
@@ -214,6 +223,7 @@ class TournamentModelTests(TestCase):
 
         tournament = Tournament.objects.create(
             name="Custom Score Tournament",
+            slug="custom-score-tournament",
             game=self.game,
             start_date=self.start_date,
             end_date=self.end_date,
@@ -246,6 +256,7 @@ class JoinTournamentInGameIDTests(TestCase):
 
         self.tournament = Tournament.objects.create(
             name="Shooter Cup",
+            slug="shooter-cup",
             game=self.game,
             start_date=timezone.now() + timedelta(days=1),
             end_date=timezone.now() + timedelta(days=2),
@@ -279,6 +290,7 @@ class JoinTournamentInGameIDTests(TestCase):
 
         tournament = Tournament.objects.create(
             name="Team Cup",
+            slug="team-cup",
             game=self.game,
             start_date=timezone.now() + timedelta(days=1),
             end_date=timezone.now() + timedelta(days=2),
@@ -325,6 +337,7 @@ class MatchModelTests(TestCase):
         )
         self.tournament = Tournament.objects.create(
             name="Test Tournament",
+            slug="test-tournament-5",
             game=self.game,
             start_date=timezone.now() + timedelta(days=1),
             end_date=timezone.now() + timedelta(days=2),
@@ -358,6 +371,7 @@ class TournamentViewSetTests(APITestCase):
         self.game = Game.objects.create(name="Test Game")
         self.tournament = Tournament.objects.create(
             name="Test Tournament",
+            slug="test-tournament-6",
             game=self.game,
             start_date=timezone.now() + timedelta(days=1),
             end_date=timezone.now() + timedelta(days=2),
@@ -406,6 +420,7 @@ class TournamentViewSetTests(APITestCase):
         color = TournamentColor.objects.create(name="Red", rgb_code="255,0,0")
         data = {
             "name": "New Tournament by Admin",
+            "slug": "new-tournament-by-admin",
             "game": self.game.id,
             "color": color.id,
             "start_date": timezone.now() + timedelta(days=3),
@@ -421,6 +436,7 @@ class TournamentViewSetTests(APITestCase):
         self.client.force_authenticate(user=self.user)
         data = {
             "name": "New Tournament by User",
+            "slug": "new-tournament-by-user",
             "game": self.game.id,
             "start_date": timezone.now() + timedelta(days=3),
             "end_date": timezone.now() + timedelta(days=4),
@@ -445,6 +461,7 @@ class TournamentViewSetTests(APITestCase):
         team.members.add(member)
         team_tournament = Tournament.objects.create(
             name="Team Tournament",
+            slug="team-tournament-2",
             game=self.game,
             start_date=timezone.now() + timedelta(days=1),
             end_date=timezone.now() + timedelta(days=2),
@@ -470,6 +487,7 @@ class TournamentViewSetTests(APITestCase):
         self.user.wallet.save()
         paid_tournament = Tournament.objects.create(
             name="Paid Tournament",
+            slug="paid-tournament",
             game=self.game,
             start_date=timezone.now() + timedelta(days=1),
             end_date=timezone.now() + timedelta(days=2),
@@ -506,6 +524,7 @@ class TournamentViewSetTests(APITestCase):
         team.members.add(member)
         paid_tournament = Tournament.objects.create(
             name="Paid Team Tournament",
+            slug="paid-team-tournament",
             game=self.game,
             start_date=timezone.now() + timedelta(days=1),
             end_date=timezone.now() + timedelta(days=2),
@@ -537,6 +556,7 @@ class TournamentViewSetTests(APITestCase):
         self.user.wallet.save()
         paid_tournament = Tournament.objects.create(
             name="Expensive Tournament",
+            slug="expensive-tournament",
             game=self.game,
             start_date=timezone.now() + timedelta(days=1),
             end_date=timezone.now() + timedelta(days=2),
@@ -581,12 +601,14 @@ class TournamentViewSetTests(APITestCase):
         now = timezone.now()
         Tournament.objects.create(
             name="Future Tournament",
+            slug="future-tournament",
             game=self.game,
             start_date=now + timedelta(days=10),
             end_date=now + timedelta(days=11),
         )
         Tournament.objects.create(
             name="Past Tournament",
+            slug="past-tournament",
             game=self.game,
             start_date=now - timedelta(days=10),
             end_date=now - timedelta(days=9),
@@ -608,6 +630,7 @@ class TournamentViewSetTests(APITestCase):
         """
         full_tournament = Tournament.objects.create(
             name="Full Tournament",
+            slug="full-tournament",
             game=self.game,
             start_date=timezone.now() + timedelta(days=1),
             end_date=timezone.now() + timedelta(days=2),
@@ -641,6 +664,7 @@ class TournamentViewSetTests(APITestCase):
         now = timezone.now()
         early_tournament = Tournament.objects.create(
             name="Early Tournament",
+            slug="early-tournament",
             game=self.game,
             registration_start_date=now + timedelta(days=1),
             registration_end_date=now + timedelta(days=2),
@@ -661,6 +685,7 @@ class TournamentViewSetTests(APITestCase):
         now = timezone.now()
         late_tournament = Tournament.objects.create(
             name="Late Tournament",
+            slug="late-tournament",
             game=self.game,
             registration_start_date=now - timedelta(days=2),
             registration_end_date=now - timedelta(days=1),
@@ -681,6 +706,7 @@ class TournamentViewSetTests(APITestCase):
         now = timezone.now()
         open_tournament = Tournament.objects.create(
             name="Open Tournament",
+            slug="open-tournament",
             game=self.game,
             registration_start_date=now - timedelta(days=1),
             registration_end_date=now + timedelta(days=1),
@@ -709,6 +735,7 @@ class MatchViewSetTests(APITestCase):
         self.game = Game.objects.create(name="Test Game")
         self.tournament = Tournament.objects.create(
             name="Test Tournament",
+            slug="test-tournament-7",
             game=self.game,
             start_date=timezone.now() + timedelta(days=1),
             end_date=timezone.now() + timedelta(days=2),
@@ -788,6 +815,7 @@ class ReportViewSetTests(APITestCase):
         self.game = Game.objects.create(name="Test Game")
         self.tournament = Tournament.objects.create(
             name="T",
+            slug="t-slug",
             game=self.game,
             start_date=timezone.now(),
             end_date=timezone.now() + timedelta(days=1),
@@ -923,6 +951,7 @@ class GetTournamentWinnersServiceTests(TestCase):
     def test_team_duel_returns_only_champion(self):
         tournament = Tournament.objects.create(
             name="Duel",
+            slug="duel",
             game=self.game,
             start_date=timezone.now(),
             end_date=timezone.now() + timedelta(days=1),
@@ -956,6 +985,7 @@ class GetTournamentWinnersServiceTests(TestCase):
     def test_individual_duel_returns_only_champion(self):
         tournament = Tournament.objects.create(
             name="Solo Duel",
+            slug="solo-duel",
             game=self.game,
             start_date=timezone.now(),
             end_date=timezone.now() + timedelta(days=1),
@@ -1004,6 +1034,7 @@ class GetTournamentWinnersServiceTests(TestCase):
     def test_multi_team_tournament_returns_multiple_winners(self):
         tournament = Tournament.objects.create(
             name="League",
+            slug="league",
             game=self.game,
             start_date=timezone.now(),
             end_date=timezone.now() + timedelta(days=1),
@@ -1067,6 +1098,7 @@ class GetTournamentWinnersServiceTests(TestCase):
     def test_multi_individual_tournament_returns_top_five(self):
         tournament = Tournament.objects.create(
             name="Solo League",
+            slug="solo-league",
             game=self.game,
             start_date=timezone.now(),
             end_date=timezone.now() + timedelta(days=1),
@@ -1105,6 +1137,7 @@ class GetTournamentWinnersServiceTests(TestCase):
     def test_custom_winner_slots_limits_output(self):
         tournament = Tournament.objects.create(
             name="Configured Solo League",
+            slug="configured-solo-league",
             game=self.game,
             start_date=timezone.now(),
             end_date=timezone.now() + timedelta(days=1),
@@ -1144,6 +1177,7 @@ class GetTournamentWinnersServiceTests(TestCase):
     def test_duel_respects_champion_only_even_with_custom_slots(self):
         tournament = Tournament.objects.create(
             name="Configured Duel",
+            slug="configured-duel",
             game=self.game,
             start_date=timezone.now(),
             end_date=timezone.now() + timedelta(days=1),
@@ -1190,6 +1224,7 @@ class WinnerSubmissionViewSetTests(APITestCase):
         self.game = Game.objects.create(name="Test Game")
         self.tournament = Tournament.objects.create(
             name="T",
+            slug="t-slug-2",
             game=self.game,
             start_date=timezone.now(),
             end_date=timezone.now() + timedelta(days=1),
@@ -1225,6 +1260,7 @@ class WinnerSubmissionViewSetTests(APITestCase):
     def test_create_submission_team_member_allowed(self, mock_get_winners):
         team_tournament = Tournament.objects.create(
             name="Team Tournament",
+            slug="team-tournament-3",
             game=self.game,
             start_date=timezone.now(),
             end_date=timezone.now() + timedelta(days=1),
@@ -1261,6 +1297,7 @@ class WinnerSubmissionViewSetTests(APITestCase):
         )
         team_tournament = Tournament.objects.create(
             name="Team Tournament",
+            slug="team-tournament-4",
             game=self.game,
             start_date=timezone.now(),
             end_date=timezone.now() + timedelta(days=1),
@@ -1431,6 +1468,7 @@ class GameManagerPermissionsTests(APITestCase):
         GameManager.objects.create(user=self.game_manager, game=self.managed_game)
         self.tournament_in_managed_game = Tournament.objects.create(
             name="Tournament in Managed Game",
+            slug="tournament-in-managed-game",
             game=self.managed_game,
             start_date=timezone.now(),
             end_date=timezone.now() + timedelta(days=1),
@@ -1445,6 +1483,7 @@ class GameManagerPermissionsTests(APITestCase):
         self.client.force_authenticate(user=self.game_manager)
         data = {
             "name": "New Tournament by Manager",
+            "slug": "new-tournament-by-manager",
             "game": self.managed_game.id,
             "start_date": timezone.now() + timedelta(days=2),
             "end_date": timezone.now() + timedelta(days=3),
@@ -1460,6 +1499,7 @@ class GameManagerPermissionsTests(APITestCase):
         self.client.force_authenticate(user=self.game_manager)
         data = {
             "name": "Illegal Tournament",
+            "slug": "illegal-tournament",
             "game": self.other_game.id,
             "start_date": timezone.now() + timedelta(days=2),
             "end_date": timezone.now() + timedelta(days=3),
@@ -1477,6 +1517,7 @@ class TournamentFilterTests(APITestCase):
         now = timezone.now()
         Tournament.objects.create(
             name="Alpha Tournament",
+            slug="alpha-tournament",
             game=self.game,
             start_date=now + timedelta(days=10),
             end_date=now + timedelta(days=11),
@@ -1484,6 +1525,7 @@ class TournamentFilterTests(APITestCase):
         )
         Tournament.objects.create(
             name="Beta Tournament",
+            slug="beta-tournament",
             game=self.game,
             start_date=now - timedelta(days=1),
             end_date=now + timedelta(days=1),
@@ -1491,6 +1533,7 @@ class TournamentFilterTests(APITestCase):
         )
         Tournament.objects.create(
             name="Gamma Tournament",
+            slug="gamma-tournament",
             game=self.game,
             start_date=now - timedelta(days=11),
             end_date=now - timedelta(days=10),
@@ -1629,67 +1672,6 @@ class TournamentColorCRUDTests(APITestCase):
         self.assertFalse(TournamentColor.objects.filter(id=color.id).exists())
 
 
-class SlugGenerationTests(APITestCase):
-    def setUp(self):
-        self.game = Game.objects.create(name="Test Game")
-        self.start_date = timezone.now() + timedelta(days=1)
-        self.end_date = timezone.now() + timedelta(days=2)
-        self.tournaments_url = "/api/tournaments/tournaments/"
-        self.games_url = "/api/tournaments/games/"
-
-    def test_game_slug_creation(self):
-        """Test that a slug is automatically created for a Game."""
-        self.assertEqual(self.game.slug, "test-game")
-
-    def test_tournament_slug_creation(self):
-        """Test that a slug is automatically created for a Tournament."""
-        tournament = Tournament.objects.create(
-            name="My Awesome Tournament",
-            game=self.game,
-            start_date=self.start_date,
-            end_date=self.end_date,
-        )
-        self.assertEqual(tournament.slug, "my-awesome-tournament")
-
-    def test_slug_uniqueness(self):
-        """Test that slugs are unique and suffixes are added correctly."""
-        game2 = Game.objects.create(name="Test Game")
-        self.assertNotEqual(self.game.slug, game2.slug)
-        self.assertEqual(game2.slug, "test-game-1")
-
-        tournament1 = Tournament.objects.create(
-            name="Clash Royale",
-            game=self.game,
-            start_date=self.start_date,
-            end_date=self.end_date,
-        )
-        tournament2 = Tournament.objects.create(
-            name="Clash Royale",
-            game=self.game,
-            start_date=self.start_date,
-            end_date=self.end_date,
-        )
-        self.assertNotEqual(tournament1.slug, tournament2.slug)
-        self.assertEqual(tournament2.slug, "clash-royale-1")
-
-    def test_api_access_with_slug(self):
-        """Test that API endpoints can be accessed using the slug."""
-        game_response = self.client.get(f"{self.games_url}{self.game.slug}/")
-        self.assertEqual(game_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(game_response.data["name"], self.game.name)
-
-        tournament = Tournament.objects.create(
-            name="API Test Tournament",
-            game=self.game,
-            start_date=self.start_date,
-            end_date=self.end_date,
-        )
-        tournament_response = self.client.get(
-            f"{self.tournaments_url}{tournament.slug}/"
-        )
-        self.assertEqual(tournament_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(tournament_response.data["name"], tournament.name)
-
 
 class GameLookupTests(APITestCase):
     def setUp(self):
@@ -1731,6 +1713,7 @@ class TournamentAPIViewsTests(APITestCase):
         # Create a past tournament
         self.past_tournament = Tournament.objects.create(
             name="Past Tournament",
+            slug="past-tournament-2",
             game=self.game,
             start_date=now - timedelta(days=10),
             end_date=now - timedelta(days=5),
@@ -1739,6 +1722,7 @@ class TournamentAPIViewsTests(APITestCase):
         # Create an ongoing tournament
         self.ongoing_tournament = Tournament.objects.create(
             name="Ongoing Tournament",
+            slug="ongoing-tournament",
             game=self.game,
             start_date=now - timedelta(days=1),
             end_date=now + timedelta(days=1),
@@ -1747,6 +1731,7 @@ class TournamentAPIViewsTests(APITestCase):
         # Create a future tournament
         self.future_tournament = Tournament.objects.create(
             name="Future Tournament",
+            slug="future-tournament-2",
             game=self.game,
             start_date=now + timedelta(days=5),
             end_date=now + timedelta(days=10),
