@@ -18,7 +18,7 @@ from verification.models import Verification
 
 from .exceptions import ApplicationError
 from .models import (Game, GameManager, Match, Participant, Report, Tournament,
-                     TournamentColor, TournamentImage, WinnerSubmission)
+                     TournamentColor, TournamentImage, WinnerSubmission, Rank)
 from .services import get_tournament_winners, join_tournament
 
 
@@ -1758,3 +1758,89 @@ class TournamentAPIViewsTests(APITestCase):
         self.assertIn(self.ongoing_tournament.name, future_tournament_names)
         self.assertIn(self.future_tournament.name, future_tournament_names)
         self.assertNotIn(self.past_tournament.name, future_tournament_names)
+
+from django.core.cache import cache
+from unittest.mock import patch, call
+from django.test import override_settings
+
+class CacheInvalidationTests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.game = Game.objects.create(name="Cache Test Game")
+        self.top_tournaments_url = "/api/tournaments/top-tournaments/"
+        Tournament.objects.create(
+            name="Initial Tournament",
+            slug="initial-tournament",
+            game=self.game,
+            start_date=timezone.now() + timedelta(days=5),
+            end_date=timezone.now() + timedelta(days=10),
+        )
+
+    def test_cache_is_invalidated_on_tournament_creation(self):
+        response = self.client.get(self.top_tournaments_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data.get("future_tournaments", [])), 1)
+
+        Tournament.objects.create(
+            name="New Tournament",
+            slug="new-tournament",
+            game=self.game,
+            start_date=timezone.now() + timedelta(days=15),
+            end_date=timezone.now() + timedelta(days=20),
+        )
+
+        response = self.client.get(self.top_tournaments_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data.get("future_tournaments", [])), 2)
+
+
+class ImageSignalTests(TestCase):
+    def setUp(self):
+        self.game = Game.objects.create(name="Signal Test Game")
+
+    def _generate_dummy_image(self, name="test.png"):
+        file = BytesIO()
+        image = Image.new("RGB", (100, 100), color = "red")
+        image.save(file, "PNG")
+        file.name = name
+        file.seek(0)
+        return SimpleUploadedFile(name, file.read(), content_type="image/png")
+
+    @patch("tournaments.signals.convert_image_to_avif_task.delay")
+    def test_image_conversion_task_is_called_on_new_image(self, mock_task_delay):
+        with self.captureOnCommitCallbacks(execute=True) as callbacks:
+            rank = Rank.objects.create(name="Test Rank", image=self._generate_dummy_image(), required_score=100)
+
+        self.assertEqual(len(callbacks), 1)
+        mock_task_delay.assert_called_once_with('tournaments', 'Rank', rank.id, 'image')
+
+
+    @patch("tournaments.signals.convert_image_to_avif_task.delay")
+    def test_image_conversion_task_is_called_on_image_change(self, mock_task_delay):
+        # Create the initial object without triggering the signal for this test
+        rank = Rank.objects.create(name="Test Rank", image=self._generate_dummy_image("original.png"), required_score=100)
+        mock_task_delay.reset_mock() # Reset mock after creation
+
+        with self.captureOnCommitCallbacks(execute=True) as callbacks:
+            rank.image = self._generate_dummy_image("new.png")
+            rank.save()
+
+        self.assertEqual(len(callbacks), 1)
+        mock_task_delay.assert_called_once_with('tournaments', 'Rank', rank.id, 'image')
+
+
+    @patch("tournaments.signals.convert_image_to_avif_task.delay")
+    def test_image_conversion_task_not_called_on_model_update_without_image_change(self, mock_task_delay):
+        # Create the initial object
+        Rank.objects.create(name="Test Rank", image=self._generate_dummy_image(), required_score=100)
+
+        # Get the instance and reset the mock
+        rank = Rank.objects.get(name="Test Rank")
+        mock_task_delay.reset_mock()
+
+        with self.captureOnCommitCallbacks(execute=True) as callbacks:
+            rank.name = "New Rank Name"
+            rank.save()
+
+        self.assertEqual(len(callbacks), 0)
+        mock_task_delay.assert_not_called()

@@ -4,9 +4,11 @@ from django.utils.text import slugify
 from django.utils import timezone
 from common.fields import OptimizedImageField, OptimizedVideoField
 from common.utils.files import get_sanitized_upload_path
+from common.mixins import FileChangeDetectionMixin
 
 
-class Rank(models.Model):
+class Rank(FileChangeDetectionMixin, models.Model):
+    MONITORED_FILE_FIELD = 'image'
     name = models.CharField(max_length=100)
     image = OptimizedImageField(upload_to=get_sanitized_upload_path)
     required_score = models.IntegerField()
@@ -26,7 +28,6 @@ class SlugMixin(models.Model):
             self.slug = slugify(self.name, allow_unicode=True)
 
         if not self.slug:
-            # handle cases where name is empty or contains only characters that are removed
             base_slug = self._meta.model_name
             self.slug = base_slug
             counter = 1
@@ -87,7 +88,8 @@ class Scoring(models.Model):
         unique_together = ("tournament", "user")
 
 
-class GameImage(models.Model):
+class GameImage(FileChangeDetectionMixin, models.Model):
+    MONITORED_FILE_FIELD = 'image'
     IMAGE_TYPE_CHOICES = (
         ("hero_banner", "Hero Banner"),
         ("cta_banner", "CTA Banner"),
@@ -122,8 +124,8 @@ class TournamentColor(models.Model):
         return self.name
 
 
-class Tournament(models.Model):
-    slug = models.SlugField(max_length=150, unique=True)
+class Tournament(SlugMixin, FileChangeDetectionMixin, models.Model):
+    MONITORED_FILE_FIELD = 'image'
     TOURNAMENT_TYPE_CHOICES = (
         ("individual", "Individual"),
         ("team", "Team"),
@@ -220,29 +222,18 @@ class Tournament(models.Model):
     def clean(self):
         super().clean()
         if self.registration_start_date and self.registration_end_date and self.registration_start_date > self.registration_end_date:
-            raise ValidationError(
-                "Registration end date must be after registration start date."
-            )
+            raise ValidationError("Registration end date must be after registration start date.")
         if self.registration_end_date and self.start_date and self.registration_end_date > self.start_date:
-            raise ValidationError(
-                "Tournament start date must be after registration end date."
-            )
+            raise ValidationError("Tournament start date must be after registration end date.")
         if self.start_date and self.end_date and self.start_date >= self.end_date:
-            raise ValidationError(
-                "End date must be after start date and time; same-day endings are"
-                " allowed only if they occur later than the start time."
-            )
+            raise ValidationError("End date must be after start date and time; same-day endings are allowed only if they occur later than the start time.")
         if not self.is_free and self.entry_fee is None:
             raise ValidationError("Entry fee must be set for paid tournaments.")
         if self.pk is not None:
             if self.type == "individual" and self.teams.exists():
-                raise ValidationError(
-                    "Individual tournaments cannot have team participants."
-                )
+                raise ValidationError("Individual tournaments cannot have team participants.")
             if self.type == "team" and self.participants.exists():
-                raise ValidationError(
-                    "Team tournaments cannot have individual participants."
-                )
+                raise ValidationError("Team tournaments cannot have individual participants.")
         if self.type == "individual" and self.team_size != 1:
             raise ValidationError("Individual tournaments must have a team size of 1.")
         if self.type == "team" and self.team_size <= 1:
@@ -267,11 +258,7 @@ class Participant(models.Model):
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
     status = models.CharField(
         max_length=20,
-        choices=(
-            ("registered", "Registered"),
-            ("checked_in", "Checked-in"),
-            ("eliminated", "Eliminated"),
-        ),
+        choices=(("registered", "Registered"), ("checked_in", "Checked-in"), ("eliminated", "Eliminated")),
         default="registered",
         db_index=True,
     )
@@ -282,11 +269,9 @@ class Participant(models.Model):
         unique_together = ("user", "tournament")
 
 
-class Match(models.Model):
-    MATCH_TYPE_CHOICES = (
-        ("individual", "Individual"),
-        ("team", "Team"),
-    )
+class Match(FileChangeDetectionMixin, models.Model):
+    MONITORED_FILE_FIELD = 'result_proof'
+    MATCH_TYPE_CHOICES = (("individual", "Individual"), ("team", "Team"))
     MATCH_STATUS_CHOICES = (
         ("pending", "Pending"),
         ("ongoing", "Ongoing"),
@@ -294,69 +279,18 @@ class Match(models.Model):
         ("completed", "Completed"),
         ("disputed", "Disputed"),
     )
-
-    tournament = models.ForeignKey(
-        Tournament, on_delete=models.CASCADE, related_name="matches"
-    )
-    match_type = models.CharField(
-        max_length=20, choices=MATCH_TYPE_CHOICES, default="individual"
-    )
-    status = models.CharField(
-        max_length=20, choices=MATCH_STATUS_CHOICES, default="pending", db_index=True
-    )
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="matches")
+    match_type = models.CharField(max_length=20, choices=MATCH_TYPE_CHOICES, default="individual")
+    status = models.CharField(max_length=20, choices=MATCH_STATUS_CHOICES, default="pending", db_index=True)
     round = models.IntegerField()
-    participant1_user = models.ForeignKey(
-        "users.User",
-        on_delete=models.CASCADE,
-        related_name="matches_as_participant1",
-        null=True,
-        blank=True,
-    )
-    participant2_user = models.ForeignKey(
-        "users.User",
-        on_delete=models.CASCADE,
-        related_name="matches_as_participant2",
-        null=True,
-        blank=True,
-    )
-    participant1_team = models.ForeignKey(
-        "teams.Team",
-        on_delete=models.CASCADE,
-        related_name="matches_as_participant1",
-        null=True,
-        blank=True,
-    )
-    participant2_team = models.ForeignKey(
-        "teams.Team",
-        on_delete=models.CASCADE,
-        related_name="matches_as_participant2",
-        null=True,
-        blank=True,
-    )
-    winner_user = models.ForeignKey(
-        "users.User",
-        on_delete=models.CASCADE,
-        related_name="won_matches",
-        null=True,
-        blank=True,
-    )
-    winner_team = models.ForeignKey(
-        "teams.Team",
-        on_delete=models.CASCADE,
-        related_name="won_matches",
-        null=True,
-        blank=True,
-    )
-    result_submitted_by = models.ForeignKey(
-        "users.User",
-        on_delete=models.SET_NULL,
-        related_name="submitted_match_results",
-        null=True,
-        blank=True,
-    )
-    result_proof = OptimizedImageField(
-        upload_to=get_sanitized_upload_path, null=True, blank=True
-    )
+    participant1_user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="matches_as_participant1", null=True, blank=True)
+    participant2_user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="matches_as_participant2", null=True, blank=True)
+    participant1_team = models.ForeignKey("teams.Team", on_delete=models.CASCADE, related_name="matches_as_participant1", null=True, blank=True)
+    participant2_team = models.ForeignKey("teams.Team", on_delete=models.CASCADE, related_name="matches_as_participant2", null=True, blank=True)
+    winner_user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="won_matches", null=True, blank=True)
+    winner_team = models.ForeignKey("teams.Team", on_delete=models.CASCADE, related_name="won_matches", null=True, blank=True)
+    result_submitted_by = models.ForeignKey("users.User", on_delete=models.SET_NULL, related_name="submitted_match_results", null=True, blank=True)
+    result_proof = OptimizedImageField(upload_to=get_sanitized_upload_path, null=True, blank=True)
     is_confirmed = models.BooleanField(default=False)
     is_disputed = models.BooleanField(default=False)
     dispute_reason = models.TextField(blank=True)
@@ -366,9 +300,7 @@ class Match(models.Model):
     def clean(self):
         if self.match_type == "individual":
             if self.participant1_team or self.participant2_team:
-                raise ValidationError(
-                    "Individual matches cannot have team participants."
-                )
+                raise ValidationError("Individual matches cannot have team participants.")
             if not self.participant1_user or not self.participant2_user:
                 raise ValidationError("Individual matches must have user participants.")
         elif self.match_type == "team":
@@ -381,10 +313,7 @@ class Match(models.Model):
         if self.match_type == "individual":
             return user in [self.participant1_user, self.participant2_user]
         else:
-            return (
-                user in self.participant1_team.members.all()
-                or user in self.participant2_team.members.all()
-            )
+            return user in self.participant1_team.members.all() or user in self.participant2_team.members.all()
 
     def __str__(self):
         if self.match_type == "individual":
@@ -393,47 +322,29 @@ class Match(models.Model):
             return f"{self.participant1_team} vs {self.participant2_team} - Tournament: {self.tournament}"
 
 
-class Report(models.Model):
-    REPORT_STATUS_CHOICES = (
-        ("pending", "Pending"),
-        ("resolved", "Resolved"),
-        ("rejected", "Rejected"),
-    )
-    reporter = models.ForeignKey(
-        "users.User", on_delete=models.CASCADE, related_name="sent_reports"
-    )
-    reported_user = models.ForeignKey(
-        "users.User", on_delete=models.CASCADE, related_name="received_reports"
-    )
+class Report(FileChangeDetectionMixin, models.Model):
+    MONITORED_FILE_FIELD = 'evidence'
+    REPORT_STATUS_CHOICES = (("pending", "Pending"), ("resolved", "Resolved"), ("rejected", "Rejected"))
+    reporter = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="sent_reports")
+    reported_user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="received_reports")
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
     match = models.ForeignKey(Match, on_delete=models.CASCADE, null=True, blank=True)
     description = models.TextField()
     evidence = OptimizedImageField(upload_to=get_sanitized_upload_path, null=True, blank=True)
-    status = models.CharField(
-        max_length=20, choices=REPORT_STATUS_CHOICES, default="pending", db_index=True
-    )
+    status = models.CharField(max_length=20, choices=REPORT_STATUS_CHOICES, default="pending", db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         location = self.match if self.match else self.tournament
-        return (
-            f"Report by {self.reporter.username} against {self.reported_user.username}"
-            f" in {location}"
-        )
+        return f"Report by {self.reporter.username} against {self.reported_user.username} in {location}"
 
 
 class WinnerSubmission(models.Model):
-    SUBMISSION_STATUS_CHOICES = (
-        ("pending", "Pending"),
-        ("approved", "Approved"),
-        ("rejected", "Rejected"),
-    )
+    SUBMISSION_STATUS_CHOICES = (("pending", "Pending"), ("approved", "Approved"), ("rejected", "Rejected"))
     winner = models.ForeignKey("users.User", on_delete=models.CASCADE)
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
     image = OptimizedImageField(upload_to="winner_submissions/", null=True, blank=True)
-    status = models.CharField(
-        max_length=20, choices=SUBMISSION_STATUS_CHOICES, default="pending"
-    )
+    status = models.CharField(max_length=20, choices=SUBMISSION_STATUS_CHOICES, default="pending")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

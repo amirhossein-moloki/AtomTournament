@@ -56,22 +56,6 @@ class Role(models.Model):
         return Role.objects.filter(is_default=True).first()
 
 
-def assign_default_role_and_referral_code(sender, instance, created, **kwargs):
-    """
-    Assigns a default role and generates a referral code for new users.
-    """
-    if created:
-        # Assign default role
-        default_role = Role.get_default_role()
-        if default_role:
-            instance.groups.add(default_role.group)
-
-        # Generate referral code
-        if not instance.referral_code:
-            instance.referral_code = shortuuid.uuid()
-            instance.save()
-
-
 class Referral(models.Model):
     """
     Stores the relationship between a referrer and a referred user.

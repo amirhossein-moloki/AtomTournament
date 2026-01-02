@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.cache import cache
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -16,8 +17,6 @@ from django.db.models import (
 from django.db.models.functions import Cast, Coalesce, Concat, NullIf
 from django.http import FileResponse, Http404
 from django.utils import timezone
-from django.utils.decorators import method_decorator
-from django.views.decorators.cache import cache_page
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 from rest_framework.filters import OrderingFilter
@@ -740,8 +739,12 @@ class TopTournamentsView(APIView):
 
     permission_classes = [AllowAny]
 
-    @method_decorator(cache_page(60 * 15))
     def get(self, request):
+        cache_key = "top_tournaments"
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return Response(cached_data)
+
         now = timezone.now()
         game_queryset_with_counts = Game.objects.annotate(
             held_tournaments_count=models.Count(
@@ -772,12 +775,13 @@ class TopTournamentsView(APIView):
             future_tournaments, many=True, context={"request": request}
         )
 
-        return Response(
-            {
-                "past_tournaments": past_serializer.data,
-                "future_tournaments": future_serializer.data,
-            }
-        )
+        data = {
+            "past_tournaments": past_serializer.data,
+            "future_tournaments": future_serializer.data,
+        }
+
+        cache.set(cache_key, data, timeout=60 * 15)  # Cache for 15 minutes
+        return Response(data)
 
 
 @extend_schema(responses=TotalPrizeMoneySerializer)
@@ -788,15 +792,21 @@ class TotalPrizeMoneyView(APIView):
 
     permission_classes = [AllowAny]
 
-    @method_decorator(cache_page(60 * 15))
     def get(self, request):
+        cache_key = "stats:total_prize_money"
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return Response(cached_data)
+
         total_prize_money = (
             Transaction.objects.filter(transaction_type="prize").aggregate(
                 total=models.Sum("amount")
             )["total"]
             or 0
         )
-        return Response({"total_prize_money": total_prize_money})
+        data = {"total_prize_money": total_prize_money}
+        cache.set(cache_key, data, timeout=60 * 15)  # Cache for 15 minutes
+        return Response(data)
 
 
 @extend_schema(responses=TotalTournamentsSerializer)

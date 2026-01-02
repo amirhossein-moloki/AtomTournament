@@ -1,41 +1,67 @@
-# tournaments/signals.py
-from django.db.models.signals import post_save
+from django.core.cache import cache
+from django.db import transaction
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
+
+from tournaments.models import Tournament, GameImage, Rank, Match, Report
 from common.tasks import convert_image_to_avif_task
-from .models import Rank, GameImage, TournamentImage, Match, Report
+
+
+@receiver(post_save, sender=Tournament)
+@receiver(post_delete, sender=Tournament)
+def invalidate_tournament_cache_and_convert_image(sender, instance, **kwargs):
+    """
+    Invalidates the cache for the top tournaments list and triggers
+    AVIF conversion for the tournament image if it has changed.
+    """
+    cache.delete("top_tournaments")
+
+    if instance.image_has_changed:
+        if instance.image:
+            transaction.on_commit(
+                lambda: convert_image_to_avif_task.delay('tournaments', 'Tournament', instance.id, 'image')
+            )
+
+
+@receiver(post_save, sender=GameImage)
+def convert_game_image(sender, instance, **kwargs):
+    """
+    Triggers AVIF conversion for a game's gallery image.
+    """
+    if instance.image_has_changed and instance.image:
+        transaction.on_commit(
+            lambda: convert_image_to_avif_task.delay('tournaments', 'GameImage', instance.id, 'image')
+        )
 
 
 @receiver(post_save, sender=Rank)
-def schedule_rank_avif_conversion(sender, instance, created, **kwargs):
-    if instance.image:
-        convert_image_to_avif_task.delay(
-            app_label='tournaments', model_name='Rank', instance_pk=instance.pk, field_name='image'
+def convert_rank_image(sender, instance, **kwargs):
+    """
+    Triggers AVIF conversion for a rank's image.
+    """
+    if instance.image_has_changed and instance.image:
+        transaction.on_commit(
+            lambda: convert_image_to_avif_task.delay('tournaments', 'Rank', instance.id, 'image')
         )
 
-@receiver(post_save, sender=GameImage)
-def schedule_gameimage_avif_conversion(sender, instance, created, **kwargs):
-    if instance.image:
-        convert_image_to_avif_task.delay(
-            app_label='tournaments', model_name='GameImage', instance_pk=instance.pk, field_name='image'
-        )
-
-@receiver(post_save, sender=TournamentImage)
-def schedule_tournamentimage_avif_conversion(sender, instance, created, **kwargs):
-    if instance.image:
-        convert_image_to_avif_task.delay(
-            app_label='tournaments', model_name='TournamentImage', instance_pk=instance.pk, field_name='image'
-        )
 
 @receiver(post_save, sender=Match)
-def schedule_match_avif_conversion(sender, instance, created, **kwargs):
-    if instance.result_proof:
-        convert_image_to_avif_task.delay(
-            app_label='tournaments', model_name='Match', instance_pk=instance.pk, field_name='result_proof'
+def convert_match_image(sender, instance, **kwargs):
+    """
+    Triggers AVIF conversion for a match's result proof.
+    """
+    if instance.image_has_changed and instance.result_proof:
+        transaction.on_commit(
+            lambda: convert_image_to_avif_task.delay('tournaments', 'Match', instance.id, 'result_proof')
         )
 
+
 @receiver(post_save, sender=Report)
-def schedule_report_avif_conversion(sender, instance, created, **kwargs):
-    if instance.evidence:
-        convert_image_to_avif_task.delay(
-            app_label='tournaments', model_name='Report', instance_pk=instance.pk, field_name='evidence'
+def convert_report_image(sender, instance, **kwargs):
+    """
+    Triggers AVIF conversion for a report's evidence image.
+    """
+    if instance.image_has_changed and instance.evidence:
+        transaction.on_commit(
+            lambda: convert_image_to_avif_task.delay('tournaments', 'Report', instance.id, 'evidence')
         )
