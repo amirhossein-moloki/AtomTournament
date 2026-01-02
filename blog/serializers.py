@@ -171,6 +171,16 @@ class CommentForPostSerializer(serializers.ModelSerializer):
         fields = ('id', 'user', 'content', 'created_at', 'parent')
 
 
+class CommentListSerializer(serializers.ModelSerializer):
+    user = CommentUserSerializer(read_only=True)
+    created_at = JalaliDateTimeField()
+    likes_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Comment
+        fields = ('id', 'user', 'content', 'created_at', 'parent', 'likes_count')
+
+
 class PostListSerializer(DynamicFieldsMixin, serializers.ModelSerializer):
     author = AuthorForPostSerializer(read_only=True)
     category = serializers.StringRelatedField()
@@ -192,7 +202,6 @@ class PostListSerializer(DynamicFieldsMixin, serializers.ModelSerializer):
 class PostDetailSerializer(ContentNormalizationMixin, PostListSerializer):
     series = SeriesSerializer(read_only=True)
     og_image = MediaDetailSerializer(read_only=True)
-    comments = serializers.SerializerMethodField()
     content = serializers.CharField()
 
     media_attachments = serializers.SerializerMethodField()
@@ -200,13 +209,8 @@ class PostDetailSerializer(ContentNormalizationMixin, PostListSerializer):
     class Meta(PostListSerializer.Meta):
         fields = PostListSerializer.Meta.fields + (
             'content', 'canonical_url', 'series', 'seo_title',
-            'seo_description', 'og_image', 'comments', 'media_attachments'
+            'seo_description', 'og_image', 'media_attachments'
         )
-
-    def get_comments(self, obj):
-        approved_comments = obj.comments.filter(status='approved')
-        serializer = CommentForPostSerializer(approved_comments, many=True)
-        return serializer.data
 
     def get_media_attachments(self, obj):
         return PostMediaSerializer(obj.media_attachments.all(), many=True).data
