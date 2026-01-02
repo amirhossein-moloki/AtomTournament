@@ -16,7 +16,7 @@ from .serializers import (
     PostListSerializer, PostDetailSerializer, PostCreateUpdateSerializer,
     AuthorProfileSerializer, CategorySerializer, TagSerializer, SeriesSerializer,
     MediaDetailSerializer, MediaCreateSerializer, RevisionSerializer, CommentSerializer, ReactionSerializer,
-    PageSerializer, MenuSerializer, MenuItemSerializer
+    PageSerializer, MenuSerializer, MenuItemSerializer, CommentListSerializer
 )
 from .filters import PostFilter
 from .pagination import CustomPageNumberPagination
@@ -184,6 +184,24 @@ class PostViewSet(DynamicSerializerViewMixin, viewsets.ModelViewSet):
 
         serializer = PostDetailSerializer(post, context=self.get_serializer_context())
         return Response(serializer.data)
+
+
+class PostCommentViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = CommentListSerializer
+    pagination_class = CustomPageNumberPagination
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    filter_backends = [OrderingFilter]
+    ordering_fields = ['created_at', 'likes_count']
+    ordering = ['-created_at']
+
+    def get_queryset(self):
+        post_slug = self.kwargs.get('post_slug')
+        return Comment.objects.filter(
+            post__slug=post_slug,
+            status='approved'
+        ).annotate(
+            likes_count=Count('reactions', filter=Q(reactions__reaction='like'))
+        ).select_related('user__authorprofile')
 
 
 @api_view(['POST'])
