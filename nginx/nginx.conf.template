@@ -147,22 +147,29 @@ server {
     ########################
     # Frontend (SPA)
     ########################
+# /blog -> /blog/
 location = /blog {
     return 301 /blog/;
 }
 
+# صفحه‌ی لیست
 location = /blog/ {
     try_files /blog/blog.html =404;
 }
 
-# فایل‌های استاتیک داخل /blog/ اول سرو شوند
-location ^~ /blog/ {
-    try_files $uri $uri/ =404;
+# هرچیزی زیر /blog/ (هم فایل‌های واقعی، هم اسلاگ‌ها)
+location /blog/ {
+    try_files $uri $uri/ @blog_slug;
 }
 
-# اگر فایل نبود، به صفحه single هدایت شود (slug)
-location ~ ^/blog/(?<slug>[^/]+?)(?!\.(?:css|js|png|jpe?g|gif|svg|webp|ico|woff2?|woff|ttf|otf|map))(?:/)?$ {
-    rewrite ^ /blog/single-post-page.html?slug=$slug last;
+location @blog_slug {
+    # اگر درخواست شبیه فایل استاتیک بود و وجود نداشت، 404 بده (نه اینکه صفحه‌ی پست برگردونی)
+    if ($uri ~* \.(?:css|js|png|jpe?g|gif|svg|webp|ico|woff2?|woff|ttf|otf|map)$) {
+        return 404;
+    }
+
+    # /blog/{slug} -> single-post-page.html (internal)
+    rewrite ^/blog/([^/]+)/?$ /blog/single-post-page.html last;
 }
 
     ########################
