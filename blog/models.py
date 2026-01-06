@@ -137,7 +137,7 @@ class Post(models.Model):
         ('unlisted', 'Unlisted'),
     )
 
-    slug = models.SlugField(unique=True, blank=True)
+    slug = models.SlugField(unique=True, allow_unicode=False)
     canonical_url = models.URLField(null=True, blank=True)
     title = models.CharField(max_length=255)
     excerpt = models.TextField()
