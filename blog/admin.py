@@ -22,6 +22,11 @@ class MediaAdmin(ModelAdminJalaliMixin, admin.ModelAdmin):
     search_fields = ('title', 'alt_text')
     readonly_fields = ('storage_key', 'url', 'type', 'mime', 'size_bytes', 'uploaded_by', 'get_created_at_jalali', 'download_link')
 
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # when editing an object
+            return self.readonly_fields
+        return ('storage_key', 'url', 'type', 'mime', 'size_bytes', 'uploaded_by', 'download_link')
+
     @admin.display(description='Created At (Jalali)', ordering='created_at')
     def get_created_at_jalali(self, obj):
         if obj.created_at:
