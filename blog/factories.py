@@ -88,7 +88,7 @@ class PostFactory(factory.django.DjangoModelFactory):
         model = Post
 
     title = factory.LazyAttribute(lambda _: fake.sentence())
-    slug = factory.LazyAttribute(lambda o: fake.slug(o.title))
+    slug = factory.Sequence(lambda n: f'{fake.slug()}-{n}')
     excerpt = factory.LazyAttribute(lambda _: fake.paragraph())
     content = factory.LazyAttribute(lambda _: fake.text())
     reading_time_sec = factory.LazyAttribute(lambda _: fake.random_int(min=60, max=600))
