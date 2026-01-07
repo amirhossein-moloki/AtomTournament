@@ -55,13 +55,14 @@ class Command(BaseCommand):
             tags = list(Tag.objects.all())
             self.stdout.write(self.style.SUCCESS('No tags found. Created 10 default tags.'))
 
-        for _ in range(count):
+        for i in range(count):
             # Create Media instances for cover and OG image
             cover_media = self._create_dummy_media(fake)
             og_image = self._create_dummy_media(fake)
 
             post = Post.objects.create(
                 title=fake.sentence(nb_words=6),
+                slug=f'{fake.slug()}-{i}',
                 excerpt=fake.paragraph(nb_sentences=2),
                 content=' '.join(fake.paragraphs(nb=5)),
                 status=random.choice(['draft', 'published']),

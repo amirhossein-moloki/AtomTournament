@@ -76,21 +76,18 @@ class CategoryAdmin(admin.ModelAdmin):
     list_display = ('name', 'slug', 'parent', 'order')
     list_filter = ('parent',)
     search_fields = ('name',)
-    prepopulated_fields = {'slug': ('name',)}
 
 
 @admin.register(Tag)
 class TagAdmin(admin.ModelAdmin):
     list_display = ('name', 'slug')
     search_fields = ('name',)
-    prepopulated_fields = {'slug': ('name',)}
 
 
 @admin.register(Series)
 class SeriesAdmin(admin.ModelAdmin):
     list_display = ('title', 'slug', 'order_strategy')
     search_fields = ('title',)
-    prepopulated_fields = {'slug': ('title',)}
 
 
 class PostTagInline(admin.TabularInline):
@@ -113,12 +110,11 @@ class PostMediaInline(admin.TabularInline):
 
 
 @admin.register(Post)
-class PostAdmin(ModelAdminJalaliMixin, admin.ModelAdmin):
+class PostAdmin(admin.ModelAdmin):
     form = PostAdminForm
     list_display = ('title', 'slug', 'author', 'category', 'status', 'published_at', 'is_hot')
     list_filter = ('status', 'visibility', 'category', 'author', 'is_hot')
     search_fields = ('title', 'content')
-    prepopulated_fields = {'slug': ('title',)}
     autocomplete_fields = ('cover_media', 'og_image')
     inlines = [PostTagInline, PostMediaInline]
     fieldsets = (
@@ -178,7 +174,6 @@ class PageAdmin(admin.ModelAdmin):
     list_display = ('title', 'slug', 'status', 'published_at')
     list_filter = ('status',)
     search_fields = ('title', 'content')
-    prepopulated_fields = {'slug': ('title',)}
 
 
 class MenuItemInline(admin.TabularInline):

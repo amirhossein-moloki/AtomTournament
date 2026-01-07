@@ -88,10 +88,6 @@ class Category(models.Model):
     def __str__(self):
         return self.name
 
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(self.name, allow_unicode=True)
-        super().save(*args, **kwargs)
 
 
 class Tag(models.Model):
@@ -168,20 +164,6 @@ class Post(models.Model):
         return self.title
 
     def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(self.title)
-
-        original_slug = self.slug
-        queryset = Post.objects.all()
-        if self.pk:
-            queryset = queryset.exclude(pk=self.pk)
-
-        # Ensure slug is unique
-        counter = 1
-        while queryset.filter(slug=self.slug).exists():
-            self.slug = f'{original_slug}-{counter}'
-            counter += 1
-
         if self.content:
             words = re.findall(r'\w+', self.content)
             word_count = len(words)
