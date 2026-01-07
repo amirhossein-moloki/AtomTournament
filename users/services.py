@@ -31,14 +31,14 @@ def send_otp_service(identifier=None):
     user = None
     if is_email:
         user = User.objects.filter(email=identifier).first()
-        if not user:
-            raise ApplicationError(
-                "No user found with this email. Please sign up with your phone number first."
-            )
-        if not user.is_phone_verified:
-            raise ApplicationError(
-                "Please verify your phone number before using email to log in."
-            )
+        # if not user:
+        #     raise ApplicationError(
+        #         "No user found with this email. Please sign up with your phone number first."
+        #     )
+        # if user and not user.is_phone_verified:
+        #     raise ApplicationError(
+        #         "Please verify your phone number before using email to log in."
+        #     )
     else:
         user = User.objects.filter(phone_number=identifier).first()
 
