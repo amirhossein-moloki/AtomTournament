@@ -15,7 +15,17 @@ class IsAuthorOrAdminOrReadOnly(permissions.BasePermission):
             return True
 
         # Deny writes for unauthenticated users
-        return request.user and request.user.is_authenticated
+        if not request.user or not request.user.is_authenticated:
+            return False
+
+        # For write methods, check if user is staff or has an author profile
+        if request.user.is_staff:
+            return True
+
+        try:
+            return hasattr(request.user, 'authorprofile')
+        except AuthorProfile.DoesNotExist:
+            return False
 
     def has_object_permission(self, request, view, obj):
         # Allow all safe methods (GET, HEAD, OPTIONS)
