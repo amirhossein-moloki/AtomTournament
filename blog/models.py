@@ -209,7 +209,7 @@ class Post(models.Model):
             path = urlparse(url).path
             if path.startswith(settings.MEDIA_URL):
                 # Strip /media/ part to get the storage_key
-                media_paths_in_content.add(path[len(settings.MEDIA_URL):])
+                media_paths_in_content.add(path[len(settings.MEDIA_URL):].lstrip('/'))
 
         # Find media objects matching the paths found
         linked_media_ids = set(

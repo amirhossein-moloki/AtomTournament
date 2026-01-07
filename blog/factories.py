@@ -139,7 +139,9 @@ class MediaFactory(factory.django.DjangoModelFactory):
     @classmethod
     def _create(cls, model_class, *args, **kwargs):
         uploaded_file = kwargs.pop('file')
-        storage_key = default_storage.save(uploaded_file.name, uploaded_file)
+        # Use a simplified name for the file to avoid issues with paths in storage_key
+        simplified_name = fake.file_name(category='image', extension='jpg')
+        storage_key = default_storage.save(simplified_name, uploaded_file)
 
         kwargs['storage_key'] = storage_key
         kwargs['url'] = default_storage.url(storage_key)
