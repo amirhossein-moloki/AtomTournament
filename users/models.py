@@ -8,6 +8,7 @@ from common.utils.files import get_sanitized_upload_path
 
 
 class User(AbstractUser):
+    email = models.EmailField(unique=True)
     phone_number = PhoneNumberField(unique=True)
     profile_picture = OptimizedImageField(
         upload_to=get_sanitized_upload_path, null=True, blank=True
