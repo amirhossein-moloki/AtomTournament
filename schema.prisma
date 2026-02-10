@@ -1,0 +1,312 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- Enums ---
+
+enum PostStatus {
+  draft
+  review
+  scheduled
+  published
+  archived
+}
+
+enum PostVisibility {
+  public
+  private
+  unlisted
+}
+
+enum CommentStatus {
+  pending
+  approved
+  spam
+  removed
+}
+
+enum OrderStrategy {
+  manual
+  by_date
+}
+
+enum MenuLocation {
+  header
+  footer
+  sidebar
+}
+
+// --- Models ---
+
+model User {
+  id               BigInt          @id @default(autoincrement())
+  username         String          @unique @db.VarChar(150)
+  firstName        String          @map("first_name") @db.VarChar(150)
+  lastName         String          @map("last_name") @db.VarChar(150)
+  email            String          @db.VarChar(254)
+  isStaff          Boolean         @map("is_staff")
+  isActive         Boolean         @map("is_active")
+  dateJoined       DateTime        @map("date_joined") @default(now())
+  phoneNumber      String          @unique @map("phone_number") @db.VarChar(128)
+  profilePicture   String?         @map("profile_picture") @db.VarChar(100)
+  score            Int             @default(0)
+  referralCode     String          @unique @map("referral_code") @db.VarChar(22)
+  isPhoneVerified  Boolean         @default(false) @map("is_phone_verified")
+
+  // Relations
+  authorProfile    AuthorProfile?
+  uploadedMedia    Media[]
+  revisions        Revision[]
+  comments         Comment[]
+  reactions        Reaction[]
+
+  @@map("users_user")
+}
+
+model Media {
+  id          BigInt   @id @default(autoincrement())
+  storageKey  String   @map("storage_key") @db.VarChar(255)
+  url         String   @db.Text
+  type        String   @db.VarChar(50)
+  mime        String   @db.VarChar(100)
+  width       Int?
+  height      Int?
+  duration    Int?
+  sizeBytes   Int      @default(0) @map("size_bytes")
+  altText     String   @default("") @map("alt_text") @db.VarChar(255)
+  title       String   @default("") @db.VarChar(255)
+  uploadedBy  BigInt?  @map("uploaded_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  uploader    User?          @relation(fields: [uploadedBy], references: [id], onDelete: SetNull)
+  profiles    AuthorProfile[]
+  postCovers  Post[]         @relation("PostCover")
+  postOgImages Post[]        @relation("PostOgImage")
+  attachments PostMedia[]
+
+  @@map("blog_media")
+}
+
+model AuthorProfile {
+  userId      BigInt @id @map("user_id")
+  displayName String @map("display_name") @db.VarChar(255)
+  bio         String @db.Text
+  avatarId    BigInt? @map("avatar_id")
+
+  // Relations
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  avatar      Media? @relation(fields: [avatarId], references: [id], onDelete: SetNull)
+  posts       Post[]
+
+  @@map("blog_authorprofile")
+}
+
+model Category {
+  id          BigInt   @id @default(autoincrement())
+  slug        String   @unique @db.VarChar(50) // allow_unicode handled by DB
+  name        String   @db.VarChar(255)
+  parentId    BigInt?  @map("parent_id")
+  description String   @db.Text
+  order       Int      @default(0)
+
+  // Relations
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Category[] @relation("CategoryHierarchy")
+  posts       Post[]
+
+  @@map("blog_category")
+}
+
+model Tag {
+  id          BigInt   @id @default(autoincrement())
+  slug        String   @unique @db.VarChar(50)
+  name        String   @db.VarChar(255)
+  description String   @db.Text
+
+  // Relations
+  posts       PostTag[]
+
+  @@map("blog_tag")
+}
+
+model Series {
+  id            BigInt        @id @default(autoincrement())
+  slug          String        @unique @db.VarChar(50)
+  title         String        @db.VarChar(255)
+  description   String        @db.Text
+  orderStrategy OrderStrategy @default(manual) @map("order_strategy")
+
+  // Relations
+  posts         Post[]
+
+  @@map("blog_series")
+}
+
+model Post {
+  id              BigInt         @id @default(autoincrement())
+  slug            String         @unique @db.VarChar(50)
+  canonicalUrl    String?        @map("canonical_url") @db.Text
+  title           String         @db.VarChar(255)
+  excerpt         String         @db.Text
+  isHot           Boolean        @default(false) @map("is_hot")
+  content         String         @db.Text // CKEditor content
+  readingTimeSec  Int            @default(0) @map("reading_time_sec")
+  status          PostStatus     @default(draft)
+  visibility      PostVisibility @default(public)
+  publishedAt     DateTime?      @map("published_at")
+  scheduledAt     DateTime?      @map("scheduled_at")
+  authorId        BigInt         @map("author_id")
+  categoryId      BigInt?        @map("category_id")
+  seriesId        BigInt?        @map("series_id")
+  coverMediaId    BigInt?        @map("cover_media_id")
+  ogImageId       BigInt?        @map("og_image_id")
+  seoTitle        String         @default("") @map("seo_title") @db.VarChar(255)
+  seoDescription  String         @default("") @map("seo_description") @db.Text
+  viewsCount      Int            @default(0) @map("views_count")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  author          AuthorProfile @relation(fields: [authorId], references: [userId], onDelete: Cascade)
+  category        Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  series          Series?       @relation(fields: [seriesId], references: [id], onDelete: SetNull)
+  coverMedia      Media?        @relation("PostCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
+  ogImage         Media?        @relation("PostOgImage", fields: [ogImageId], references: [id], onDelete: SetNull)
+  tags            PostTag[]
+  revisions       Revision[]
+  comments        Comment[]
+  mediaAttachments PostMedia[]
+
+  @@map("blog_post")
+  @@index([publishedAt])
+}
+
+model PostTag {
+  id        BigInt   @id @default(autoincrement())
+  postId    BigInt   @map("post_id")
+  tagId     BigInt   @map("tag_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  post      Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag       Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, tagId])
+  @@map("blog_posttag")
+}
+
+model Revision {
+  id         BigInt   @id @default(autoincrement())
+  postId     BigInt   @map("post_id")
+  editorId   BigInt?  @map("editor_id")
+  content    String   @db.Text
+  title      String   @db.VarChar(255)
+  excerpt    String   @db.Text
+  changeNote String   @default("") @map("change_note") @db.VarChar(255)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  post       Post  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  editor     User? @relation(fields: [editorId], references: [id], onDelete: SetNull)
+
+  @@map("blog_revision")
+}
+
+model Comment {
+  id         BigInt        @id @default(autoincrement())
+  postId     BigInt        @map("post_id")
+  userId     BigInt        @map("user_id")
+  parentId   BigInt?       @map("parent_id")
+  content    String        @db.Text
+  status     CommentStatus @default(pending)
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+  ip         String?       @db.VarChar(45) // Support IPv6
+  userAgent  String        @default("") @map("user_agent") @db.VarChar(255)
+
+  // Relations
+  post       Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent     Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies    Comment[] @relation("CommentReplies")
+
+  @@map("blog_comment")
+}
+
+model Reaction {
+  id            BigInt   @id @default(autoincrement())
+  userId        BigInt   @map("user_id")
+  reaction      String   @db.VarChar(50)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Generic Foreign Key (Option A: Polymorphic simulation suggested in notes)
+  contentTypeId Int      @map("content_type_id")
+  objectId      Int      @map("object_id")
+
+  // Relations
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contentTypeId, objectId, reaction])
+  @@map("blog_reaction")
+}
+
+model Page {
+  id             BigInt     @id @default(autoincrement())
+  slug           String     @unique @db.VarChar(50)
+  title          String     @db.VarChar(255)
+  content        String     @db.Text
+  status         PostStatus @default(draft)
+  publishedAt    DateTime?  @map("published_at")
+  seoTitle       String     @default("") @map("seo_title") @db.VarChar(255)
+  seoDescription String     @default("") @map("seo_description") @db.Text
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  @@map("blog_page")
+}
+
+model Menu {
+  id       BigInt       @id @default(autoincrement())
+  name     String       @db.VarChar(255)
+  location MenuLocation @unique
+
+  // Relations
+  items    MenuItem[]
+
+  @@map("blog_menu")
+}
+
+model MenuItem {
+  id          BigInt   @id @default(autoincrement())
+  menuId      BigInt   @map("menu_id")
+  parentId    BigInt?  @map("parent_id")
+  label       String   @db.VarChar(255)
+  url         String   @db.VarChar(255)
+  order       Int      @default(0)
+  targetBlank Boolean  @default(false) @map("target_blank")
+
+  // Relations
+  menu        Menu      @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  parent      MenuItem? @relation("MenuItemHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    MenuItem[] @relation("MenuItemHierarchy")
+
+  @@map("blog_menuitem")
+}
+
+model PostMedia {
+  id             BigInt @id @default(autoincrement())
+  postId         BigInt @map("post_id")
+  mediaId        BigInt @map("media_id")
+  attachmentType String @default("in-content") @map("attachment_type") @db.VarChar(50)
+
+  // Relations
+  post           Post  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  media          Media @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, mediaId, attachmentType])
+  @@map("blog_postmedia")
+}
