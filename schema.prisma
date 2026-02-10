@@ -169,6 +169,7 @@ model Post {
   seoTitle        String         @default("") @map("seo_title") @db.VarChar(255)
   seoDescription  String         @default("") @map("seo_description") @db.Text
   viewsCount      Int            @default(0) @map("views_count")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
 
   // Relations
   author          AuthorProfile @relation(fields: [authorId], references: [userId], onDelete: Cascade)
@@ -224,6 +225,7 @@ model Comment {
   content    String        @db.Text
   status     CommentStatus @default(pending)
   createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
   ip         String?       @db.VarChar(45) // Support IPv6
   userAgent  String        @default("") @map("user_agent") @db.VarChar(255)
 
@@ -262,6 +264,7 @@ model Page {
   publishedAt    DateTime?  @map("published_at")
   seoTitle       String     @default("") @map("seo_title") @db.VarChar(255)
   seoDescription String     @default("") @map("seo_description") @db.Text
+  updatedAt      DateTime   @updatedAt @map("updated_at")
 
   @@map("blog_page")
 }
