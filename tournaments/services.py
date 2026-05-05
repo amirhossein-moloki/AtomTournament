@@ -194,7 +194,11 @@ def join_tournament(
         if tournament.teams.filter(id=team.id).exists():
             raise ApplicationError("Your team has already joined this tournament.")
 
-        members = list(team.members.all()) + [team.captain]
+        # Ensure unique members and include captain
+        members_set = set(team.members.all())
+        members_set.add(team.captain)
+        members = list(members_set)
+
         if len(members) < tournament.team_size:
             raise ApplicationError("Your team does not have enough members.")
 
