@@ -107,37 +107,49 @@ def send_tournament_credentials(tournament_id):
     tournament = Tournament.objects.get(id=tournament_id)
 
     for match in tournament.matches.all():
-        # Assuming individual tournaments for simplicity. A similar logic can be applied for teams.
-        if (
-            match.match_type == "individual"
-            and match.participant1_user
-            and match.participant2_user
-        ):
-            participants = [match.participant1_user, match.participant2_user]
+        participants = []
+        if match.match_type == "individual":
+            if match.participant1_user and match.participant2_user:
+                participants = [
+                    (match.participant1_user, match.participant2_user.username),
+                    (match.participant2_user, match.participant1_user.username),
+                ]
+        elif match.match_type == "team":
+            if match.participant1_team and match.participant2_team:
+                team1_members = set(match.participant1_team.members.all())
+                team1_members.add(match.participant1_team.captain)
 
-            for i, p in enumerate(participants):
-                opponent = participants[1 - i]
-                context = {
-                    "tournament_name": tournament.name,
-                    "room_id": match.room_id,
-                    "password": match.password,
-                    "opponent_name": opponent.username,
-                }
+                team2_members = set(match.participant2_team.members.all())
+                team2_members.add(match.participant2_team.captain)
 
-                if p.email:
-                    plain_message = (
-                        f"شما به تورنمنت {tournament.name} پیوستید.\n"
-                        f"شناسه اتاق: {context.get('room_id', 'نامشخص')}\n"
-                        f"رمز عبور: {context.get('password', 'نامشخص')}"
-                    )
-                    html_message = render_to_string(
-                        "notifications/email/tournament_joined.html", context
-                    )
-                    send_email_notification.delay(
-                        subject="اطلاعات مسابقه شما",
-                        message=plain_message,
-                        recipient_list=[p.email],
-                        html_message=html_message,
-                    )
-                if p.phone_number:
-                    send_sms_notification.delay(str(p.phone_number), context)
+                for p in team1_members:
+                    participants.append((p, match.participant2_team.name))
+                for p in team2_members:
+                    participants.append((p, match.participant1_team.name))
+
+        for p, opponent_name in participants:
+            context = {
+                "tournament_name": tournament.name,
+                "room_id": match.room_id,
+                "password": match.password,
+                "opponent_name": opponent_name,
+            }
+
+            if p.email:
+                plain_message = (
+                    f"شما به تورنمنت {tournament.name} پیوستید.\n"
+                    f"شناسه اتاق: {context.get('room_id', 'نامشخص')}\n"
+                    f"رمز عبور: {context.get('password', 'نامشخص')}\n"
+                    f"حریف شما: {opponent_name}"
+                )
+                html_message = render_to_string(
+                    "notifications/email/tournament_joined.html", context
+                )
+                send_email_notification.delay(
+                    subject="اطلاعات مسابقه شما",
+                    message=plain_message,
+                    recipient_list=[p.email],
+                    html_message=html_message,
+                )
+            if p.phone_number:
+                send_sms_notification.delay(str(p.phone_number), context)
